@@ -1,0 +1,154 @@
+{
+  "corpus": {
+    "sessions": 350,
+    "usbmon_lines": 2121580,
+    "windows": 22155,
+    "features": 28
+  },
+  "split": {
+    "fit": 192,
+    "val": 48,
+    "test": 110
+  },
+  "thresholds": {
+    "stage2": 0.942215069885211,
+    "stage1": 0.2350861383423221,
+    "target_fpr": 0.001
+  },
+  "window_level": {
+    "auc_stage1": 0.8353160145078253,
+    "auc_stage2": 0.9977358794266102,
+    "precision": 0.986986986986987,
+    "recall": 0.9245194561650257,
+    "f1": 0.9547325102880658,
+    "stage1_only": {
+      "precision": 0.9935233160621761,
+      "recall": 0.3595874355368026,
+      "f1": 0.5280550774526678
+    }
+  },
+  "session_level": {
+    "iudbms": {
+      "attack_detect": 1.0,
+      "benign_fp": 0.030303030303030304,
+      "median_latency": 3.789662457326257,
+      "p90_latency": 12.50772752398228,
+      "revoked": 1.0,
+      "per_profile": {
+        "hid_injection": [
+          1.0,
+          7,
+          3.617040332349746
+        ],
+        "mass_storage": [
+          0.0,
+          11,
+          null
+        ],
+        "mouse": [
+          0.0,
+          12,
+          null
+        ],
+        "keyboard": [
+          0.13333333333333333,
+          15,
+          null
+        ],
+        "identity_switch": [
+          1.0,
+          11,
+          3.47419960857367
+        ],
+        "audio": [
+          0.0,
+          14,
+          null
+        ],
+        "class_exfil": [
+          1.0,
+          7,
+          3.2364541601071464
+        ],
+        "webcam": [
+          0.0,
+          14,
+          null
+        ],
+        "staged_delay": [
+          1.0,
+          8,
+          3.768385497064923
+        ],
+        "mimicry": [
+          1.0,
+          11,
+          12.231740803289902
+        ]
+      },
+      "fp_per_hour": 1.7242573935093126
+    },
+    "stage1_only": {
+      "attack_detect": 0.4090909090909091,
+      "benign_fp": 0.0,
+      "median_latency": 3.218437508477743,
+      "p90_latency": 3.7860971486355797,
+      "revoked": 0.4090909090909091,
+      "per_profile": {
+        "hid_injection": [
+          0.0,
+          7,
+          null
+        ],
+        "mass_storage": [
+          0.0,
+          11,
+          null
+        ],
+        "mouse": [
+          0.0,
+          12,
+          null
+        ],
+        "keyboard": [
+          0.0,
+          15,
+          null
+        ],
+        "identity_switch": [
+          1.0,
+          11,
+          3.4141629378811693
+        ],
+        "audio": [
+          0.0,
+          14,
+          null
+        ],
+        "class_exfil": [
+          1.0,
+          7,
+          3.1465117502278135
+        ],
+        "webcam": [
+          0.0,
+          14,
+          null
+        ],
+        "staged_delay": [
+          0.0,
+          8,
+          null
+        ],
+        "mimicry": [
+          0.0,
+          11,
+          null
+        ]
+      },
+      "fp_per_hour": 0.0
+    },
+    "identity_whitelist": 0.0
+  },
+  "runtime_sec": 45.4
+}

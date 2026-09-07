@@ -1,0 +1,26 @@
+{
+  "device": "A0014",
+  "action": "DEAUTHORIZE",
+  "trigger": "stage2>=0.942 in 4/6 windows",
+  "stage1": 0.192,
+  "stage2": 1.0,
+  "evidence_features": [
+    [
+      "cv_iat",
+      1.81
+    ],
+    [
+      "log_time_since_enum",
+      0.95
+    ],
+    [
+      "std_iat",
+      0.9
+    ]
+  ],
+  "declared_class": [
+    "0x3"
+  ],
+  "kernel_cmd": "echo 0 > /sys/bus/usb/devices/1-49/authorized",
+  "dry_run": true
+}
