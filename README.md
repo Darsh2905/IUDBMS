@@ -26,7 +26,7 @@ Working notes and decisions: [`CLAUDE.md`](CLAUDE.md).
 |---|-----------|-------|
 | 1 | Repo skeleton + frozen data contract | **done** |
 | 2 | `usbmon` reader (debugfs) | **done** (fixture-validated; live capture pending VM) |
-| 3 | Feature extractor (28-dim) | not started |
+| 3 | Feature extractor (28-dim) | **done** |
 | 4 | Stage 1 — iForest + per-device EWMA baseline | not started |
 | 5 | Stage 2 — PyTorch LSTM | not started |
 | 6 | Policy engine — k-of-n gate, escalation, safety interlocks | not started |
