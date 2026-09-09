@@ -1,0 +1,11 @@
+# Exact versions this tree was developed and measured against.
+# Generated 2026-09-09 on Darwin arm64, Python 3.12.5.
+# Every number in eval/ is reproducible against these pins.
+numpy==1.26.4
+scikit-learn==1.6.1
+torch==2.11.0
+matplotlib==3.10.3
+fastapi==0.135.2
+uvicorn==0.42.0
+pydantic==2.12.5
+pytest==8.3.4

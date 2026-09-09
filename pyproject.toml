@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "iudbms"
+version = "0.1.0"
+description = "Intelligent USB Device Behaviour Monitoring System — behavioural trust for USB peripherals"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Darsh Sharma", email = "darsh.sharma2905@gmail.com" }]
+
+# Version floors are the lowest tested; upper bounds guard the next major.
+# Exact versions this tree was developed and measured against are recorded in
+# requirements-lock.txt so every reported number is reproducible.
+dependencies = [
+    "numpy>=1.26,<3",
+    "scikit-learn>=1.4,<2",
+    "torch>=2.2,<3",
+    "matplotlib>=3.8,<4",
+    "fastapi>=0.110,<1",
+    "uvicorn[standard]>=0.27,<1",
+    "pydantic>=2.6,<3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0,<9", "pytest-cov>=4.1", "ruff>=0.4"]
+
+[project.scripts]
+iudbms-capture = "iudbms.capture.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q --strict-markers"
+markers = [
+    "slow: takes more than ~5 s (deselect with '-m \"not slow\"')",
+    "linux: requires Linux debugfs/usbmon; skipped elsewhere",
+]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests", "eval"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
