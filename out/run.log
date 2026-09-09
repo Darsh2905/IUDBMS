@@ -1,0 +1,95 @@
+
+====================================================================
+[1/7] CAPTURE  simulating device sessions -> usbmon text
+====================================================================
+  sessions        : 350  (210 benign / 140 malicious)
+  usbmon lines    : 2,121,580
+  example line    : ffff880100000040 149669 C Ii:002:002:1 0:8 8 = 0200110000000000
+
+====================================================================
+[2/7] PARSE + FEATURES  usbmon -> 28-dim multi-modal windows
+====================================================================
+  URB events parsed: 2,121,580
+  windows (1.0 s)  : 22,155   features/window: 28
+  modalities       : identity | timing | payload | protocol
+  split            : fit=192  val=48  test=110 sessions
+
+====================================================================
+[3/7] STAGE 1  per-device adaptive baselines + isolation forest
+====================================================================
+  benign windows   : 7,599   class-conditioned forests: [np.str_('av'), np.str_('hid'), 'other', np.str_('storage')]
+  calibration (p99): iforest=0.625  device-dev=58.175
+  mean score       : benign=0.143   post-onset attack=0.333
+
+====================================================================
+[4/7] STAGE 2  LSTM over 10-window sequences (NumPy BPTT)
+====================================================================
+  sequences        : train=(12270, 10, 29)  val=(2917, 10, 29)  (T=10)
+  epoch 01/14  loss=0.0823  val_acc=0.9770
+  epoch 02/14  loss=0.0456  val_acc=0.9709
+  epoch 03/14  loss=0.0389  val_acc=0.9767
+  epoch 04/14  loss=0.0304  val_acc=0.9733
+  epoch 05/14  loss=0.0281  val_acc=0.9739
+  epoch 06/14  loss=0.0249  val_acc=0.9753
+  epoch 07/14  loss=0.0222  val_acc=0.9791
+  epoch 08/14  loss=0.0209  val_acc=0.9791
+  epoch 09/14  loss=0.0187  val_acc=0.9777
+  epoch 10/14  loss=0.0171  val_acc=0.9671
+  epoch 11/14  loss=0.0137  val_acc=0.9640
+  epoch 12/14  loss=0.0141  val_acc=0.9739
+  epoch 13/14  loss=0.0158  val_acc=0.9712
+  epoch 14/14  loss=0.0090  val_acc=0.9664
+  learned threshold: stage2=0.9422  (stage1-only ablation=0.2351)  @ FPR<=0.1%
+
+====================================================================
+[5/7] EVALUATION  window-level and session-level, on held-out test
+====================================================================
+  window ROC-AUC   : stage1=0.8353   stage1+stage2=0.9977
+  window P/R/F1    : stage2 0.987/0.925/0.955    stage1-only 0.994/0.360/0.528
+  session detection: IUDBMS=100.0%   stage1-only=40.9%   identity-whitelist=0.0%
+  benign FP rate   : 3.0% of sessions (1.72 alerts/benign-hour)
+  detect latency   : median=3.8s  p90=12.5s
+    hid_injection    n= 7  IUDBMS=100.0%  stage1-only=  0.0%  latency=3.6s
+    identity_switch  n=11  IUDBMS=100.0%  stage1-only=100.0%  latency=3.5s
+    staged_delay     n= 8  IUDBMS=100.0%  stage1-only=  0.0%  latency=3.8s
+    class_exfil      n= 7  IUDBMS=100.0%  stage1-only=100.0%  latency=3.2s
+    mimicry          n=11  IUDBMS=100.0%  stage1-only=  0.0%  latency=12.2s
+
+====================================================================
+[6/7] PERSIST + ENFORCE  SQLite store and closed-loop actions
+====================================================================
+  sqlite rows      : {'devices': 350, 'windows': 22155, 'alerts': 282, 'actions': 282, 'baselines': 9800}
+  example generated rule:
+    {
+      "device": "A0014",
+      "action": "DEAUTHORIZE",
+      "trigger": "stage2>=0.942 in 4/6 windows",
+      "stage1": 0.192,
+      "stage2": 1.0,
+      "evidence_features": [
+        [
+          "cv_iat",
+          1.81
+        ],
+        [
+          "log_time_since_enum",
+          0.95
+        ],
+        [
+          "std_iat",
+          0.9
+        ]
+      ],
+      "declared_class": [
+        "0x3"
+      ],
+      "kernel_cmd": "echo 0 > /sys/bus/usb/devices/1-49/authorized",
+      "dry_run": true
+    }
+
+====================================================================
+[7/7] FIGURES + REPORT
+====================================================================
+  wrote iudbms_detection_results.png
+  wrote iudbms_roc.png
+  wrote metrics.json     total runtime 45.4s
