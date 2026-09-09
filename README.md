@@ -32,7 +32,7 @@ Working notes and decisions: [`CLAUDE.md`](CLAUDE.md).
 | 6 | Policy engine — k-of-n gate, escalation, safety interlocks | **done** |
 | 7 | SQLite storage + FastAPI | **done** |
 | 8 | eBPF capture path | deferred (plan §7 W11 — designated sacrifice) |
-| 9 | React dashboard | not started |
+| 9 | React dashboard | **done** (`uvicorn iudbms.api.app:app` → http://localhost:8000) |
 | 10 | Evaluation harness + ablations | **done** |
 
 `prototype/` holds the Sprint-0 vertical slice (NumPy LSTM, synthetic data,
@@ -66,8 +66,8 @@ Deployed model uses **28 of the 29 features**
 
 | model | window ROC-AUC | precision | recall | session detection |
 |---|---|---|---|---|
-| IUDBMS (Stage 1 + Stage 2) | 0.9937 | 0.999 | 0.925 | **100.0%** |
-| Stage 1 only (no temporal model) | 0.9520 | 0.996 | 0.458 | 44.2% |
+| IUDBMS (Stage 1 + Stage 2) | 0.9945 | 0.998 | 0.929 | **100.0%** |
+| Stage 1 only (no temporal model) | 0.9363 | 0.985 | 0.094 | 11.7% |
 | Identity whitelist (USBGuard-style) | — | — | — | 0.0% |
 
 0.0% benign session false positives across

@@ -12,9 +12,8 @@ taken since* the plan was written.
 
 ## 1. Current state
 
-Milestones 1-7 and 10 are done (contract, usbmon reader, features, Stage 1,
-Stage 2, policy engine, SQLite storage + FastAPI, evaluation harness).
-Not started: the React dashboard (M9) and eBPF (M8, deferred by plan §7).
+Milestones 1-7, 9 and 10 are done. Only M8 (eBPF) remains, deferred by plan §7.
+Run the dashboard with `uvicorn iudbms.api.app:app` and open http://localhost:8000.
 There is no long-lived streaming detector yet — the harness constructs a
 DeviceBaseline per session and discards it, which is why the SQLite
 `baselines` table persists as empty.
@@ -265,11 +264,11 @@ contain. Do not tune at this; add the feature or report the bound.
 
 | model | window AUC | recall | session detection |
 |---|---|---|---|
-| IUDBMS (S1+S2), 28 of 29 features | 0.9937 | 0.925 | **100.0%** |
-| Stage 1 only | 0.9520 | 0.458 | 44.2% |
+| IUDBMS (S1+S2), 28 of 29 features | 0.9945 | 0.929 | **100.0%** |
+| Stage 1 only | 0.9363 | 0.094 | 11.7% |
 | identity whitelist | — | — | 0.0% |
 
-Benign session FP **0.0%** over 178 benign test sessions. Median latency 3.6 s,
+Benign session FP **0.6%** (1 of 178 benign test sessions). Median latency 3.6 s,
 p90 22.1 s. Every attack class 100%: `class_exfil` (n=29), `hid_injection` (26),
 `identity_switch` (23), `staged_delay` (26), **`mimicry` (16)**.
 
@@ -342,6 +341,42 @@ that the constraint is real, not synthetic: a keystroke-injection payload has to
 type specific commands, so it cannot randomise its sequence without ceasing to
 be a payload. An adversary can pad or reorder within limits, and the honest
 claim is "raises the cost", not "solves".
+
+### Milestone 9 — dashboard, and the defect it found (09 Sep, fourth pass)
+
+`dashboard/index.html`, served by FastAPI at `/`. **React from cdnjs, no build
+step, hand-rolled SVG chart instead of Recharts.** Deviation from plan §3, taken
+deliberately: a Vite toolchain and a version-pinned chart library are two ways to
+fail on a projector the night before a review. If the dashboard is ever extended
+past a single view, revisit.
+
+**10. An exploding standardisation scale — found by looking at live data.**
+The dashboard rendered alert evidence as `late_iface_flag 4472091.23`. Three
+features are *exactly* constant across benign traffic
+(`class_behaviour_mismatch`, `late_iface_flag`, `n_interfaces` — 0 or 1 for every
+benign device, by construction), and `Stage1._std` divided by `sd + 1e-6`. A
+single 0→1 flip therefore became a standardised value of ~1e6 that swamped all
+29 dimensions in both the forest and the baseline z-scores. Same family as the
+`VAR_FLOOR` defect, one level up.
+
+Fixed with `SD_FLOOR = 1e-2` and `STD_CLIP = 10`. Such a feature IS informative
+when it changes — that is the whole point of `class_behaviour_mismatch` — so the
+fix bounds its influence rather than removing it.
+
+| | before | after |
+|---|---|---|
+| IUDBMS AUC | 0.9937 | 0.9945 |
+| IUDBMS detection | 100% | 100% |
+| IUDBMS benign FP | 0.0% | 0.6% |
+| Stage-1 detection | 44.2% | **11.7%** |
+| Stage-1 recall | 0.458 | 0.094 |
+
+**The Stage-1 collapse is the finding.** Both runs used the same 0.0001 target
+FPR, so it is entirely this fix. Its old 44.2% was substantially artefact:
+`class_exfil` was caught because `class_behaviour_mismatch` exploded to 1e6, not
+because the model ranked it. Stage 1 now catches only `identity_switch` (60.9%)
+while its window AUC stays high (0.9363) — it still *ranks* well, it is the tight
+operating point that costs recall. This strengthens N3 rather than weakening it.
 
 ### eBPF go/no-go — **PENDING**
 

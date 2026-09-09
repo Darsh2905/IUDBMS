@@ -235,3 +235,43 @@ def test_variance_floor_stops_near_constant_features_exploding():
     assert score <= 1.0 / np.sqrt(VAR_FLOOR) + 1e-6, (
         f"deviation {score} exceeds the floor-implied bound"
     )
+
+
+def test_constant_benign_feature_does_not_swamp_the_vector():
+    """Several features are exactly constant across benign traffic
+    (class_behaviour_mismatch, late_iface_flag, n_interfaces). Dividing by their
+    ~zero standard deviation turned a single 0->1 flip into a standardised value
+    of ~1e6, which swamped all other dimensions in both the isolation forest and
+    the device-baseline z-scores. It surfaced as alert evidence reading
+    'late_iface_flag 4472091.23'."""
+    from iudbms.stage1 import STD_CLIP
+
+    rng = np.random.default_rng(0)
+    X = rng.normal(0, 1, (300, N_FEATURES))
+    const = FEATURE_NAMES.index("late_iface_flag")
+    X[:, const] = 0.0                      # constant across benign traffic
+    m = Stage1(seed=0).fit(X, ["hid"] * 300)
+
+    flipped = np.zeros((1, N_FEATURES))
+    flipped[0, const] = 1.0
+    z = m._std(flipped)
+    assert np.all(np.abs(z) <= STD_CLIP + 1e-9), f"standardised value {z.max()} exceeds the clip"
+    assert abs(z[0, const]) == pytest.approx(STD_CLIP), (
+        "a flip on a benign-constant feature should still read as maximally anomalous"
+    )
+
+
+def test_alert_evidence_z_scores_stay_interpretable():
+    """Evidence is shown to an operator; a z of 4.5 million is not a number
+    anyone can act on."""
+    rng = np.random.default_rng(1)
+    X = rng.normal(0, 1, (300, N_FEATURES))
+    X[:, FEATURE_NAMES.index("late_iface_flag")] = 0.0
+    m = Stage1(seed=0).fit(X, ["hid"] * 300)
+
+    probe = rng.normal(0, 1, (40, N_FEATURES))
+    probe[:, FEATURE_NAMES.index("late_iface_flag")] = 0.0
+    probe[20:, FEATURE_NAMES.index("late_iface_flag")] = 1.0
+    _, expl, _ = m.score_session(probe, desc(0x03))
+    worst = max((v for row in expl for _, v in row), default=0.0)
+    assert worst < 1000, f"largest reported deviation was {worst}"
