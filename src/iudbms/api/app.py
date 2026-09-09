@@ -12,11 +12,13 @@ kernel: it records an operator decision. Actual sysfs writes are gated behind
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from ..contract import CONTRACT_VERSION
@@ -25,7 +27,10 @@ from ..storage import Store
 
 __all__ = ["app", "get_db_path"]
 
-DEFAULT_DB = Path(__file__).resolve().parents[3] / "out" / "iudbms.db"
+_ROOT = Path(__file__).resolve().parents[3]
+DEFAULT_DB = _ROOT / "out" / "iudbms.db"
+DASHBOARD = _ROOT / "dashboard" / "index.html"
+METRICS = _ROOT / "out" / "metrics.json"
 
 app = FastAPI(
     title="IUDBMS Control API",
@@ -40,6 +45,24 @@ app.add_middleware(
 
 def get_db_path() -> Path:
     return Path(os.environ.get("IUDBMS_DB", DEFAULT_DB))
+
+
+def deployed_policy() -> dict:
+    """The operating point the persisted run actually used.
+
+    Read from out/metrics.json rather than recomputed, so the dashboard shows
+    the threshold that produced the stored alerts instead of inferring one.
+    """
+    try:
+        m = json.loads(METRICS.read_text())
+    except (OSError, ValueError):
+        return {}
+    return {
+        "threshold": m.get("full_system", {}).get("threshold"),
+        "target_fpr": m.get("config", {}).get("target_fpr"),
+        "gate": m.get("config", {}).get("gate"),
+        "deployed_features": m.get("deployed_features"),
+    }
 
 
 def _store() -> Store:
@@ -62,10 +85,19 @@ class AuthorizeRequest(BaseModel):
     reason: str = ""
 
 
+@app.get("/", include_in_schema=False)
+def dashboard():
+    """Serve the operator dashboard (plan §4.6 / milestone 9)."""
+    if not DASHBOARD.exists():
+        raise HTTPException(404, "dashboard/index.html not found")
+    return FileResponse(DASHBOARD)
+
+
 @app.get("/health")
 def health() -> dict:
     return {
         "status": "ok",
+        "policy": deployed_policy(),
         "contract_version": CONTRACT_VERSION,
         "database": str(get_db_path()),
         "database_present": get_db_path().exists(),

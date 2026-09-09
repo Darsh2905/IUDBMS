@@ -41,7 +41,8 @@ from ..contract import (
     DeviceDescriptor,
 )
 
-__all__ = ["Stage1", "DeviceBaseline", "class_group", "WARMUP", "GATE", "VAR_FLOOR"]
+__all__ = ["Stage1", "DeviceBaseline", "class_group", "WARMUP", "GATE",
+           "VAR_FLOOR", "SD_FLOOR", "STD_CLIP"]
 
 WARMUP = 4        # windows before the device baseline is trusted at all
 GATE = 0.55       # windows scoring above this do not update the baseline
@@ -64,6 +65,24 @@ EPS = 1e-6
 #: maximised Stage-1 AUC (0.8922 vs 0.8900 unfloored) and cut the benign
 #: window FPR at the operating threshold from 0.26% to 0.07%.
 VAR_FLOOR = 0.05
+
+#: Floor on the population standard deviation used to standardise features,
+#: and a clip on the result. Same failure as VAR_FLOOR, one level up.
+#:
+#: Several features are *exactly* constant across benign traffic --
+#: class_behaviour_mismatch, late_iface_flag and n_interfaces are all zero or
+#: one for every benign device, by construction. Dividing by ``sd + 1e-6`` then
+#: turns a single 0->1 flip into a standardised value of ~1e6, which swamps all
+#: 29 dimensions in both the isolation forest and the device-baseline z-scores.
+#: It surfaced as alert evidence reading "late_iface_flag 4472091.23".
+#:
+#: A feature that is constant for benign traffic IS informative when it changes
+#: -- that is the whole point of class_behaviour_mismatch -- so the fix is to
+#: bound its influence, not remove it. With the floor, a binary flip is ~100
+#: sigma, clipped to 10: still decisively anomalous, no longer the only thing
+#: the model can see.
+SD_FLOOR = 1e-2
+STD_CLIP = 10.0
 MIN_GROUP_WINDOWS = 30    # below this a group folds into the generic forest
 
 
@@ -138,7 +157,7 @@ class Stage1:
         )
 
     def _std(self, X: np.ndarray) -> np.ndarray:
-        return (X - self.mu) / (self.sd + EPS)
+        return np.clip((X - self.mu) / self.sd, -STD_CLIP, STD_CLIP)
 
     def fit(self, X_benign: np.ndarray, groups_benign) -> Stage1:
         """Fit on benign windows only — Stage 1 needs no attack labels."""
@@ -155,7 +174,7 @@ class Stage1:
                 f"{X_benign.shape[1]} columns"
             )
         self.mu = X_benign.mean(axis=0)
-        self.sd = X_benign.std(axis=0)
+        self.sd = np.maximum(X_benign.std(axis=0), SD_FLOOR)
         Z = self._std(X_benign)
 
         for g in sorted(set(groups.tolist())):

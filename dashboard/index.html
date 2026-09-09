@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IUDBMS — device monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  color-scheme: light;
+  --surface-0: #f2f2f0;
+  --surface-1: #fcfcfb;          /* chart surface — the validator's light surface */
+  --surface-2: #eeeeec;
+  --line:      #dedddA;
+  --grid:      #e8e8e5;
+  --text-primary:   #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted:     #7a7975;
+
+  /* categorical slots 1 and 2 — validated, light mode */
+  --series-s2: #2a78d6;
+  --series-s1: #eb6834;
+
+  /* status palette — fixed, never themed; always paired with an icon + label */
+  --status-good:     #0ca30c;
+  --status-warning:  #fab219;
+  --status-critical: #d03b3b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --surface-0: #121211;
+    --surface-1: #1a1a19;
+    --surface-2: #232322;
+    --line:      #333331;
+    --grid:      #2a2a28;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #8d8c85;
+    --series-s2: #3987e5;
+    --series-s1: #d95926;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface-0: #121211;
+  --surface-1: #1a1a19;
+  --surface-2: #232322;
+  --line:      #333331;
+  --grid:      #2a2a28;
+  --text-primary:   #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted:     #8d8c85;
+  --series-s2: #3987e5;
+  --series-s1: #d95926;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--surface-0); color: var(--text-primary);
+  font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 14px;
+}
+.mono, .num { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+.num { font-variant-numeric: tabular-nums; }
+
+header {
+  background: var(--surface-1); border-bottom: 1px solid var(--line);
+  padding: 14px 20px; display: flex; align-items: center;
+  gap: 26px; flex-wrap: wrap;
+}
+header h1 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
+header h1 span { color: var(--text-muted); font-weight: 400; }
+.stats { display: flex; gap: 22px; margin-left: auto; flex-wrap: wrap; }
+.stat { display: flex; flex-direction: column; gap: 1px; }
+.stat .k {
+  font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--text-muted); font-weight: 600;
+}
+.stat .v { font-size: 17px; font-weight: 600; }
+
+/* one filter row above everything it scopes */
+.filters {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  padding: 10px 20px; background: var(--surface-1);
+  border-bottom: 1px solid var(--line);
+}
+.filters input, .filters select {
+  font: inherit; font-size: 13px; padding: 6px 9px; min-height: 32px;
+  background: var(--surface-2); color: var(--text-primary);
+  border: 1px solid var(--line); border-radius: 4px;
+}
+.filters input { width: 190px; }
+.filters label {
+  font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--text-muted); font-weight: 600;
+}
+.filters .count { margin-left: auto; color: var(--text-secondary); font-size: 12.5px; }
+
+.layout { display: grid; grid-template-columns: 330px 1fr; min-height: calc(100vh - 108px); }
+@media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+.devices { border-right: 1px solid var(--line); background: var(--surface-1); overflow-y: auto; max-height: calc(100vh - 108px); }
+.device {
+  padding: 9px 14px; border-bottom: 1px solid var(--grid); cursor: pointer;
+  display: flex; align-items: center; gap: 9px;
+}
+.device:hover { background: var(--surface-2); }
+.device[aria-selected="true"] { background: var(--surface-2); box-shadow: inset 3px 0 0 var(--series-s2); }
+.device:focus-visible { outline: 2px solid var(--series-s2); outline-offset: -2px; }
+.device .id { font-size: 12.5px; font-weight: 600; }
+.device .meta { font-size: 11px; color: var(--text-muted); }
+.device .right { margin-left: auto; text-align: right; }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 9.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase;
+  padding: 2px 7px; border-radius: 3px; white-space: nowrap;
+  border: 1px solid currentColor;
+}
+.pill.observe   { color: var(--status-good); }
+.pill.throttled { color: var(--status-warning); }
+.pill.revoked   { color: var(--status-critical); }
+
+main { padding: 20px; overflow-y: auto; max-height: calc(100vh - 108px); }
+.card {
+  background: var(--surface-1); border: 1px solid var(--line);
+  border-radius: 6px; padding: 18px; margin-bottom: 16px;
+}
+.card h2 {
+  margin: 0 0 3px; font-size: 14px; font-weight: 600;
+}
+.card .sub { margin: 0 0 14px; font-size: 12.5px; color: var(--text-secondary); }
+
+.legend { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; font-size: 12px; }
+.legend .item { display: flex; align-items: center; gap: 6px; color: var(--text-secondary); }
+.legend .swatch { width: 14px; height: 2px; border-radius: 1px; }
+.legend .swatch.dash {
+  height: 0; border-top: 2px dashed var(--text-muted); width: 16px;
+}
+
+.chartwrap { position: relative; }
+svg.chart { display: block; width: 100%; height: auto; }
+.tooltip {
+  position: absolute; pointer-events: none; z-index: 5;
+  background: var(--surface-1); border: 1px solid var(--line);
+  border-radius: 5px; padding: 8px 10px; font-size: 12px; min-width: 150px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.16);
+}
+.tooltip .row { display: flex; justify-content: space-between; gap: 14px; }
+.tooltip .row + .row { margin-top: 3px; }
+.tooltip .lbl { display: flex; align-items: center; gap: 6px; color: var(--text-secondary); }
+.tooltip .t { font-weight: 600; margin-bottom: 5px; }
+
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+th {
+  text-align: left; font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--text-muted); font-weight: 600; padding: 0 10px 7px 0;
+  border-bottom: 1px solid var(--line); white-space: nowrap;
+}
+td { padding: 7px 10px 7px 0; border-bottom: 1px solid var(--grid); vertical-align: top; }
+th.r, td.r { text-align: right; }
+
+.btn {
+  font: inherit; font-size: 12px; padding: 5px 11px; min-height: 28px;
+  background: var(--surface-2); color: var(--text-primary);
+  border: 1px solid var(--line); border-radius: 4px; cursor: pointer;
+}
+.btn:hover { border-color: var(--text-muted); }
+.btn:focus-visible { outline: 2px solid var(--series-s2); outline-offset: 1px; }
+
+pre {
+  margin: 0; background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: 5px; padding: 12px; overflow-x: auto;
+  font-family: "IBM Plex Mono", monospace; font-size: 11.5px; line-height: 1.5;
+}
+.empty { color: var(--text-muted); font-size: 13px; padding: 40px 0; text-align: center; }
+.banner {
+  background: var(--surface-2); border: 1px solid var(--status-warning);
+  border-radius: 5px; padding: 9px 12px; font-size: 12.5px;
+  color: var(--text-secondary); margin-bottom: 16px;
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body data-palette="#2a78d6,#eb6834">
+<div id="root"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script>
+const h = React.createElement;
+const { useState, useEffect, useMemo, useRef, useCallback } = React;
+const API = "";
+
+const fmt = (n, d = 3) => (n === null || n === undefined ? "—" : Number(n).toFixed(d));
+const STATE_ICON = { observe: "●", throttled: "▲", revoked: "■" };
+
+function useJSON(url, deps) {
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState(null);
+  useEffect(() => {
+    if (!url) { setData(null); return; }
+    let live = true;
+    fetch(API + url)
+      .then(r => r.ok ? r.json() : r.json().then(b => Promise.reject(b.detail || r.status)))
+      .then(d => { if (live) { setData(d); setErr(null); } })
+      .catch(e => { if (live) setErr(String(e)); });
+    return () => { live = false; };
+  }, deps);
+  return [data, err];
+}
+
+/* ---------------- score timeline ---------------- */
+/* One y-axis (probability, 0..1) carrying both series. Never a second scale. */
+function Timeline({ windows, threshold }) {
+  const [hover, setHover] = useState(null);
+  const wrapRef = useRef(null);
+
+  const W = 900, H = 300, M = { t: 14, r: 66, b: 34, l: 44 };
+  const pw = W - M.l - M.r, ph = H - M.t - M.b;
+
+  const pts = windows || [];
+  const tMax = pts.length ? Math.max(...pts.map(p => p.t_start)) : 1;
+  const x = t => M.l + (tMax ? (t / tMax) * pw : 0);
+  const y = v => M.t + (1 - Math.max(0, Math.min(1, v))) * ph;
+
+  const path = key => pts.map((p, i) => `${i ? "L" : "M"}${x(p.t_start).toFixed(2)},${y(p[key]).toFixed(2)}`).join("");
+
+  // ground-truth attack region, from the stored per-window labels
+  const onset = pts.find(p => p.label === 1);
+  const lastMal = [...pts].reverse().find(p => p.label === 1);
+
+  const onMove = useCallback(e => {
+    if (!pts.length) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    const px = ((e.clientX - r.left) / r.width) * W;
+    const t = ((px - M.l) / pw) * tMax;
+    let best = 0, bd = Infinity;
+    pts.forEach((p, i) => { const d = Math.abs(p.t_start - t); if (d < bd) { bd = d; best = i; } });
+    setHover(best);
+  }, [pts, tMax]);
+
+  if (!pts.length) return h("div", { className: "empty" }, "No windows recorded for this device.");
+
+  const ticksY = [0, 0.25, 0.5, 0.75, 1];
+  const step = tMax > 60 ? 20 : tMax > 25 ? 10 : 5;
+  const ticksX = []; for (let t = 0; t <= tMax; t += step) ticksX.push(t);
+  const hp = hover !== null ? pts[hover] : null;
+
+  return h("div", { className: "chartwrap", ref: wrapRef },
+    h("div", { className: "legend", style: { marginBottom: 10 } },
+      h("span", { className: "item" },
+        h("span", { className: "swatch", style: { background: "var(--series-s2)" } }),
+        "Stage 2 — LSTM P(malicious)"),
+      h("span", { className: "item" },
+        h("span", { className: "swatch", style: { background: "var(--series-s1)" } }),
+        "Stage 1 — memoryless anomaly"),
+      h("span", { className: "item" },
+        h("span", { className: "swatch dash" }), `learned threshold ${fmt(threshold, 3)}`),
+      onset ? h("span", { className: "item" },
+        h("span", { className: "swatch", style: { background: "var(--text-muted)", opacity: .35, height: 10 } }),
+        "attack active (ground truth)") : null),
+
+    h("svg", {
+      className: "chart", viewBox: `0 0 ${W} ${H}`, role: "img",
+      "aria-label": "Stage 1 and Stage 2 scores over the device session",
+      onMouseMove: onMove, onMouseLeave: () => setHover(null),
+    },
+      onset && lastMal ? h("rect", {
+        x: x(onset.t_start), y: M.t, width: Math.max(1, x(lastMal.t_start) - x(onset.t_start)),
+        height: ph, fill: "var(--text-muted)", opacity: .13,
+      }) : null,
+
+      /* solid hairline grid, one shade off the surface */
+      ticksY.map(v => h("g", { key: "gy" + v },
+        h("line", { x1: M.l, x2: W - M.r, y1: y(v), y2: y(v), stroke: "var(--grid)", strokeWidth: 1 }),
+        h("text", {
+          x: M.l - 8, y: y(v) + 3.5, textAnchor: "end",
+          fontSize: 10.5, fill: "var(--text-muted)", className: "num",
+        }, v.toFixed(2)))),
+
+      ticksX.map(t => h("text", {
+        key: "gx" + t, x: x(t), y: H - M.b + 17, textAnchor: "middle",
+        fontSize: 10.5, fill: "var(--text-muted)", className: "num",
+      }, t)),
+      h("line", { x1: M.l, x2: W - M.r, y1: M.t + ph, y2: M.t + ph, stroke: "var(--line)", strokeWidth: 1 }),
+
+      /* threshold: dashed because it genuinely IS a threshold, not a gridline */
+      h("line", {
+        x1: M.l, x2: W - M.r, y1: y(threshold), y2: y(threshold),
+        stroke: "var(--text-muted)", strokeWidth: 2, strokeDasharray: "6 5",
+      }),
+
+      h("path", { d: path("stage1"), fill: "none", stroke: "var(--series-s1)", strokeWidth: 2, strokeLinejoin: "round" }),
+      h("path", { d: path("stage2"), fill: "none", stroke: "var(--series-s2)", strokeWidth: 2, strokeLinejoin: "round" }),
+
+      /* selective direct labels: the endpoint only, never every point */
+      h("text", {
+        x: W - M.r + 7, y: y(pts[pts.length - 1].stage2) + 3.5,
+        fontSize: 11, fontWeight: 600, fill: "var(--text-primary)", className: "num",
+      }, fmt(pts[pts.length - 1].stage2, 2)),
+      h("text", {
+        x: W - M.r + 7, y: y(pts[pts.length - 1].stage1) + 3.5,
+        fontSize: 11, fontWeight: 600, fill: "var(--text-primary)", className: "num",
+      }, fmt(pts[pts.length - 1].stage1, 2)),
+
+      hp ? h("g", null,
+        h("line", { x1: x(hp.t_start), x2: x(hp.t_start), y1: M.t, y2: M.t + ph, stroke: "var(--text-muted)", strokeWidth: 1 }),
+        h("circle", { cx: x(hp.t_start), cy: y(hp.stage2), r: 4.5, fill: "var(--series-s2)", stroke: "var(--surface-1)", strokeWidth: 2 }),
+        h("circle", { cx: x(hp.t_start), cy: y(hp.stage1), r: 4.5, fill: "var(--series-s1)", stroke: "var(--surface-1)", strokeWidth: 2 })) : null,
+
+      h("text", { x: M.l, y: H - 4, fontSize: 10.5, fill: "var(--text-muted)" },
+        "time since enumeration (s)")),
+
+    hp ? h("div", {
+      className: "tooltip",
+      style: {
+        left: `calc(${(x(hp.t_start) / W) * 100}% + ${x(hp.t_start) / W > 0.6 ? -175 : 14}px)`,
+        top: 34,
+      },
+    },
+      h("div", { className: "t num" }, `t = ${hp.t_start.toFixed(0)} s`),
+      h("div", { className: "row" },
+        h("span", { className: "lbl" },
+          h("span", { className: "swatch", style: { background: "var(--series-s2)", width: 12, height: 2, display: "inline-block" } }), "Stage 2"),
+        h("span", { className: "num" }, fmt(hp.stage2))),
+      h("div", { className: "row" },
+        h("span", { className: "lbl" },
+          h("span", { className: "swatch", style: { background: "var(--series-s1)", width: 12, height: 2, display: "inline-block" } }), "Stage 1"),
+        h("span", { className: "num" }, fmt(hp.stage1))),
+      h("div", { className: "row" },
+        h("span", { className: "lbl" }, "ground truth"),
+        h("span", null, hp.label ? "attack" : "benign"))) : null);
+}
+
+/* Every chart has a table-view twin — values are never tooltip-only. */
+function TableView({ windows }) {
+  const rows = (windows || []).filter((_, i) => i % 2 === 0);
+  return h("div", { style: { maxHeight: 320, overflowY: "auto" } },
+    h("table", null,
+      h("thead", null, h("tr", null,
+        h("th", null, "t (s)"), h("th", { className: "r" }, "Stage 1"),
+        h("th", { className: "r" }, "Stage 2"), h("th", null, "ground truth"))),
+      h("tbody", null, rows.map(w => h("tr", { key: w.t_start },
+        h("td", { className: "num" }, w.t_start.toFixed(0)),
+        h("td", { className: "num r" }, fmt(w.stage1)),
+        h("td", { className: "num r" }, fmt(w.stage2)),
+        h("td", null, w.label ? "attack" : "benign"))))));
+}
+
+function DeviceDetail({ id, threshold }) {
+  const [tl] = useJSON(id ? `/devices/${id}/timeline` : null, [id]);
+  const [alerts] = useJSON(id ? `/alerts?device_id=${id}` : null, [id]);
+  const [actions] = useJSON(id ? `/actions?device_id=${id}` : null, [id]);
+  const [table, setTable] = useState(false);
+
+  if (!id) return h("div", { className: "empty" }, "Select a device to see its behaviour timeline.");
+  const windows = tl && tl.windows;
+
+  return h("div", null,
+    h("div", { className: "card" },
+      h("div", { style: { display: "flex", alignItems: "baseline", gap: 12 } },
+        h("h2", null, "Behaviour timeline — ", h("span", { className: "mono" }, id)),
+        h("button", {
+          className: "btn", style: { marginLeft: "auto" },
+          onClick: () => setTable(t => !t),
+        }, table ? "Show chart" : "Show table")),
+      h("p", { className: "sub" },
+        "Stage 1 asks whether this second looks odd. Stage 2 reads the last ten " +
+        "windows, so it sees transitions Stage 1 cannot."),
+      windows
+        ? (table ? h(TableView, { windows }) : h(Timeline, { windows, threshold }))
+        : h("div", { className: "empty" }, "Loading…")),
+
+    h("div", { className: "card" },
+      h("h2", null, "Alerts"),
+      h("p", { className: "sub" },
+        "Raised only after the 4-of-6 persistence gate — a single anomalous window never fires."),
+      alerts && alerts.length
+        ? h("table", null,
+            h("thead", null, h("tr", null,
+              h("th", null, "t (s)"), h("th", null, "severity"),
+              h("th", { className: "r" }, "Stage 1"), h("th", { className: "r" }, "Stage 2"),
+              h("th", null, "evidence — three largest deviations"))),
+            h("tbody", null, alerts.map(a => h("tr", { key: a.id },
+              h("td", { className: "num" }, a.ts.toFixed(0)),
+              h("td", null, h("span", {
+                className: "pill " + (a.severity === "critical" ? "revoked" : "throttled"),
+              }, STATE_ICON[a.severity === "critical" ? "revoked" : "throttled"], " ", a.severity)),
+              h("td", { className: "num r" }, fmt(a.stage1)),
+              h("td", { className: "num r" }, fmt(a.stage2)),
+              h("td", { className: "mono", style: { fontSize: 11.5 } },
+                (a.evidence || []).map(e => `${e[0]} ${e[1]}`).join(" · ") || "—")))))
+        : h("div", { className: "empty" }, "No alerts — this device behaved.")),
+
+    actions && actions.length
+      ? h("div", { className: "card" },
+          h("h2", null, "Generated rule"),
+          h("p", { className: "sub" },
+            "Enforcement is learned, not a static table entry: the trigger, the threshold " +
+            "and the evidence all come from the model. dry_run is on and real sysfs " +
+            "writes stay disabled until the safety interlocks are reviewed."),
+          h("pre", null, JSON.stringify(actions[0].rule, null, 2)))
+      : null);
+}
+
+function App() {
+  const [devices, devErr] = useJSON("/devices", []);
+  const [stats] = useJSON("/stats", []);
+  const [health] = useJSON("/health", []);
+  const [alerts] = useJSON("/alerts?limit=5000", []);
+  const [sel, setSel] = useState(null);
+  const [q, setQ] = useState("");
+  const [state, setState] = useState("all");
+  const [group, setGroup] = useState("all");
+
+  const alertCount = useMemo(() => {
+    const m = {};
+    (alerts || []).forEach(a => { m[a.device_id] = (m[a.device_id] || 0) + 1; });
+    return m;
+  }, [alerts]);
+
+  // The real operating point, from the run that produced these alerts.
+  const threshold = (health && health.policy && health.policy.threshold) || 0.9147;
+
+  const shown = useMemo(() => {
+    let d = devices || [];
+    if (q) d = d.filter(x => x.device_id.toLowerCase().includes(q.toLowerCase()));
+    if (state !== "all") d = d.filter(x => x.trust_state === state);
+    if (group !== "all") d = d.filter(x => x.class_group === group);
+    // devices that raised alerts first — that is what an operator opens the tool for
+    return [...d].sort((a, b) =>
+      (alertCount[b.device_id] || 0) - (alertCount[a.device_id] || 0) ||
+      a.device_id.localeCompare(b.device_id));
+  }, [devices, q, state, group, alertCount]);
+
+  const groups = useMemo(
+    () => [...new Set((devices || []).map(d => d.class_group))].sort(), [devices]);
+
+  useEffect(() => { if (!sel && shown.length) setSel(shown[0].device_id); }, [shown, sel]);
+
+  if (devErr) return h("div", { style: { padding: 40 } },
+    h("h1", null, "No data yet"),
+    h("p", null, String(devErr)),
+    h("pre", null, "python3 -m eval.run_eval --cache out/corpus_cache.npz --target-fpr 0.0001 --persist"));
+
+  const capped = shown.slice(0, 250);
+
+  return h("div", null,
+    h("header", null,
+      h("h1", null, "IUDBMS ", h("span", null, "· device behaviour monitor")),
+      h("div", { className: "stats" },
+        h("div", { className: "stat" }, h("span", { className: "k" }, "Devices"),
+          h("span", { className: "v num" }, stats ? stats.devices.toLocaleString() : "—")),
+        h("div", { className: "stat" }, h("span", { className: "k" }, "Windows scored"),
+          h("span", { className: "v num" }, stats ? stats.windows.toLocaleString() : "—")),
+        h("div", { className: "stat" }, h("span", { className: "k" }, "Alerts"),
+          h("span", { className: "v num" }, stats ? stats.alerts.toLocaleString() : "—")),
+        h("div", { className: "stat" }, h("span", { className: "k" }, "Actions"),
+          h("span", { className: "v num" }, stats ? stats.actions.toLocaleString() : "—")),
+        health && health.policy && health.policy.gate
+          ? h("div", { className: "stat" }, h("span", { className: "k" }, "Gate"),
+              h("span", { className: "v num" }, health.policy.gate))
+          : null)),
+
+    h("div", { className: "filters" },
+      h("label", { htmlFor: "q" }, "Device"),
+      h("input", {
+        id: "q", type: "search", placeholder: "search id…",
+        value: q, onChange: e => setQ(e.target.value),
+      }),
+      h("label", { htmlFor: "st" }, "Trust state"),
+      h("select", { id: "st", value: state, onChange: e => setState(e.target.value) },
+        ["all", "observe", "throttled", "revoked"].map(s => h("option", { key: s, value: s }, s))),
+      h("label", { htmlFor: "gp" }, "Class"),
+      h("select", { id: "gp", value: group, onChange: e => setGroup(e.target.value) },
+        ["all", ...groups].map(s => h("option", { key: s, value: s }, s))),
+      h("span", { className: "count num" },
+        `${shown.length.toLocaleString()} device${shown.length === 1 ? "" : "s"}` +
+        (shown.length > capped.length ? ` · showing first ${capped.length}` : ""))),
+
+    h("div", { className: "layout" },
+      h("div", { className: "devices", role: "listbox", "aria-label": "Monitored devices" },
+        capped.map(d => h("div", {
+          key: d.device_id, className: "device", role: "option", tabIndex: 0,
+          "aria-selected": sel === d.device_id,
+          onClick: () => setSel(d.device_id),
+          onKeyDown: e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSel(d.device_id); } },
+        },
+          h("div", null,
+            h("div", { className: "id mono" }, d.device_id),
+            h("div", { className: "meta" },
+              `${d.class_group} · bus ${d.bus}-${d.devnum} · ` +
+              `${d.vid.toString(16).padStart(4, "0")}:${d.pid.toString(16).padStart(4, "0")}`)),
+          h("div", { className: "right" },
+            h("span", { className: "pill " + d.trust_state },
+              STATE_ICON[d.trust_state] || "●", " ", d.trust_state),
+            alertCount[d.device_id]
+              ? h("div", { className: "meta num", style: { marginTop: 3 } },
+                  `${alertCount[d.device_id]} alert${alertCount[d.device_id] === 1 ? "" : "s"}`)
+              : null)))),
+
+      h("main", null,
+        health && !health.enforcement_reviewed
+          ? h("div", { className: "banner" },
+              "⚠ Enforcement is in dry-run. Actions are generated and logged; no write to " +
+              "/sys/bus/usb/…/authorized is executed. Real writes stay disabled until the " +
+              "safety interlocks have been reviewed.")
+          : null,
+        h(DeviceDetail, { id: sel, threshold }))));
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(h(App));
+</script>
+</body>
+</html>
