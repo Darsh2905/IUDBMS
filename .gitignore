@@ -1,11 +1,31 @@
+# Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
-.DS_Store
-*.db
-*.log
-.env
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
 .venv/
-env/
 venv/
+
+# Test / tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Generated artefacts (regenerate with `make eval`)
+out/*.db
+out/*.db-wal
+out/*.db-shm
+artifacts/
+*.pt
+*.pth
+
+# Node / dashboard
+node_modules/
+dashboard/dist/
+
+# OS
+.DS_Store
