@@ -1,0 +1,81 @@
+
+==========================================================================
+[1/5] CORPUS  simulate -> usbmon text -> parse -> 28-dim windows
+==========================================================================
+  sessions        : 350  (210 benign / 140 malicious)
+  usbmon lines    : 4,198,276
+  URB events      : 4,198,276
+  windows (1.0 s) : 22,037   features/window: 28
+  split (sessions): fit=196  val=49  test=105
+  split is BY SESSION, stratified by profile — never by window (plan §5)
+
+==========================================================================
+[2/5] FULL SYSTEM  Stage 1 + Stage 2 (PyTorch LSTM)
+==========================================================================
+  epoch 01/14  loss=0.4262  val_acc=0.8900  val_recall=0.9022
+  epoch 02/14  loss=0.2677  val_acc=0.8936  val_recall=0.9251
+  epoch 03/14  loss=0.2532  val_acc=0.8926  val_recall=0.9132
+  epoch 04/14  loss=0.2507  val_acc=0.8960  val_recall=0.9271
+  epoch 05/14  loss=0.2426  val_acc=0.8893  val_recall=0.8772
+  epoch 06/14  loss=0.2390  val_acc=0.8923  val_recall=0.8962
+  epoch 07/14  loss=0.2382  val_acc=0.8983  val_recall=0.8553
+  epoch 08/14  loss=0.2309  val_acc=0.8920  val_recall=0.9391
+  epoch 09/14  loss=0.2271  val_acc=0.8933  val_recall=0.8343
+  epoch 10/14  loss=0.2239  val_acc=0.8936  val_recall=0.9311
+  epoch 11/14  loss=0.2222  val_acc=0.8970  val_recall=0.8733
+  epoch 12/14  loss=0.2191  val_acc=0.8923  val_recall=0.8852
+  epoch 13/14  loss=0.2123  val_acc=0.9023  val_recall=0.9022
+  epoch 14/14  loss=0.2084  val_acc=0.8973  val_recall=0.8503
+
+==========================================================================
+[3/5] ABLATIONS
+==========================================================================
+
+-- Stage-1 only (isolates pillar N3: temporal modelling) --
+
+-- single-modality (isolates pillar N1: multi-modal fusion) --
+  timing    ( 9 features)  AUC=0.9692  detect=76.2%  FP=0.0%
+  payload   ( 7 features)  AUC=0.9651  detect=76.2%  FP=0.0%
+  protocol  ( 6 features)  AUC=0.9533  detect=78.6%  FP=0.0%
+  identity  ( 6 features)  AUC=0.9075  detect=45.2%  FP=4.8%
+
+-- leave-one-out: log_time_since_enum (CLAUDE.md decision C) --
+  with    : AUC=0.9733  detect=81.0%
+  without : AUC=0.9716  detect=83.3%
+  delta   : AUC-0.0018  detect+2.4%
+  A large drop would mean the model leans on session position rather
+  than behaviour. A small one means the feature is not load-bearing.
+
+-- identity whitelist (USBGuard-style VID:PID allowlist) --
+  attack detection: 0.0%  (expected 0% — attacks present benign descriptors)
+
+==========================================================================
+[4/5] RESULTS
+==========================================================================
+
+Window level, held-out test set
+  model                         ROC-AUC    prec  recall      F1
+  IUDBMS (S1+S2)                 0.9733   0.999   0.722   0.838
+  Stage 1 only                   0.8894   0.995   0.406   0.577
+
+Session level (threshold @ 0.1% validation FPR, 4-of-6 gate)
+  profile              n   IUDBMS  S1-only  whitelist   latency
+  class_exfil          7   100.0%   100.0%       0.0%      3.8s
+  hid_injection        7   100.0%     0.0%       0.0%      4.5s
+  identity_switch     11   100.0%   100.0%       0.0%      3.6s
+  mimicry             10    20.0%     0.0%       0.0%      6.4s
+  staged_delay         7   100.0%     0.0%       0.0%      4.0s
+
+  overall attack detection         IUDBMS= 81.0%   S1-only= 42.9%   whitelist=  0.0%
+  benign session FP rate           IUDBMS=  0.0%   S1-only=  0.0%
+  alerts per benign hour           IUDBMS=  0.00
+  detection latency                median=3.9s   p90=5.0s
+
+==========================================================================
+[5/5] ARTEFACTS
+==========================================================================
+  wrote out/metrics.json
+  wrote out/detection_by_class.png
+  wrote out/modality_ablation.png
+
+  total runtime 64.9s

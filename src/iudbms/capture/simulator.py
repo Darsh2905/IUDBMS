@@ -78,6 +78,16 @@ VENDORS = {
 #: Do not special-case a profile here; see the module docstring.
 DURATION_RANGE = (40.0, 85.0)
 
+#: Keystroke inter-arrival and think-pause distributions for a human operator.
+#: The mimicry attack draws from these *exact* parameters — that is what makes
+#: it the honest hard case, and what stops it being separable on timing alone.
+#: Do not let these drift apart; test_mimicry_timing_matches_human_typing
+#: asserts they are shared.
+HUMAN_IAT_LOGNORM = (-1.9, 0.55)      # mean, sigma of log-normal keystroke IAT
+HUMAN_IAT_CAP = 1.2                   # seconds
+HUMAN_BURST_KEYS = (3, 9)             # keys per word-burst
+HUMAN_PAUSE_RANGE = (0.4, 3.0)        # seconds of think-pause between bursts
+
 
 @dataclass
 class SimulatedSession:
@@ -238,13 +248,13 @@ class Simulator:
         """Human keystrokes: log-normal IATs, word bursts, think-pauses."""
         end = t + dur
         while t < end:
-            for _ in range(self.rng.randint(3, 9)):
-                t += min(float(self.np_rng.lognormal(-1.9, 0.55)), 1.2)
+            for _ in range(self.rng.randint(*HUMAN_BURST_KEYS)):
+                t += min(float(self.np_rng.lognormal(*HUMAN_IAT_LOGNORM)), HUMAN_IAT_CAP)
                 if t >= end:
                     break
                 self._urb(lines, t, INTR, "in", bus, dev, ep,
                           _hid_report(self.rng), interval=10)
-            t += self.rng.uniform(0.4, 3.0)
+            t += self.rng.uniform(*HUMAN_PAUSE_RANGE)
         return t
 
     def _mouse_motion(self, t, dur, bus, dev, lines, ep=1):
@@ -309,24 +319,35 @@ class Simulator:
         return t
 
     def _mimicry_typing(self, t, dur, bus, dev, lines, ep=1):
-        """Adaptive adversary: throttles to the SAME log-normal inter-arrival
-        distribution as a human, so every timing feature is indistinguishable
-        per window. What it does not fake is structure — a fixed script (low
-        payload novelty, high repeat ratio) and a cadence that never stops for
-        the multi-second idles a real user produces. Both tells are weak per
-        window and separate only over a sequence, which is Stage 2's burden."""
+        """Adaptive adversary: throttles itself to the human timing model
+        *exactly* — same log-normal inter-arrivals, same burst lengths, same
+        think-pause distribution. Every timing feature is therefore drawn from
+        the same distribution as benign typing, and no timing threshold can
+        separate them.
+
+        What it does not fake is **structure**: the keystrokes come from a
+        fixed script, so payload novelty falls and repeat ratio rises as the
+        script cycles. That tell is weak within any single window (a 1 s window
+        holds only a handful of keys, most of them distinct) and emerges only
+        over a sequence of windows — which is precisely the burden Stage 2
+        exists to carry, and why this profile is the honest hard case.
+
+        An earlier version drew pauses from uniform(0.35, 1.1) against the
+        human's uniform(0.4, 3.0), which left a blatant timing signature and
+        made a timing-only model detect it at 100%. That defeated the entire
+        point of the profile and inflated the case for multi-modal fusion."""
         end = t + dur
         script = [self.rng.randint(4, 40) for _ in range(self.rng.randint(24, 48))]
         i = 0
         while t < end:
-            for _ in range(self.rng.randint(3, 9)):
-                t += min(float(self.np_rng.lognormal(-1.9, 0.55)), 1.2)
+            for _ in range(self.rng.randint(*HUMAN_BURST_KEYS)):
+                t += min(float(self.np_rng.lognormal(*HUMAN_IAT_LOGNORM)), HUMAN_IAT_CAP)
                 if t >= end:
                     break
                 self._urb(lines, t, INTR, "in", bus, dev, ep,
                           _hid_report(self.rng, script[i % len(script)]), interval=10)
                 i += 1
-            t += self.rng.uniform(0.35, 1.1)          # human pauses are 0.4-3.0 s
+            t += self.rng.uniform(*HUMAN_PAUSE_RANGE)
         return t
 
     def _covert_bulk_out(self, t, dur, bus, dev, lines, ep=2):

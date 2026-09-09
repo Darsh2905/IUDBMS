@@ -207,3 +207,49 @@ def test_ks_statistic_separates_obviously_different_samples():
     d_same, crit = ks_statistic(same_a, same_b)
     d_diff, _ = ks_statistic(same_a, rng.normal(4, 1, 200))
     assert d_same < crit < d_diff
+
+
+def test_mimicry_timing_matches_human_typing():
+    """The mimicry profile exists to be timing-indistinguishable. An earlier
+    version drew think-pauses from uniform(0.35, 1.1) against the human's
+    uniform(0.4, 3.0), which left a blatant timing signature — a timing-only
+    model detected it at 100%, defeating the point of the profile and
+    inflating the apparent case for multi-modal fusion (pillar N1).
+
+    Compares post-onset mimicry inter-arrivals against benign keyboard ones.
+    """
+    sim = Simulator(seed=31)
+    human = []
+    for i in range(6):
+        s = sim.session(f"S{i:04d}", "keyboard")
+        ts = [e.ts for e in SimulatedSource(s).events()
+              if e.evt == "C" and e.ttype == "intr"]
+        human.extend(np.diff(ts))
+
+    mim = []
+    for i in range(6):
+        s = sim.session(f"A{i:04d}", "mimicry")
+        ts = [e.ts for e in SimulatedSource(s).events()
+              if e.evt == "C" and e.ttype == "intr" and e.ts > s.onset]
+        mim.extend(np.diff(ts))
+
+    d, crit = ks_statistic(np.array(human), np.array(mim))
+    assert d < crit, (
+        f"mimicry inter-arrivals are separable from human typing "
+        f"(KS D={d:.4f} > critical {crit:.4f}); the profile is not doing its job"
+    )
+
+
+def test_mimicry_still_carries_a_structural_tell():
+    """Timing is matched, so detection must rest on payload structure: mimicry
+    replays a fixed script, benign typing does not."""
+    sim = Simulator(seed=32)
+    def repeat_ratio(profile, post_onset):
+        s = sim.session("T0001", profile)
+        evs = [e for e in SimulatedSource(s).events()
+               if e.evt == "C" and e.data and (not post_onset or e.ts > s.onset)]
+        payloads = [e.data for e in evs]
+        counts = collections.Counter(payloads)
+        return max(counts.values()) / len(payloads)
+
+    assert repeat_ratio("mimicry", True) > repeat_ratio("keyboard", False)

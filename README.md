@@ -27,13 +27,13 @@ Working notes and decisions: [`CLAUDE.md`](CLAUDE.md).
 | 1 | Repo skeleton + frozen data contract | **done** |
 | 2 | `usbmon` reader (debugfs) | **done** (fixture-validated; live capture pending VM) |
 | 3 | Feature extractor (28-dim) | **done** |
-| 4 | Stage 1 — iForest + per-device EWMA baseline | not started |
-| 5 | Stage 2 — PyTorch LSTM | not started |
-| 6 | Policy engine — k-of-n gate, escalation, safety interlocks | not started |
-| 7 | SQLite storage + FastAPI | not started |
+| 4 | Stage 1 — iForest + per-device EWMA baseline | **done** |
+| 5 | Stage 2 — PyTorch LSTM | **done** |
+| 6 | Policy engine — k-of-n gate, escalation, safety interlocks | **done** |
+| 7 | SQLite storage + FastAPI | storage **done**; API not started |
 | 8 | eBPF capture path | deferred (plan §7 W11 — designated sacrifice) |
 | 9 | React dashboard | not started |
-| 10 | Evaluation harness + ablations | not started |
+| 10 | Evaluation harness + ablations | **done** |
 
 `prototype/` holds the Sprint-0 vertical slice (NumPy LSTM, synthetic data,
 dry-run enforcement) that milestone work is ported from and measured against.
@@ -48,6 +48,50 @@ make install     # editable install + dev extras
 make test        # pytest
 make baseline    # re-run the Sprint-0 prototype (~46 s, seeded)
 ```
+
+## Measured results
+
+Regenerate with `make eval` (seeded, ~65 s). Corpus: 350 synthetic
+sessions, 4,198,276 usbmon lines, 22,037 windows.
+Split by session, stratified by profile.
+
+| model | window ROC-AUC | precision | recall | session detection |
+|---|---|---|---|---|
+| IUDBMS (Stage 1 + Stage 2) | 0.9733 | 0.999 | 0.722 | **81.0%** |
+| Stage 1 only (no temporal model) | 0.8894 | 0.995 | 0.406 | 42.9% |
+| Identity whitelist (USBGuard-style) | — | — | — | 0.0% |
+
+Benign session false-positive rate 0.0%
+(0.00 alerts/benign-hour);
+median detection latency 3.9 s.
+
+Per attack class:
+
+| attack | n | IUDBMS | Stage-1 only | median latency |
+|---|---|---|---|---|
+| `class_exfil` | 7 | 100% | 100% | 3.8 s |
+| `hid_injection` | 7 | 100% | 0% | 4.5 s |
+| `identity_switch` | 11 | 100% | 100% | 3.6 s |
+| `mimicry` | 10 | 20% | 0% | 6.4 s |
+| `staged_delay` | 7 | 100% | 0% | 4.0 s |
+
+**`mimicry` is the honest hard case and we do not solve it.** It clones a
+keyboard descriptor *and* draws its keystroke timing from the same distribution
+as a human operator, leaving only a structural tell (a replayed script). We
+detect 20% of them. The plan
+anticipated this (§8, risk register) and the correct response is to report it
+as a bound, not to tune it away.
+
+Single-modality ablation (novelty pillar N1) — no single modality reaches the
+fused system:
+
+| modality | features | window AUC | session detection |
+|---|---|---|---|
+| timing | 9 | 0.9692 | 76.2% |
+| payload | 7 | 0.9651 | 76.2% |
+| protocol | 6 | 0.9533 | 78.6% |
+| identity | 6 | 0.9075 | 45.2% |
+| **all four fused** | **28** | **0.9733** | **81.0%** |
 
 ## Honest caveats
 
