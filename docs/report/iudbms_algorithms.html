@@ -1,0 +1,832 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IUDBMS Algorithms</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&display=swap">
+
+<style>
+  :root {
+    --paper:      #f5f6f8;
+    --surface:    #ffffff;
+    --surface-2:  #eef0f4;
+    --ink:        #12171d;
+    --ink-2:      #3c4653;
+    --slate:      #5f6b79;
+    --rule:       #d9dee5;
+    --rule-soft:  #e7ebf0;
+    --signal:     #b45309;
+    --signal-dim: #f5ede0;
+    --ok:         #0f766e;
+    --ok-dim:     #e2f1ef;
+    --crit:       #9f1239;
+    --crit-dim:   #fbe8ed;
+    --measure: 68ch;
+    --wide: 1180px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:      #0d1116;
+      --surface:    #141a21;
+      --surface-2:  #1b232c;
+      --ink:        #e8ecf1;
+      --ink-2:      #b3bdc9;
+      --slate:      #8593a3;
+      --rule:       #27313c;
+      --rule-soft:  #1e262f;
+      --signal:     #e8a13c;
+      --signal-dim: #2e2410;
+      --ok:         #4fd1c5;
+      --ok-dim:     #102d2b;
+      --crit:       #f4708f;
+      --crit-dim:   #331019;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:      #0d1116;
+    --surface:    #141a21;
+    --surface-2:  #1b232c;
+    --ink:        #e8ecf1;
+    --ink-2:      #b3bdc9;
+    --slate:      #8593a3;
+    --rule:       #27313c;
+    --rule-soft:  #1e262f;
+    --signal:     #e8a13c;
+    --signal-dim: #2e2410;
+    --ok:         #4fd1c5;
+    --ok-dim:     #102d2b;
+    --crit:       #f4708f;
+    --crit-dim:   #331019;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper); color: var(--ink);
+    font-family: "IBM Plex Serif", Georgia, serif;
+    font-size: 16px; line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: var(--wide); margin: 0 auto; padding: 0 24px 90px; }
+  .col { max-width: var(--measure); }
+  h1, h2, h3, h4, .ui, th, .eyebrow, .tag, .paramk {
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+  }
+  code, .mono, .formula, td.num { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+
+  header.masthead {
+    border-bottom: 2px solid var(--ink); padding: 52px 0 20px; margin-bottom: 8px;
+  }
+  .eyebrow {
+    font-size: 11px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--signal); margin: 0 0 12px;
+  }
+  h1 {
+    font-size: clamp(2.1rem, 4.6vw, 2.9rem); font-weight: 700; letter-spacing: -.02em;
+    line-height: 1.06; margin: 0 0 14px; text-wrap: balance;
+  }
+  .standfirst { font-size: 1.1rem; color: var(--ink-2); margin: 0; max-width: 62ch; }
+
+  /* contents */
+  .toc {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0 26px; margin: 26px 0 0; padding: 18px 0 0; border-top: 1px solid var(--rule-soft);
+  }
+  .toc div { font-size: 12.5px; line-height: 1.75; }
+  .toc .h {
+    font-family: "IBM Plex Sans", sans-serif; font-size: 10px; font-weight: 600;
+    letter-spacing: .13em; text-transform: uppercase; color: var(--slate);
+    display: block; margin-bottom: 3px;
+  }
+  .toc a { color: var(--ink-2); text-decoration: none; display: block; }
+  .toc a:hover { color: var(--signal); }
+
+  /* layer bands */
+  .layer { margin-top: 56px; }
+  .layer > .band {
+    display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+    border-bottom: 1px solid var(--ink); padding-bottom: 9px; margin-bottom: 4px;
+  }
+  .layer .lid {
+    font-family: "IBM Plex Mono", monospace; font-size: 13px; font-weight: 600;
+    color: var(--signal);
+  }
+  .layer h2 { margin: 0; font-size: 1.3rem; font-weight: 600; letter-spacing: -.012em; }
+  .layer .band .where {
+    margin-left: auto; font-family: "IBM Plex Mono", monospace;
+    font-size: 11.5px; color: var(--slate);
+  }
+  .layer > p.intro { color: var(--slate); font-size: .95rem; max-width: var(--measure); margin: 12px 0 0; }
+
+  /* algorithm block */
+  .algo { margin-top: 34px; }
+  .algo h3 {
+    font-size: 1.03rem; font-weight: 600; margin: 0 0 3px; letter-spacing: -.005em;
+  }
+  .algo h3 .n {
+    font-family: "IBM Plex Mono", monospace; color: var(--slate);
+    font-weight: 500; font-size: .84em; margin-right: .55em;
+  }
+  .algo .purpose { color: var(--slate); font-size: .9rem; margin: 0 0 12px; max-width: var(--measure); }
+  .algo p { margin: 0 0 13px; max-width: var(--measure); }
+  .algo p:last-child { margin-bottom: 0; }
+
+  .formula {
+    background: var(--surface); border: 1px solid var(--rule);
+    border-left: 3px solid var(--signal);
+    padding: 14px 16px; margin: 0 0 14px; overflow-x: auto;
+    font-size: 13.5px; line-height: 1.85; white-space: pre; color: var(--ink);
+  }
+  .formula .c { color: var(--slate); }
+
+  .params { margin: 0 0 14px; overflow-x: auto; }
+  .params table { border-collapse: collapse; font-size: 13px; }
+  .params td { padding: 3px 18px 3px 0; vertical-align: baseline; border: 0; }
+  .paramk {
+    font-family: "IBM Plex Mono", monospace; font-weight: 600;
+    font-size: 12.5px; white-space: nowrap; color: var(--ink);
+  }
+  .params .d { color: var(--slate); font-size: 12.5px; }
+
+  .why {
+    border-left: 2px solid var(--rule); padding: 2px 0 2px 16px;
+    margin: 0 0 13px; max-width: var(--measure);
+  }
+  .why .tag {
+    display: block; font-size: 10px; font-weight: 600; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--ok); margin-bottom: 4px;
+  }
+  .why.caveat { border-left-color: var(--crit); }
+  .why.caveat .tag { color: var(--crit); }
+  .why p { font-size: .92rem; margin-bottom: 9px; }
+
+  code {
+    font-size: .87em; background: var(--surface-2); padding: .08em .36em;
+    border-radius: 3px; color: var(--ink-2);
+  }
+  strong { font-weight: 600; }
+  em { font-style: italic; }
+
+  .tablewrap { overflow-x: auto; margin: 14px 0; }
+  table.data { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  table.data th {
+    text-align: left; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--slate); font-weight: 600; padding: 0 14px 8px 0;
+    border-bottom: 1px solid var(--ink); white-space: nowrap;
+  }
+  table.data td { padding: 8px 14px 8px 0; border-bottom: 1px solid var(--rule-soft); }
+  table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.data td.name { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; }
+
+  footer {
+    margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--rule);
+    font-size: .85rem; color: var(--slate); max-width: var(--measure);
+  }
+  @media (max-width: 640px) { .wrap { padding: 0 18px 64px; } body { font-size: 15.5px; } }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+
+  /* --- print / PDF: the artifact wrapper is absent in the standalone file, so
+     this also gives a clean A4 export for a report appendix --- */
+  @media print {
+    :root {
+      --paper: #fff; --surface: #fff; --surface-2: #f4f4f4;
+      --ink: #000; --ink-2: #222; --slate: #555;
+      --rule: #999; --rule-soft: #ccc;
+      --signal: #8a3f07; --signal-dim: #f2ece3;
+      --ok: #0b5c56; --ok-dim: #eaf3f2;
+      --crit: #8a0f31; --crit-dim: #f8e9ed;
+    }
+    body { font-size: 10.5pt; background: #fff; }
+    .wrap { max-width: none; padding: 0; }
+    a { color: inherit; text-decoration: none; }
+    .toc { display: none; }
+    section.layer, .algo, .card, .finding, .callout, table { break-inside: avoid; }
+    h1, h2, h3 { break-after: avoid; }
+    section.layer { break-before: page; }
+    header.masthead { break-after: avoid; }
+    .formula, .specimen { background: #fafafa; }
+  }
+</style>
+<style>
+  html { color-scheme: light dark; }
+  body { margin: 0; }
+  img { max-width: 100%; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <p class="eyebrow">IUDBMS · technical reference</p>
+  <h1>Every algorithm in the pipeline, and why it is that one</h1>
+  <p class="standfirst">
+    Twenty-three algorithms across six layers, from parsing a kernel log line to
+    deciding whether to revoke a device's authorisation. Each entry gives the
+    computation, the parameters actually used, and the reasoning — including the
+    places where a choice was made to fix a defect rather than by design.
+  </p>
+  <div class="toc">
+    <div><span class="h">L0/L1 · Capture</span>
+      <a href="#a1">1 · usbmon tokenisation</a>
+      <a href="#a2">2 · Timestamp rebasing &amp; wrap</a>
+      <a href="#a3">3 · Descriptor scan</a></div>
+    <div><span class="h">L2 · Features</span>
+      <a href="#a4">4 · Tumbling windows</a>
+      <a href="#a5">5 · IAT moments</a>
+      <a href="#a6">6 · Arrival entropy</a>
+      <a href="#a7">7 · Fano burstiness</a>
+      <a href="#a8">8 · Payload novelty</a>
+      <a href="#a9">9 · Sequence novelty</a>
+      <a href="#a10">10 · Class mismatch</a></div>
+    <div><span class="h">L3 · Stage 1</span>
+      <a href="#a11">11 · Standardisation</a>
+      <a href="#a12">12 · Isolation Forest</a>
+      <a href="#a13">13 · EWMA baseline</a>
+      <a href="#a14">14 · Top-k deviation</a>
+      <a href="#a15">15 · Score fusion</a>
+      <a href="#a16">16 · Update gating</a></div>
+    <div><span class="h">L3 · Stage 2 &amp; policy</span>
+      <a href="#a17">17 · Sequence construction</a>
+      <a href="#a18">18 · LSTM</a>
+      <a href="#a19">19 · Imbalanced loss</a>
+      <a href="#a20">20 · k-of-n gate</a></div>
+    <div><span class="h">Evaluation</span>
+      <a href="#a21">21 · Threshold calibration</a>
+      <a href="#a22">22 · Session splitting</a>
+      <a href="#a23">23 · Kolmogorov–Smirnov</a></div>
+  </div>
+</header>
+
+<!-- ============================ L0/L1 ============================ -->
+<section class="layer">
+  <div class="band">
+    <span class="lid">L0 / L1</span>
+    <h2>Capture and normalisation</h2>
+    <span class="where">src/iudbms/capture/</span>
+  </div>
+  <p class="intro">Turning the kernel's text log into typed event records. No
+    learning here — but two of the project's eight defects lived in this layer,
+    because everything downstream inherits its mistakes silently.</p>
+
+  <div class="algo" id="a1">
+    <h3><span class="n">01</span>usbmon line tokenisation</h3>
+    <p class="purpose">Parse one <code>usbmon</code> text line into a URB event.</p>
+    <div class="formula">tokens := line.split()
+tag  ts  evt  <span class="c">&lt;type&gt;&lt;dir&gt;:&lt;bus&gt;:&lt;dev&gt;:&lt;ep&gt;</span>  status-word  [iso-desc]  length  [tag  data…]
+
+status-word takes one of two shapes:
+  <span class="c">s</span> bmRequestType bRequest wValue wIndex wLength   <span class="c">← control submission (SETUP)</span>
+  status[:interval[:start_frame[:error_count]]]      <span class="c">← everything else</span>
+
+data tag: <span class="c">=</span> means payload words follow; <span class="c">- &lt; &gt;</span> mean not captured</div>
+    <p>Parsing is whitespace tokenisation, not a regular expression. The optional
+      fields in the status word produce a combinatorial explosion that makes a
+      single pattern both slower and far harder to audit; tokenisation also
+      degrades gracefully on fields we do not model — isochronous frame
+      descriptors — by scanning forward for the data tag rather than failing.</p>
+    <div class="why">
+      <span class="tag">Why it matters</span>
+      <p>The Sprint-0 regex silently dropped four real line forms: every
+        submission, every uncaptured payload, control setup packets, and iso
+        completions with a four-part status word. It also read the polling
+        <em>interval</em> as the transfer length, because <code>0:8</code>
+        followed by <code>8</code> is ambiguous unless you know the grammar.
+        Both are now fixture-asserted against lines from the kernel documentation.</p>
+    </div>
+  </div>
+
+  <div class="algo" id="a2">
+    <h3><span class="n">02</span>Timestamp rebasing and counter wrap</h3>
+    <p class="purpose">Convert kernel microsecond stamps into seconds since enumeration.</p>
+    <div class="formula">if raw&#8341; &lt; prev&#8341; − 2³¹:   wraps ← wraps + 1     <span class="c">← backward jump = wrap, not reordering</span>
+abs&#8341; := raw&#8341; + wraps · 2³²
+t     := (abs&#8341; − origin&#8341;) / 10⁶</div>
+    <p>usbmon timestamps are microseconds in an unsigned 32-bit field, so they
+      wrap roughly every 71.6 minutes. A backward jump larger than half the range
+      is treated as a wrap; anything smaller is treated as genuine reordering and
+      left alone.</p>
+  </div>
+
+  <div class="algo" id="a3">
+    <h3><span class="n">03</span>Descriptor scan with arrival tracking</h3>
+    <p class="purpose">Record what each device <em>claims</em> to be, and when that claim changed.</p>
+    <div class="formula">for each rescan of /sys/bus/usb/devices:
+    first_seen[dev, iface] := first_seen.setdefault(dev, iface, now)
+
+visible_at(t) := { i ∈ interfaces : i.first_seen ≤ t }</div>
+    <p>Interface directories appear as the host enumerates them, so re-scanning
+      periodically is how a device that grows an interface mid-session becomes
+      visible. Storing a per-interface arrival time makes
+      <code>visible_at(t)</code> a total function.</p>
+    <div class="why">
+      <span class="tag">Why not a single flag</span>
+      <p>The prototype kept one <code>late_iface_ts</code> on the descriptor and
+        reconstructed visibility as <code>interfaces[:-1]</code> — correct only
+        when exactly one interface arrives late <em>and</em> it happens to sort
+        last. A composite device adding two, or adding one that is not last, was
+        silently mis-described.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ L2 ============================ -->
+<section class="layer">
+  <div class="band">
+    <span class="lid">L2</span>
+    <h2>Feature extraction — 29 dimensions, four modalities</h2>
+    <span class="where">src/iudbms/features/extractor.py</span>
+  </div>
+  <p class="intro">Each one-second window becomes a fixed vector. Features are
+    computed over completions and errors only, never submissions: every
+    submission has a matching completion, so counting both doubles every rate
+    while adding no information and makes the result depend on kernel scheduling
+    rather than device behaviour.</p>
+
+  <div class="algo" id="a4">
+    <h3><span class="n">04</span>Tumbling window assignment</h3>
+    <p class="purpose">Bucket events into non-overlapping one-second windows.</p>
+    <div class="formula">index(e) := ⌊ e.ts / stride ⌋
+n_windows := max(1, ⌊t_last/stride⌋ + 1, ⌈duration/stride⌉)</div>
+    <p>Window length 1.0 s with stride 1.0 s. Chosen so an injection burst of
+      ~200 keystrokes/second is unmistakable inside one window, while a human
+      typist's natural pause does not empty it.</p>
+    <p>The two lower bounds on the window count round differently and both are
+      needed: an event at exactly <em>t</em> = 4.0 belongs to window 4 and so
+      requires five windows, whereas covering the interval [0, 4) requires only
+      four. Empty windows are emitted, never skipped — an idle second is a real
+      observation about a device.</p>
+  </div>
+
+  <div class="algo" id="a5">
+    <h3><span class="n">05</span>Inter-arrival moments</h3>
+    <p class="purpose">Nine timing features summarising how the device paces its traffic.</p>
+    <div class="formula">Δ := diff(sorted timestamps)
+
+mean, std, min, p10 of Δ
+cv  := std(Δ) / mean(Δ)          <span class="c">← scale-free regularity</span>
+rate := n / window</div>
+    <p>The coefficient of variation is the discriminative one: programmatic
+      injection holds a near-constant inter-arrival (cv &lt; 0.05), while human
+      typing is heavy-tailed (cv ≈ 1). Because it is a ratio it does not care
+      whether the device is fast or slow, only whether it is <em>regular</em>.</p>
+    <p>A window with fewer than two events has no inter-arrival at all. Those
+      features report the full window length rather than zero, so that silence
+      does not masquerade as infinite speed to a downstream scaler.</p>
+  </div>
+
+  <div class="algo" id="a6">
+    <h3><span class="n">06</span>Normalised arrival entropy</h3>
+    <p class="purpose">How many distinct timing regimes appear in one window.</p>
+    <div class="formula">bin log₁₀Δ into 12 bins over [−4, 1]    <span class="c">← 100 µs … 10 s</span>
+p&#7522; := h&#7522; / Σh
+H  := −Σ p&#7522; ln p&#7522; / ln 12                <span class="c">← normalised to [0, 1]</span></div>
+    <p>Working in log-space is what makes this meaningful: USB inter-arrivals
+      span five orders of magnitude, from a 125 Hz mouse to multi-second human
+      pauses, and a linear histogram would put almost everything in one bin.
+      Dividing by ln 12 normalises against the bin count so the value is
+      comparable across configurations.</p>
+  </div>
+
+  <div class="algo" id="a7">
+    <h3><span class="n">07</span>Fano factor (burstiness)</h3>
+    <p class="purpose">Distinguish a steady stream from the same volume delivered in bursts.</p>
+    <div class="formula">split the window into 10 sub-windows of 0.1 s
+c&#7522; := event count in sub-window i
+F  := Var(c) / Mean(c)
+
+F ≈ 0  perfectly regular        F ≈ 1  Poisson        F ≫ 1  bursty</div>
+    <p>Event rate alone cannot separate a device that sends 50 events evenly
+      from one that sends 50 in a single 100 ms burst. The Fano factor is the
+      standard index of dispersion for a counting process and it separates them
+      directly. Human typing is bursty (words then pauses); injection is close to
+      regular.</p>
+  </div>
+
+  <div class="algo" id="a8">
+    <h3><span class="n">08</span>Payload novelty and repeat ratio</h3>
+    <p class="purpose">Within-window payload diversity.</p>
+    <div class="formula">P := [ e.data for e in window if e.data ]      <span class="c">← captured payloads only</span>
+novelty      := |distinct(P)| / |P|
+repeat_ratio := max count(p) / |P|</div>
+    <div class="why caveat">
+      <span class="tag">Known limitation</span>
+      <p>These two do <em>not</em> separate a replayed keystroke script from a
+        human, because both draw keycodes from a similar alphabet and a
+        one-second window holds only about five mostly-distinct keystrokes. That
+        limitation is precisely what motivated algorithm 09.</p>
+    </div>
+    <p>Only events with a captured payload participate. Counting the ones the
+      kernel declined to capture would make an uncaptured bulk stream look like a
+      perfectly repeating one — the conflation that
+      <code>URBEvent.data_truncated</code> exists to prevent.</p>
+  </div>
+
+  <div class="algo" id="a9">
+    <h3><span class="n">09</span>Payload sequence novelty <span style="color:var(--signal)">— the cross-window feature</span></h3>
+    <p class="purpose">Detect a replayed script by exhaustion of its own transitions.</p>
+    <div class="formula">seq  := [last payload of previous window] ++ payloads of this window
+B    := { (seq&#7522;, seq&#7522;₊₁) }                    <span class="c">← consecutive payload pairs</span>
+
+novelty := |{ b ∈ B : b ∉ seen }| / |B|       <span class="c">← judged BEFORE insertion</span>
+seen    := seen ∪ B                            <span class="c">← capped at 8192 entries</span></div>
+    <p><strong>Order is the signal, not the alphabet.</strong> A keystroke
+      injection payload replays a predetermined sequence, so after one cycle its
+      consecutive payload <em>pairs</em> repeat forever; a person types novel
+      pairs indefinitely. Measured on the corpus before implementing:</p>
+    <div class="tablewrap">
+      <table class="data">
+        <thead><tr><th>Profile</th><th class="num">1st third</th><th class="num">2nd</th><th class="num">3rd</th></tr></thead>
+        <tbody>
+          <tr><td class="name">keyboard (benign)</td><td class="num">0.997</td><td class="num">0.994</td><td class="num">0.982</td></tr>
+          <tr><td class="name">mimicry</td><td class="num">0.988</td><td class="num">0.870</td><td class="num">0.683</td></tr>
+          <tr><td class="name">staged_delay</td><td class="num">0.149</td><td class="num">0.008</td><td class="num">0.001</td></tr>
+          <tr><td class="name">hid_injection</td><td class="num">0.079</td><td class="num">0.000</td><td class="num">0.000</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Three implementation details carry weight. It is judged <em>causally</em> —
+      each transition is scored against history from before it, then folded in —
+      so training and live inference see identical values. It carries the
+      transition across the window boundary, since that pair is real. And the
+      remembered set is capped, because a bulk device emits thousands of distinct
+      random payloads per second; once full, novelty keeps reporting ≈1.0, which
+      is the correct answer for genuinely random data.</p>
+    <div class="why">
+      <span class="tag">Impact</span>
+      <p>This feature took <code>mimicry</code> detection from 0 % to 100 %, and
+        overall detection from 86.7 % to 100 %. It also made the extractor
+        stateful: one instance belongs to one device session, and must be reset
+        between them or the next device inherits the previous one's history.</p>
+    </div>
+    <div class="why caveat">
+      <span class="tag">Declared overfitting</span>
+      <p>This feature was designed <em>after</em> seeing which attack was failing,
+        using knowledge of how the simulator builds it. The defence is that the
+        constraint is real — an injection payload must type specific commands and
+        cannot randomise its sequence without ceasing to be a payload — but the
+        honest claim is that it raises the attacker's cost, not that it solves
+        the problem.</p>
+    </div>
+  </div>
+
+  <div class="algo" id="a10">
+    <h3><span class="n">10</span>Class–behaviour mismatch</h3>
+    <p class="purpose">Catch a device doing something its declared class should not do.</p>
+    <div class="formula">allowed := ⋃ { EXPECTED[i.class] : i ∈ visible_at(t) }
+
+  HID (0x03)          → {intr, control}
+  Mass storage (0x08) → {bulk, control}
+  Video (0x0E)        → {iso, control, intr}
+  Audio (0x01)        → {iso, control}
+  CDC (0x02)          → {bulk, intr, control}
+
+mismatch := |{ e : e.ttype ∉ allowed }| / n</div>
+    <p>This is the feature that makes descriptor spoofing useless. A device may
+      <em>claim</em> to be a keyboard, but if its URBs are bulk OUT the term fires
+      at 1.0. Control transfers are permitted for every class, because every
+      device performs control traffic during enumeration and that is not an attack.</p>
+    <p>It resolves against interfaces visible at the <em>end of this window</em>,
+      so a device that legitimately gains an HID interface stops being flagged
+      from that moment on — while one that never declared HID keeps being flagged.</p>
+  </div>
+</section>
+
+<!-- ============================ Stage 1 ============================ -->
+<section class="layer">
+  <div class="band">
+    <span class="lid">L3 · Stage 1</span>
+    <h2>Memoryless anomaly scoring</h2>
+    <span class="where">src/iudbms/stage1/model.py</span>
+  </div>
+  <p class="intro">Two questions per window, fused into one score. The population
+    model asks "is this unusual for anything of this claimed type?"; the device
+    model asks "is this unusual for <em>this</em> device?" Stage 1 sees one window
+    at a time and has no memory of sequence, which is exactly its limitation.</p>
+
+  <div class="algo" id="a11">
+    <h3><span class="n">11</span>Standardisation with floor and clip</h3>
+    <p class="purpose">Put 28 features on a common scale without letting one dominate.</p>
+    <div class="formula">µ  := mean(X_benign)
+σ  := max( std(X_benign), 0.01 )       <span class="c">← SD_FLOOR</span>
+z  := clip( (x − µ) / σ, −10, +10 )    <span class="c">← STD_CLIP</span></div>
+    <div class="why caveat">
+      <span class="tag">This floor fixed a real defect</span>
+      <p>Three features are <em>exactly</em> constant across benign traffic —
+        <code>class_behaviour_mismatch</code>, <code>late_iface_flag</code> and
+        <code>n_interfaces</code> are 0 or 1 for every benign device, by
+        construction. Dividing by <code>σ + 10⁻⁶</code> turned a single 0→1 flip
+        into a standardised value near 10⁶ that swamped all 28 dimensions. It
+        surfaced in the dashboard as alert evidence reading
+        <code>late_iface_flag 4472091.23</code>.</p>
+      <p>Such a feature <em>is</em> informative when it changes — that is the whole
+        point of the mismatch term — so the fix bounds its influence rather than
+        removing it. A binary flip is now ≈100 σ, clipped to 10: still decisively
+        anomalous, no longer the only thing the model can see.</p>
+    </div>
+  </div>
+
+  <div class="algo" id="a12">
+    <h3><span class="n">12</span>Class-conditioned Isolation Forest</h3>
+    <p class="purpose">Population-level outlier scoring, trained on benign windows only.</p>
+    <div class="formula">group(device) := composite | hid | storage | av | other
+                 <span class="c">← from interfaces declared at ENUMERATION (t=0)</span>
+
+one forest per group with ≥ 30 benign windows, else the generic forest
+raw  := −score_samples(z)               <span class="c">← higher = more anomalous</span>
+a    := raw / p99(raw over benign)      <span class="c">← calibrated to benign scale</span></div>
+    <div class="params"><table><tbody>
+      <tr><td class="paramk">n_estimators</td><td class="d">200 trees</td>
+          <td class="paramk">max_samples</td><td class="d">min(512, n)</td>
+          <td class="paramk">contamination</td><td class="d">0.02</td></tr>
+    </tbody></table></div>
+    <p>An Isolation Forest isolates points by random axis-aligned splits;
+      anomalies need fewer splits to separate, so path length is the score. It is
+      unsupervised, which matters because Stage 1 must be trainable without any
+      attack labels — an operator has benign traffic, not a labelled attack corpus.</p>
+    <p><strong>Class conditioning does real work.</strong> A single global model
+      conflates a 125 Hz mouse with a human typist, so ordinary mouse traffic
+      reads as anomalous. Conditioning on the device's declared family gives each
+      a reference population it actually belongs to.</p>
+    <div class="why">
+      <span class="tag">Enumeration-time grouping is deliberate</span>
+      <p>The group comes from interfaces declared at <em>t</em> = 0, not from
+        whatever the device eventually exposes. A device that enumerates as
+        storage and later grows an HID interface is still scored against the
+        storage population — which is exactly what makes its injected keystrokes
+        anomalous rather than expected. It is also what a defender knows at
+        authorisation time.</p>
+    </div>
+  </div>
+
+  <div class="algo" id="a13">
+    <h3><span class="n">13</span>Online EWMA device baseline</h3>
+    <p class="purpose">Learn what normal looks like for this specific device, incrementally.</p>
+    <div class="formula">d    := x − mean
+mean := mean + α·d
+var  := (1 − α)·(var + α·d²)            <span class="c">← incremental EWMA variance</span>
+
+initial: mean ← first observation, var ← 0.25,  α = 0.15</div>
+    <p>This is novelty pillar N2. A per-device baseline answers a question the
+      population model cannot: a device may be entirely normal for its class and
+      still be behaving unlike <em>itself</em>. Exponential weighting means recent
+      windows dominate, so the baseline tracks drift without unbounded memory —
+      it needs O(features) state per device, not a growing history.</p>
+    <p>The variance recursion is the standard exponentially-weighted form, which
+      updates mean and variance in a single pass without storing past samples.</p>
+  </div>
+
+  <div class="algo" id="a14">
+    <h3><span class="n">14</span>Top-k deviation statistic</h3>
+    <p class="purpose">Reduce 28 per-feature deviations to one number, plus an explanation.</p>
+    <div class="formula">z&#7522; := |x&#7522; − mean&#7522;| / √( max(var&#7522;, 0.05) )     <span class="c">← VAR_FLOOR</span>
+d  := mean of the 3 largest z&#7522;
+explanation := the names of those 3 features</div>
+    <p>Taking the mean of the three largest, rather than the mean of all or the
+      single maximum, is a deliberate middle ground: averaging all 28 dilutes a
+      genuine spike in one feature, while the single maximum is dominated by
+      whichever feature happens to be noisiest. It also yields a free
+      explanation — those three feature names ship with every alert, and are what
+      make the generated rule auditable.</p>
+    <div class="why caveat">
+      <span class="tag">The variance floor was not optional</span>
+      <p>Many features are near-constant <em>for a given device</em> — a
+        keyboard's <code>frac_iso</code> is always 0 — so their EWMA variance
+        collapses toward zero and any change produces an enormous z. Measured
+        without a floor, the benign device deviation had median 0.8 but a 99th
+        percentile of 90.8 and a maximum of 1267. Since calibration divides by
+        that 99th percentile, the device term contributed about 0.009 to a score
+        bounded at 1.0 — pillar N2 was in the architecture diagram and absent from
+        the arithmetic. The floor was swept over {0, 0.01, 0.05, 0.1, 0.25, 0.5};
+        0.05 maximised Stage-1 AUC and cut benign window FPR from 0.26 % to 0.07 %.</p>
+    </div>
+  </div>
+
+  <div class="algo" id="a15">
+    <h3><span class="n">15</span>Score fusion</h3>
+    <p class="purpose">Combine population and device evidence into one bounded score.</p>
+    <div class="formula">s := clip( 0.55 · clip(a, 0, 3)/3  +  0.45 · clip(b, 0, 3)/3 , 0, 1 )
+
+  a = population (forest) term, calibrated by benign p99
+  b = device (baseline) term,   calibrated by benign p99</div>
+    <p>Both terms are divided by their own 99th percentile on benign traffic, so
+      each contributes on a comparable scale regardless of its raw units. Clipping
+      at three times that percentile prevents a single extreme window from
+      saturating the fused score, and the near-equal weights reflect that neither
+      question is more important than the other.</p>
+  </div>
+
+  <div class="algo" id="a16">
+    <h3><span class="n">16</span>Baseline update gating</h3>
+    <p class="purpose">Stop an attack from teaching the baseline that it is normal.</p>
+    <div class="formula">update the baseline with this window  iff  s &lt; 0.55  or  n &lt; 4
+                                            <span class="c">GATE      WARMUP</span></div>
+    <p>An online baseline that absorbs every window is trivially defeated by a
+      slow ramp: increase the attack rate gradually and the baseline follows,
+      so the deviation never grows. Refusing to learn from windows that already
+      score as anomalous breaks that. The warm-up exemption lets a newly attached
+      device establish a baseline at all — before four windows the deviation is
+      reported as zero rather than trusted.</p>
+  </div>
+</section>
+
+<!-- ============================ Stage 2 + policy ============================ -->
+<section class="layer">
+  <div class="band">
+    <span class="lid">L3 · Stage 2</span>
+    <h2>Temporal modelling and enforcement</h2>
+    <span class="where">src/iudbms/stage2/ · src/iudbms/policy/</span>
+  </div>
+  <p class="intro">Stage 1 can only ask whether a given second looks odd. A staged
+    payload that idles as a human-driven keyboard and then fires looks, second by
+    second, like two individually plausible devices — only the <em>transition</em>
+    is anomalous. This is the pillar the evidence supports most clearly: memoryless
+    scoring reaches 11.7 % session detection, the full system 100 %.</p>
+
+  <div class="algo" id="a17">
+    <h3><span class="n">17</span>Left-padded rolling sequences</h3>
+    <p class="purpose">Give the model the last K windows without leaking the future.</p>
+    <div class="formula">for window w:
+    chunk := X[max(0, w−K+1) … w]
+    if |chunk| &lt; K:  left-pad by repeating chunk[0]
+
+K = 10 windows;  each row = 28 features ++ its Stage-1 score  →  29 dims</div>
+    <p>Padding by <em>repetition</em> rather than zeros keeps early windows on the
+      same scale as later ones, so a device's first seconds do not present as a
+      discontinuity. The construction is strictly causal — the sequence for
+      window <em>w</em> never contains a row from after <em>w</em> — which is what
+      lets the live detector produce numerically identical scores to the offline
+      evaluation.</p>
+    <div class="why">
+      <span class="tag">K was swept, not assumed</span>
+      <p>K ∈ {10, 20, 30} × hidden ∈ {32, 64} on a held-out selection split gave
+        identical detection at every setting, while longer horizons slightly
+        reduced AUC and pushed latency from 3.6 s to 4.8 s. More memory was never
+        the lever; the missing ingredient was a feature that carried cross-window
+        information at all (algorithm 09).</p>
+    </div>
+  </div>
+
+  <div class="algo" id="a18">
+    <h3><span class="n">18</span>LSTM classifier</h3>
+    <p class="purpose">Emit P(malicious) for the newest window given the last ten.</p>
+    <div class="formula">i&#8348; = σ(W&#7522;·[x&#8348;, h&#8348;₋₁] + b&#7522;)          <span class="c">input gate</span>
+f&#8348; = σ(W&#7527;·[x&#8348;, h&#8348;₋₁] + b&#7527;)          <span class="c">forget gate — bias initialised to 1</span>
+g&#8348; = tanh(W&#7511;·[x&#8348;, h&#8348;₋₁] + b&#7511;)       <span class="c">candidate cell</span>
+o&#8348; = σ(W&#8338;·[x&#8348;, h&#8348;₋₁] + b&#8338;)          <span class="c">output gate</span>
+
+c&#8348; = f&#8348; ⊙ c&#8348;₋₁ + i&#8348; ⊙ g&#8348;
+h&#8348; = o&#8348; ⊙ tanh(c&#8348;)
+
+P(malicious) = σ( W&#8342;·h&#8342; + b&#8342; )        <span class="c">← linear head on the LAST timestep</span></div>
+    <div class="params"><table><tbody>
+      <tr><td class="paramk">layers</td><td class="d">1</td>
+          <td class="paramk">hidden</td><td class="d">32</td>
+          <td class="paramk">input</td><td class="d">29</td>
+          <td class="paramk">optimiser</td><td class="d">Adam, lr 2·10⁻³</td>
+          <td class="paramk">grad clip</td><td class="d">‖g‖ ≤ 5</td></tr>
+    </tbody></table></div>
+    <p>The gating is what makes an LSTM rather than a plain recurrent network the
+      right tool: the forget gate lets the cell carry information across the whole
+      sequence without the gradient vanishing, which is the entire requirement
+      when the signal is "this device behaved one way and now behaves another."
+      Initialising the forget-gate bias to 1 starts training in a
+      remember-by-default regime, a standard trick that keeps gradients flowing
+      early.</p>
+    <p><strong>Labelling is what forces it to learn transition rather than
+      identity.</strong> The label applies from attack onset onward, so pre-onset
+      windows of a malicious session are labelled benign — the same device, the
+      same descriptor, the same VID:PID appears on both sides of the boundary, so
+      device identity carries no information about the label.</p>
+  </div>
+
+  <div class="algo" id="a19">
+    <h3><span class="n">19</span>Class-weighted loss</h3>
+    <p class="purpose">Stop the model reaching high accuracy by predicting "benign".</p>
+    <div class="formula">pos_weight := (N − P) / P            <span class="c">← negatives per positive</span>
+L := BCEWithLogits(logits, y, pos_weight)</div>
+    <p>Post-onset windows are the minority — most windows of most sessions are
+      benign — so an unweighted model can score well by never predicting an
+      attack. Weighting the positive class by the negative-to-positive ratio makes
+      a missed attack window as expensive as a false alarm. Training logs report
+      recall on the positive class alongside accuracy, for the same reason:
+      accuracy alone is misleading under imbalance.</p>
+  </div>
+
+  <div class="algo" id="a20">
+    <h3><span class="n">20</span>k-of-n persistence gate and escalation</h3>
+    <p class="purpose">Turn a noisy per-window score into a decision worth acting on.</p>
+    <div class="formula">history := sliding window of the last n indicators (s₂ ≥ θ)
+fire iff  Σ history ≥ k
+
+escalation:
+  observe   --k of n--------------→  THROTTLE     (severity high)
+  throttled --2k cumulative hits--→  DEAUTHORIZE  (severity critical)
+
+deployed: k = 4, n = 6</div>
+    <p>This is the main false-positive control and it is what makes automatic
+      revocation contemplatable at all. A single anomalous window never triggers
+      anything. Per-window false positives compound across a session: at 0.5 % per
+      window over ~60 windows almost every benign session eventually trips, which
+      is why the gate and not the threshold does the heavy lifting.</p>
+    <p>Its value is visible in the mimicry replay, where the score crosses the
+      threshold, falls back below it, and crosses again. Without persistence that
+      would flap; with it, the device escalates once.</p>
+    <div class="tablewrap">
+      <table class="data">
+        <thead><tr><th>Gate</th><th class="num">Detection</th><th class="num">Benign FP</th><th class="num">Median latency</th></tr></thead>
+        <tbody>
+          <tr><td class="name">2-of-6</td><td class="num">100 %</td><td class="num">2.2 %</td><td class="num">1.6 s</td></tr>
+          <tr><td class="name">3-of-6</td><td class="num">100 %</td><td class="num">0.6 %</td><td class="num">2.6 s</td></tr>
+          <tr><td class="name">4-of-6 — deployed</td><td class="num">100 %</td><td class="num">0.6 %</td><td class="num">3.6 s</td></tr>
+          <tr><td class="name">5-of-6</td><td class="num">99.2 %</td><td class="num">0.0 %</td><td class="num">4.6 s</td></tr>
+          <tr><td class="name">6-of-6</td><td class="num">99.2 %</td><td class="num">0.0 %</td><td class="num">5.6 s</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ Evaluation ============================ -->
+<section class="layer">
+  <div class="band">
+    <span class="lid">Eval</span>
+    <h2>Measurement and its discipline</h2>
+    <span class="where">eval/</span>
+  </div>
+  <p class="intro">These are algorithms too, and they are where a project like
+    this most easily fools itself. Three of the eight defects found were in this
+    layer rather than in the detector.</p>
+
+  <div class="algo" id="a21">
+    <h3><span class="n">21</span>Threshold calibration at a target FPR</h3>
+    <p class="purpose">Derive the decision boundary from data instead of picking a number.</p>
+    <div class="formula">θ := quantile( scores over CALIBRATION benign windows, 1 − target_FPR )
+
+deployed: target_FPR = 10⁻⁴  →  θ = 0.9209</div>
+    <p>The threshold is not a magic constant: it is the probability that produces
+      a stated per-window false-positive rate on held-out benign traffic. That is
+      what makes enforcement <em>learned</em> rather than a static rule, and it is
+      why every generated rule carries the trigger that produced it.</p>
+    <div class="why">
+      <span class="tag">Calibration and scoring must be disjoint</span>
+      <p>If the threshold is fitted on the same sessions it is measured on, the
+        false-positive rate hits its target by construction and every
+        configuration looks equally good. The evaluation refuses to run when the
+        two splits are the same, because naming them fit/val/test rather than by
+        role invited exactly that bug.</p>
+    </div>
+  </div>
+
+  <div class="algo" id="a22">
+    <h3><span class="n">22</span>Session-stratified splitting</h3>
+    <p class="purpose">Prevent the single easiest way to report fake accuracy.</p>
+    <div class="formula">group sessions by profile
+within each profile: 70 % train / 30 % test
+carve 20 % of train as the calibration split
+
+NEVER split by window</div>
+    <p>Consecutive windows of one session are near-duplicates of each other, so a
+      window-level split puts almost-identical rows in both training and test and
+      inflates every metric. Stratifying by profile additionally guarantees each
+      attack family appears in training, so a test-set profile is never one the
+      model has literally never seen.</p>
+    <p>Hyperparameter sweeps go further and never construct the test split at all:
+      three disjoint inner splits — train, calibrate, select — are carved out of
+      the non-test sessions.</p>
+  </div>
+
+  <div class="algo" id="a23">
+    <h3><span class="n">23</span>Two-sample Kolmogorov–Smirnov leakage audit</h3>
+    <p class="purpose">Prove benign and malicious sessions are not separable on anything but behaviour.</p>
+    <div class="formula">D    := max&#8339; | F&#8321;(x) − F&#8322;(x) |            <span class="c">← largest CDF gap</span>
+D_crit := 1.63 · √( (n+m) / (n·m) )     <span class="c">← α = 0.01</span>
+
+flag when D &gt; D_crit, per profile — on duration, window count, and VID:PID</div>
+    <p>The KS statistic makes no distributional assumption, which is what is
+      wanted here: the question is whether two samples came from the same
+      distribution at all, not whether their means differ.</p>
+    <div class="why caveat">
+      <span class="tag">Aggregate agreement is not evidence</span>
+      <p>An earlier duration leak survived a round of fixing because aggregate
+        means matched — benign 63.7 s against malicious 63.9 s — while a single
+        profile still drew from 65–85 s against everyone else's 40–85 s. The
+        audit therefore runs <em>per profile</em>, and a test re-introduces the
+        original bug to prove the audit still catches it. An audit that cannot
+        fail manufactures confidence rather than providing it.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  Every formula above is implemented in the repository and exercised by the test
+  suite; parameter values are the deployed ones, reproducible with
+  <code>make eval</code> at seed 7. The isolation forest is
+  Liu, Ting &amp; Zhou (ICDM 2008); the architectural ancestor for kernel-level
+  USB mediation is LBM, Tian et&nbsp;al., IEEE Symposium on Security and Privacy 2019.
+</footer>
+
+</div>
+</body>
+</html>

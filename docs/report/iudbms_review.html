@@ -1,0 +1,807 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IUDBMS Review 2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&display=swap">
+
+<style>
+  /* ---- tokens: complete light palette on bare :root ---- */
+  :root {
+    --paper:      #f5f6f8;
+    --surface:    #ffffff;
+    --surface-2:  #eef0f4;
+    --ink:        #12171d;
+    --ink-2:      #3c4653;
+    --slate:      #5f6b79;   /* blue-biased neutral, not a default grey */
+    --rule:       #d9dee5;
+    --rule-soft:  #e7ebf0;
+
+    --signal:     #b45309;   /* instrument amber: the alert colour */
+    --signal-dim: #f5ede0;
+    --ok:         #0f766e;   /* verified / benign */
+    --ok-dim:     #e2f1ef;
+    --crit:       #9f1239;   /* reserved for the one real failure */
+    --crit-dim:   #fbe8ed;
+
+    --shadow: 0 1px 2px rgba(18,23,29,.05);
+    --measure: 66ch;
+    --wide: 1120px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:      #0d1116;
+      --surface:    #141a21;
+      --surface-2:  #1b232c;
+      --ink:        #e8ecf1;
+      --ink-2:      #b3bdc9;
+      --slate:      #8593a3;
+      --rule:       #27313c;
+      --rule-soft:  #1e262f;
+
+      --signal:     #e8a13c;
+      --signal-dim: #2e2410;
+      --ok:         #4fd1c5;
+      --ok-dim:     #102d2b;
+      --crit:       #f4708f;
+      --crit-dim:   #331019;
+      --shadow: 0 1px 2px rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:      #0d1116;
+    --surface:    #141a21;
+    --surface-2:  #1b232c;
+    --ink:        #e8ecf1;
+    --ink-2:      #b3bdc9;
+    --slate:      #8593a3;
+    --rule:       #27313c;
+    --rule-soft:  #1e262f;
+
+    --signal:     #e8a13c;
+    --signal-dim: #2e2410;
+    --ok:         #4fd1c5;
+    --ok-dim:     #102d2b;
+    --crit:       #f4708f;
+    --crit-dim:   #331019;
+    --shadow: 0 1px 2px rgba(0,0,0,.4);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+    font-size: 16.5px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: var(--wide); margin: 0 auto; padding: 0 24px 96px; }
+  .col  { max-width: var(--measure); }
+
+  h1, h2, h3, .ui, th, .chip, .eyebrow, .metak {
+    font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  }
+  code, .mono, td.num, .trace { font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+
+  /* ---------- masthead ---------- */
+  header.masthead {
+    border-bottom: 2px solid var(--ink);
+    padding: 56px 0 22px;
+    margin-bottom: 34px;
+  }
+  .eyebrow {
+    font-size: 11.5px; font-weight: 600; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--signal); margin: 0 0 14px;
+  }
+  h1 {
+    font-size: clamp(2.3rem, 5.2vw, 3.35rem); font-weight: 700;
+    letter-spacing: -.022em; line-height: 1.04; margin: 0 0 16px;
+    text-wrap: balance;
+  }
+  .standfirst {
+    font-size: 1.16rem; color: var(--ink-2); margin: 0; max-width: 60ch;
+    text-wrap: pretty;
+  }
+
+  .runmeta {
+    display: flex; flex-wrap: wrap; gap: 0 30px; margin-top: 26px;
+    padding-top: 18px; border-top: 1px solid var(--rule-soft);
+  }
+  .runmeta div { display: flex; flex-direction: column; gap: 2px; }
+  .metak {
+    font-size: 10.5px; font-weight: 600; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--slate);
+  }
+  .metav { font-family: "IBM Plex Mono", monospace; font-size: 14px; font-variant-numeric: tabular-nums; }
+
+  /* ---------- sections ---------- */
+  section { margin-top: 54px; }
+  h2 {
+    font-size: 1.42rem; font-weight: 600; letter-spacing: -.012em;
+    margin: 0 0 6px; text-wrap: balance;
+  }
+  h2 .n {
+    font-family: "IBM Plex Mono", monospace; font-size: .72em;
+    color: var(--signal); font-weight: 500; margin-right: .6em;
+  }
+  h3 {
+    font-size: 1.02rem; font-weight: 600; margin: 30px 0 8px;
+    letter-spacing: -.005em;
+  }
+  .lede { color: var(--slate); margin: 0 0 22px; font-size: .96rem; }
+  p { margin: 0 0 15px; }
+  .col p:last-child { margin-bottom: 0; }
+  strong { font-weight: 600; }
+  em { font-style: italic; }
+  code {
+    font-size: .87em; background: var(--surface-2); padding: .1em .38em;
+    border-radius: 3px; color: var(--ink-2);
+  }
+
+  /* ---------- usbmon specimen ---------- */
+  .specimen {
+    background: var(--surface); border: 1px solid var(--rule);
+    border-left: 3px solid var(--signal);
+    padding: 20px 22px; margin: 0 0 8px; overflow-x: auto;
+  }
+  .trace {
+    font-size: 14px; white-space: pre; display: block;
+    color: var(--ink); letter-spacing: -.01em;
+  }
+  .trace .f { color: var(--slate); }
+  .trace .hi { color: var(--signal); font-weight: 600; }
+  .legend {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
+    gap: 14px 22px; margin-top: 18px; padding-top: 16px;
+    border-top: 1px solid var(--rule-soft);
+  }
+  .legend div { display: flex; flex-direction: column; gap: 1px; }
+  .legend .k {
+    font-family: "IBM Plex Mono", monospace; font-size: 12.5px;
+    font-weight: 600; color: var(--ink);
+  }
+  .legend .v { font-size: 12.5px; color: var(--slate); line-height: 1.42; }
+  .caption { font-size: .84rem; color: var(--slate); margin: 10px 0 0; }
+
+  /* ---------- tables ---------- */
+  .tablewrap { overflow-x: auto; margin: 22px 0 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+  caption {
+    caption-side: top; text-align: left; font-family: "IBM Plex Sans", sans-serif;
+    font-size: 11.5px; font-weight: 600; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--slate);
+    padding-bottom: 10px;
+  }
+  th {
+    text-align: left; font-size: 11.5px; font-weight: 600;
+    letter-spacing: .07em; text-transform: uppercase; color: var(--slate);
+    padding: 0 14px 9px 0; border-bottom: 1px solid var(--ink);
+    white-space: nowrap;
+  }
+  th.num, td.num { text-align: right; }
+  td {
+    padding: 10px 14px 10px 0; border-bottom: 1px solid var(--rule-soft);
+    vertical-align: baseline;
+  }
+  td.num { font-variant-numeric: tabular-nums; font-size: 14px; }
+  td.name { font-family: "IBM Plex Mono", monospace; font-size: 13.5px; }
+  tr.total td {
+    border-top: 1px solid var(--ink); border-bottom: none;
+    font-weight: 600; padding-top: 11px;
+  }
+  tr.lead td { background: var(--signal-dim); }
+  tr.lead td:first-child { box-shadow: inset 3px 0 0 var(--signal); padding-left: 11px; }
+  tr.fail td.num.pt { color: var(--crit); font-weight: 600; }
+
+  /* ---------- chips ---------- */
+  .chip {
+    display: inline-block; font-size: 10.5px; font-weight: 600;
+    letter-spacing: .07em; text-transform: uppercase;
+    padding: 2px 8px; border-radius: 2px; white-space: nowrap;
+  }
+  .chip.done   { background: var(--ok-dim);     color: var(--ok); }
+  .chip.part   { background: var(--signal-dim); color: var(--signal); }
+  .chip.no     { background: var(--surface-2);  color: var(--slate); }
+  .chip.crit   { background: var(--crit-dim);   color: var(--crit); }
+
+  /* ---------- milestone grid ---------- */
+  .milestones {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+    gap: 1px; background: var(--rule-soft); border: 1px solid var(--rule-soft);
+    margin-top: 22px;
+  }
+  .ms {
+    background: var(--surface); padding: 13px 15px;
+    display: flex; flex-direction: column; gap: 7px; min-height: 92px;
+  }
+  .ms .top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .ms .id {
+    font-family: "IBM Plex Mono", monospace; font-size: 11.5px;
+    color: var(--slate); font-weight: 500;
+  }
+  .ms .nm {
+    font-family: "IBM Plex Sans", sans-serif; font-size: 13.5px;
+    font-weight: 500; line-height: 1.32; color: var(--ink);
+  }
+  .ms.off .nm { color: var(--slate); }
+
+  /* ---------- callout ---------- */
+  .callout {
+    background: var(--crit-dim); border: 1px solid var(--crit);
+    padding: 20px 22px; margin-top: 26px;
+  }
+  .callout h3 { margin: 0 0 8px; color: var(--crit); font-size: 1.02rem; }
+  .callout p { margin: 0 0 12px; font-size: .95rem; }
+  .callout p:last-child { margin-bottom: 0; }
+
+  .finding {
+    border-left: 2px solid var(--rule); padding-left: 20px; margin-top: 26px;
+  }
+  .finding h3 { margin-top: 0; }
+  .finding .tag {
+    font-family: "IBM Plex Mono", monospace; font-size: 11.5px;
+    color: var(--signal); font-weight: 600; display: block; margin-bottom: 3px;
+  }
+
+  ul { margin: 0 0 15px; padding-left: 1.15em; }
+  li { margin-bottom: 7px; }
+  li::marker { color: var(--slate); }
+
+  footer {
+    margin-top: 66px; padding-top: 20px; border-top: 1px solid var(--rule);
+    font-size: .85rem; color: var(--slate); max-width: var(--measure);
+  }
+
+  @media (max-width: 640px) {
+    body { font-size: 16px; }
+    .wrap { padding: 0 18px 72px; }
+    header.masthead { padding-top: 38px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+
+  /* --- print / PDF: the artifact wrapper is absent in the standalone file, so
+     this also gives a clean A4 export for a report appendix --- */
+  @media print {
+    :root {
+      --paper: #fff; --surface: #fff; --surface-2: #f4f4f4;
+      --ink: #000; --ink-2: #222; --slate: #555;
+      --rule: #999; --rule-soft: #ccc;
+      --signal: #8a3f07; --signal-dim: #f2ece3;
+      --ok: #0b5c56; --ok-dim: #eaf3f2;
+      --crit: #8a0f31; --crit-dim: #f8e9ed;
+    }
+    body { font-size: 10.5pt; background: #fff; }
+    .wrap { max-width: none; padding: 0; }
+    a { color: inherit; text-decoration: none; }
+    .toc { display: none; }
+    section.layer, .algo, .card, .finding, .callout, table { break-inside: avoid; }
+    h1, h2, h3 { break-after: avoid; }
+    section.layer { break-before: page; }
+    header.masthead { break-after: avoid; }
+    .formula, .specimen { background: #fafafa; }
+  }
+</style>
+<style>
+  html { color-scheme: light dark; }
+  body { margin: 0; }
+  img { max-width: 100%; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Operating Systems &middot; Review 2 &middot; Progress report</p>
+    <h1>Trust what the device does, not what it says it is</h1>
+    <p class="standfirst">
+      IUDBMS scores USB peripheral behaviour continuously and revokes authorisation
+      mid-session. A BadUSB stick presents a valid keyboard descriptor, so identity
+      checks admit it before there is any malicious behaviour to see.
+    </p>
+    <div class="runmeta">
+      <div><span class="metak">Milestones</span><span class="metav">9 of 10</span></div>
+      <div><span class="metak">Tests</span><span class="metav">292 passing</span></div>
+      <div><span class="metak">Corpus</span><span class="metav">1,000 sessions</span></div>
+      <div><span class="metak">URB events</span><span class="metav">12,823,600</span></div>
+      <div><span class="metak">Features</span><span class="metav">28 of 29</span></div>
+      <div><span class="metak">Seed</span><span class="metav">7</span></div>
+      <div><span class="metak">Full run</span><span class="metav">104 s</span></div>
+    </div>
+  </header>
+
+  <section style="margin-top:0">
+    <h2><span class="n">00</span>The unit of evidence</h2>
+    <p class="lede">Everything the system knows arrives as lines like this one, from
+      <code>/sys/kernel/debug/usb/usbmon/0u</code>.</p>
+
+    <div class="specimen">
+      <span class="trace"><span class="f">f5ca4980</span> <span class="f">3854346339</span> <span class="f">C</span> <span class="f">Ii:1:003:1</span> <span class="hi">0:4</span> <span class="hi">8</span> <span class="f">=</span> <span class="f">00001600 00000000</span></span>
+      <div class="legend">
+        <div><span class="k">f5ca4980</span><span class="v">URB tag</span></div>
+        <div><span class="k">3854346339</span><span class="v">timestamp, &micro;s (wraps every 71.6 min)</span></div>
+        <div><span class="k">C</span><span class="v">completion</span></div>
+        <div><span class="k">Ii:1:003:1</span><span class="v">interrupt IN, bus 1, device 3, endpoint 1</span></div>
+        <div><span class="k">0:4</span><span class="v">status 0, polling interval 4</span></div>
+        <div><span class="k">8</span><span class="v">data length &mdash; 8 bytes, not 4</span></div>
+      </div>
+    </div>
+    <p class="caption">
+      This exact line is why the capture layer was rewritten. The prototype parser read the
+      polling interval as the transfer length; the two coincide for 8-byte HID reports, so
+      simulator output never exposed it. It also silently dropped four real line forms
+      &mdash; every submission, every uncaptured payload, control setup packets, and
+      isochronous completions.
+    </p>
+  </section>
+
+  <section>
+    <h2><span class="n">01</span>What is built</h2>
+    <p class="lede">Nine of ten milestones. Only eBPF remains, deferred by the plan&rsquo;s
+      own risk register, which designates week 11 as the sacrifice week.</p>
+
+    <div class="milestones">
+      <div class="ms"><div class="top"><span class="id">M1</span><span class="chip done">Done</span></div><span class="nm">Frozen data contract</span></div>
+      <div class="ms"><div class="top"><span class="id">M2</span><span class="chip part">Fixtures</span></div><span class="nm">usbmon reader &mdash; live capture pending VM</span></div>
+      <div class="ms"><div class="top"><span class="id">M3</span><span class="chip done">Done</span></div><span class="nm">28-feature extractor</span></div>
+      <div class="ms"><div class="top"><span class="id">M4</span><span class="chip done">Done</span></div><span class="nm">Stage 1 &mdash; forest + device baseline</span></div>
+      <div class="ms"><div class="top"><span class="id">M5</span><span class="chip done">Done</span></div><span class="nm">Stage 2 &mdash; PyTorch LSTM</span></div>
+      <div class="ms"><div class="top"><span class="id">M6</span><span class="chip done">Done</span></div><span class="nm">Policy engine + safety interlocks</span></div>
+      <div class="ms"><div class="top"><span class="id">M7</span><span class="chip done">Done</span></div><span class="nm">SQLite store + control API</span></div>
+      <div class="ms ms off"><div class="top"><span class="id">M8</span><span class="chip no">Deferred</span></div><span class="nm">eBPF capture path</span></div>
+      <div class="ms"><div class="top"><span class="id">M9</span><span class="chip done">Done</span></div><span class="nm">Operator dashboard</span></div>
+      <div class="ms"><div class="top"><span class="id">M10</span><span class="chip done">Done</span></div><span class="nm">Evaluation harness + ablations</span></div>
+    </div>
+    <p class="caption">
+      Every number below is printed by <code>make eval</code> &mdash; a single seeded
+      command, 71 seconds. Nothing is transcribed by hand.
+    </p>
+  </section>
+
+  <section>
+    <h2><span class="n">02</span>Headline results</h2>
+    <p class="lede">298 held-out test sessions, split by session and stratified by profile
+      &mdash; never by window. Threshold set at a 0.1&thinsp;% per-window false-positive rate
+      on validation benign traffic only, then gated 4-of-6. The deployed model uses
+      <strong>27 of the 28 features</strong>; the 28th leaks the label, and finding&nbsp;3
+      below is why.</p>
+
+    <div class="tablewrap">
+      <table>
+        <caption>Window level &middot; held-out test set (18,731 windows)</caption>
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th class="num">ROC&ndash;AUC</th>
+            <th class="num">Precision</th>
+            <th class="num">Recall</th>
+            <th class="num">F1</th>
+            <th class="num">Session detection</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="lead">
+            <td><strong>IUDBMS</strong> &mdash; Stage 1 + Stage 2</td>
+            <td class="num">0.9945</td><td class="num">0.998</td>
+            <td class="num">0.929</td><td class="num">0.962</td>
+            <td class="num"><strong>100&thinsp;%</strong></td>
+          </tr>
+          <tr>
+            <td>Stage 1 only &mdash; no temporal model</td>
+            <td class="num">0.9363</td><td class="num">0.985</td>
+            <td class="num">0.094</td><td class="num">0.171</td>
+            <td class="num">11.7&thinsp;%</td>
+          </tr>
+          <tr>
+            <td>Identity whitelist &mdash; USBGuard-style</td>
+            <td class="num">&mdash;</td><td class="num">&mdash;</td>
+            <td class="num">&mdash;</td><td class="num">&mdash;</td>
+            <td class="num">0.0&thinsp;%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="col" style="margin-top:22px">
+      <p>One false positive across 178 benign test sessions (0.6&thinsp;%), and a median
+        3.6&thinsp;s from attack onset to enforcement. The whitelist scores zero by construction: every attack
+        profile clones a VID:PID from the benign pool, which is precisely the gap behavioural
+        monitoring exists to close.</p>
+      <p>Two changes got here. Tripling the corpus to 1,000 sessions took detection from
+        81.0&thinsp;% to 86.7&thinsp;%. A twenty-ninth feature &mdash; the first that asks a
+        question spanning more than one window &mdash; took it the rest of the way and closed
+        the mimicry gap entirely. <strong>A perfect score is a leakage signal far more often
+        than a win, so the checks below are what was done before reporting it.</strong></p>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <caption>Detection by attack class</caption>
+        <thead>
+          <tr>
+            <th>Attack profile</th>
+            <th class="num">n</th>
+            <th class="num">IUDBMS</th>
+            <th class="num">Stage&nbsp;1 only</th>
+            <th class="num">Whitelist</th>
+            <th class="num">Median latency</th>
+            <th>Defined by</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="name">hid_injection</td><td class="num">26</td>
+            <td class="num pt">100&thinsp;%</td><td class="num">0&thinsp;%</td><td class="num">0&thinsp;%</td>
+            <td class="num">3.6&thinsp;s</td><td>Timing transition</td>
+          </tr>
+          <tr>
+            <td class="name">identity_switch</td><td class="num">23</td>
+            <td class="num pt">100&thinsp;%</td><td class="num">60.9&thinsp;%</td><td class="num">0&thinsp;%</td>
+            <td class="num">3.5&thinsp;s</td><td>Static signature</td>
+          </tr>
+          <tr>
+            <td class="name">staged_delay</td><td class="num">26</td>
+            <td class="num pt">100&thinsp;%</td><td class="num">0&thinsp;%</td><td class="num">0&thinsp;%</td>
+            <td class="num">3.5&thinsp;s</td><td>Timing transition</td>
+          </tr>
+          <tr>
+            <td class="name">class_exfil</td><td class="num">29</td>
+            <td class="num pt">100&thinsp;%</td><td class="num">0&thinsp;%</td><td class="num">0&thinsp;%</td>
+            <td class="num">3.5&thinsp;s</td><td>Static signature</td>
+          </tr>
+          <tr>
+            <td class="name">mimicry</td><td class="num">16</td>
+            <td class="num">100&thinsp;%</td><td class="num">0&thinsp;%</td><td class="num">0&thinsp;%</td>
+            <td class="num pt">24.9&thinsp;s</td><td>Structure only</td>
+          </tr>
+          <tr class="total">
+            <td>Overall</td><td class="num">120</td>
+            <td class="num">100&thinsp;%</td><td class="num">11.7&thinsp;%</td><td class="num">0.0&thinsp;%</td>
+            <td class="num">3.6&thinsp;s</td><td></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      <h3>A perfect score is a leakage signal. Here is what was checked.</h3>
+      <p>The evaluation harness prints a warning when detection hits 100&thinsp;%, when it
+        does so at zero false positives, and when no attack class is harder than any other.
+        All three fire on this result, and they are right to. Three things were verified
+        before it was reported:</p>
+      <p><strong>1. The leakage audit passes.</strong> No separable duration, window-count
+        or VID:PID axis between benign and malicious sessions &mdash; checked per profile,
+        not just in aggregate, because that is how the last leak survived.</p>
+      <p><strong>2. The new feature measures behaviour, not session position.</strong> This
+        is the failure that got <code>log_time_since_enum</code> deleted, and the new
+        feature has the same suspicious shape: novelty decays over a session, and malicious
+        windows are later in a session by construction. Under positional control it holds
+        up &mdash; benign typing stays near 0.99 at <em>every</em> window position while
+        mimicry decays to 0.72, and late benign windows score 0.991 against early mimicry
+        windows at 0.975. If that ordering ever inverts, the feature is a leak; a regression
+        test asserts it.</p>
+      <p><strong>3. Mimicry still costs 24.9&thinsp;s to detect, against ~3.5&thinsp;s for
+        every other class.</strong> A sevenfold latency gap is what you would expect if the
+        detection is real and hard-won. A leak would have been instant.</p>
+      <p><strong>The caveat that remains.</strong> This feature was designed after seeing
+        which attack we were failing, using knowledge of how the simulator builds it. That
+        is overfitting to our own corpus and has to be declared. The defence is that the
+        constraint is real: a keystroke-injection payload has to type specific commands, so
+        it cannot randomise its sequence without ceasing to be a payload. The honest claim
+        is that this <em>raises the attacker&rsquo;s cost</em>, not that it solves the
+        problem.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">03</span>Do the novelty claims survive contact?</h2>
+    <p class="lede">Four pillars distinguish this work from LBM (Tian et al., IEEE S&amp;P
+      2019), which mediates USB in-kernel using static administrator-written rules. Each
+      needed an ablation, not an assertion.</p>
+
+    <div class="tablewrap">
+      <table>
+        <caption>N1 &middot; Single-modality ablation &mdash; does fusion earn its keep?</caption>
+        <thead>
+          <tr><th>Modality</th><th class="num">Features</th><th class="num">Window AUC</th><th class="num">Session detection</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Timing &mdash; inter-arrival moments, entropy, burstiness</td><td class="num">9</td><td class="num">0.9836</td><td class="num">87.5&thinsp;%</td></tr>
+          <tr class="fail"><td>Payload &mdash; sizes, novelty, repetition, sequence novelty</td><td class="num">8</td><td class="num">0.9937</td><td class="num pt">100&thinsp;%</td></tr>
+          <tr><td>Protocol &mdash; endpoint fan-out, transfer-type mix</td><td class="num">6</td><td class="num">0.9752</td><td class="num">86.7&thinsp;%</td></tr>
+          <tr><td>Identity &mdash; declared class, interface arrival</td><td class="num">6</td><td class="num">0.9111</td><td class="num">45.0&thinsp;%</td></tr>
+          <tr class="total"><td>Deployed &mdash; all modalities fused</td><td class="num">28</td><td class="num">0.9937</td><td class="num">100&thinsp;%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="caption"><strong>Still not supported &mdash; and now less so.</strong> The
+      payload modality alone matches the fused model exactly, to four decimal places, because
+      it is the modality that carries the new sequence feature. Fusion adds nothing measurable
+      on this corpus. Establishing N1 requires attack families that differ from benign traffic
+      on <em>one</em> axis at a time; ours differ on several. Identity alone remains by far
+      the weakest, which is the thesis restated as a measurement.</p>
+
+    <div class="col">
+      <h3>N3 &mdash; temporal modelling is the decisive pillar</h3>
+      <p>Stage 1 is memoryless: it can only ask whether a given second looks odd. It catches
+        one attack with a static per-window signature &mdash; <code>identity_switch</code>,
+        at 60.9&thinsp;% &mdash; and misses every one defined by a transition over time. Adding the LSTM takes overall session detection
+        from 11.7&thinsp;% to 100&thinsp;%. This is the pillar the evidence supports most
+        clearly.</p>
+      <p>Its <em>horizon</em>, though, was never the lever. Sweeping the sequence length
+        across 10, 20 and 30 windows on a held-out selection split gave identical detection
+        at every setting, while longer horizons slightly reduced AUC and pushed latency from
+        3.6&thinsp;s to 4.8&thinsp;s. The model did not need more memory; it needed a feature
+        that carried cross-window information in the first place (finding&nbsp;6).</p>
+
+      <h3>N2 &mdash; adaptive baselines, after a repair</h3>
+      <p>The per-device baseline was measurably inert until this week; see finding 3 below.
+        With it repaired, Stage 1&rsquo;s window AUC rose from 0.8894 to 0.9363.</p>
+
+      <h3>N4 &mdash; enforcement fires from model output</h3>
+      <p>Each action carries a generated rule naming the threshold that triggered it, the
+        three features that deviated most, and the kernel command. The threshold is not a
+        magic number: it is the probability that yields a 0.1&thinsp;% false-positive rate on
+        held-out benign traffic.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">04</span>Where the operating point could move</h2>
+    <p class="lede">Per-window false positives compound across a session, so a single
+      threshold tells you almost nothing. The plan requires the curve, not the point.</p>
+
+    <div class="tablewrap">
+      <table>
+        <caption>Calibration target vs. outcome &middot; 4-of-6 persistence gate</caption>
+        <thead>
+          <tr><th>Target per-window FPR</th><th class="num">Threshold</th><th class="num">Detection</th><th class="num">Benign session FP</th><th></th></tr>
+        </thead>
+        <tbody>
+          <tr class="lead"><td class="num">0.01&thinsp;%</td><td class="num">0.9209</td><td class="num">100&thinsp;%</td><td class="num">0.6&thinsp;%</td><td><strong>deployed</strong></td></tr>
+          <tr><td class="num">0.05&thinsp;%</td><td class="num">0.8558</td><td class="num">100&thinsp;%</td><td class="num">1.7&thinsp;%</td><td></td></tr>
+          <tr><td class="num">0.10&thinsp;%</td><td class="num">0.8044</td><td class="num">100&thinsp;%</td><td class="num">2.8&thinsp;%</td><td></td></tr>
+          <tr><td class="num">0.50&thinsp;%</td><td class="num">0.5061</td><td class="num">100&thinsp;%</td><td class="num">6.7&thinsp;%</td><td></td></tr>
+          <tr><td class="num">1.00&thinsp;%</td><td class="num">0.4016</td><td class="num">100&thinsp;%</td><td class="num">7.9&thinsp;%</td><td></td></tr>
+          <tr><td class="num">2.00&thinsp;%</td><td class="num">0.2515</td><td class="num">100&thinsp;%</td><td class="num">12.4&thinsp;%</td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <caption>Persistence gate at the deployed threshold</caption>
+        <thead>
+          <tr><th>Gate</th><th class="num">Detection</th><th class="num">Benign session FP</th><th class="num">Median latency</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">2-of-6</td><td class="num">100&thinsp;%</td><td class="num">2.2&thinsp;%</td><td class="num">1.6&thinsp;s</td></tr>
+          <tr><td class="name">3-of-6</td><td class="num">100&thinsp;%</td><td class="num">0.6&thinsp;%</td><td class="num">2.6&thinsp;s</td></tr>
+          <tr class="lead"><td class="name">4-of-6</td><td class="num">100&thinsp;%</td><td class="num">0.6&thinsp;%</td><td class="num">3.6&thinsp;s</td></tr>
+          <tr><td class="name">5-of-6</td><td class="num">99.2&thinsp;%</td><td class="num">0.0&thinsp;%</td><td class="num">4.6&thinsp;s</td></tr>
+          <tr><td class="name">6-of-6</td><td class="num">99.2&thinsp;%</td><td class="num">0.0&thinsp;%</td><td class="num">5.6&thinsp;s</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="col" style="margin-top:22px">
+      <p>Detection is saturated across the whole range; what the threshold buys is false
+        positives, from none at the tightest setting to one benign session in nine at the
+        loosest. The deployed row is the tightest, but <strong>it was not picked off this
+        table</strong> &mdash; that would be selecting on test. It was chosen by sweeping the
+        target rate on a separate selection split carved out of training data, where 0.01, 0.05
+        and 0.1&thinsp;% all reached 100&thinsp;% detection at zero false positives and the
+        tightest was taken. The gate sweep confirms 4-of-6 is well placed: 3-of-6 matches it,
+        and the two stricter settings start losing detection.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">05</span>Eight findings from measuring what had been assumed</h2>
+    <p class="lede">Seven defects and the fix that came out of one of them. Each was
+      invisible in every previously reported number, and most surfaced only by running an
+      ablation, a sweep, or a screen whose result had already been assumed.</p>
+
+    <div class="finding col">
+      <span class="tag">Finding 1 &mdash; corpus fidelity</span>
+      <h3>One feature of twenty-eight carried no information at all</h3>
+      <p>The simulator emitted no control transfers anywhere in the corpus, so
+        <code>frac_ctrl</code> was constant zero across every window ever scored. It also
+        emitted only completions, never submissions &mdash; a stream real usbmon cannot
+        produce. Both are fixed; devices now enumerate properly.</p>
+    </div>
+
+    <div class="finding col">
+      <span class="tag">Finding 2 &mdash; label leakage</span>
+      <h3>A duration leak survived being fixed once</h3>
+      <p>Aggregate session durations matched between benign and malicious traffic
+        &mdash; 63.7&thinsp;s against 63.9&thinsp;s &mdash; which is exactly why the earlier fix
+        looked complete. Per profile they did not: <code>staged_delay</code> drew from
+        65&ndash;85&thinsp;s while every other profile drew 40&ndash;85&thinsp;s, so any window
+        past roughly 62&thinsp;s was disproportionately malicious.</p>
+      <p>The audit now runs per profile, and a test re-introduces the original bug to prove
+        the audit still catches it. An audit that cannot fail manufactures confidence rather
+        than providing it.</p>
+    </div>
+
+    <div class="finding col">
+      <span class="tag">Finding 3 &mdash; silent miscalibration</span>
+      <h3>Pillar N2 was in the architecture and absent from the arithmetic</h3>
+      <p>Features that are near-constant for a device &mdash; a keyboard&rsquo;s
+        <code>frac_iso</code> is always zero &mdash; collapse their running variance, so any
+        change produces an enormous z-score. Benign device deviation had a median of 0.8, a
+        99th percentile of 90.8 and a maximum of 1267. Since calibration divides by that 99th
+        percentile, the per-device term contributed about 0.009 to a score bounded at 1.0.</p>
+      <p>A variance floor fixed it. The symptom that led there was the Stage-1-only ablation
+        reporting <em>exactly zero</em> detection &mdash; a number too strange to accept.</p>
+    </div>
+
+    <div class="finding col">
+      <span class="tag">Finding 4 &mdash; a claim that did not hold</span>
+      <h3>Why detection fell from 100&thinsp;% before it rose to 86.7&thinsp;%</h3>
+      <p>The mimicry profile drew its think-pauses from a visibly different distribution than
+        human typing, leaving a blatant timing signature in the one profile whose entire
+        purpose is to lack one. A timing-only model therefore detected it at 100&thinsp;%,
+        every modality independently reached 100&thinsp;%, and overall detection read
+        100&thinsp;%.</p>
+      <p>The plan had claimed <code>class_exfil</code> was &ldquo;invisible to timing features
+        alone.&rdquo; That was asserted, never measured. The ablation shows it false. Fixing
+        the mimicry generator moved the headline figure down to 81&thinsp;%; tripling the
+        corpus then moved it back up to 86.7&thinsp;% on evidence rather than on a defect.</p>
+    </div>
+
+    <div class="finding col">
+      <span class="tag">Finding 5 &mdash; a label leak in a legitimate-looking feature</span>
+      <h3>One feature encoded when our attacks start, not what devices do</h3>
+      <p>A window&rsquo;s time since enumeration looks like a fair signal, and in deployment
+        it is available. But a malicious window is post-onset <em>by definition</em>, so it is
+        later in its session than an average benign window. The feature therefore separates
+        every attack class from benign traffic while encoding no behaviour at all:</p>
+      <div class="tablewrap">
+        <table>
+          <caption>Kolmogorov&ndash;Smirnov distance, post-onset vs. benign windows</caption>
+          <thead><tr><th>Profile</th><th class="num">KS D</th><th class="num">Critical</th><th class="num">Mean window time</th></tr></thead>
+          <tbody>
+            <tr><td class="name">hid_injection</td><td class="num">0.0333</td><td class="num">0.0239</td><td class="num">26.2&thinsp;s</td></tr>
+            <tr><td class="name">identity_switch</td><td class="num">0.3115</td><td class="num">0.0301</td><td class="num">41.5&thinsp;s</td></tr>
+            <tr><td class="name">staged_delay</td><td class="num">0.4095</td><td class="num">0.0335</td><td class="num">47.0&thinsp;s</td></tr>
+            <tr><td class="name">class_exfil</td><td class="num">0.1223</td><td class="num">0.0239</td><td class="num">31.9&thinsp;s</td></tr>
+            <tr><td class="name">mimicry</td><td class="num">0.1155</td><td class="num">0.0309</td><td class="num">31.3&thinsp;s</td></tr>
+            <tr class="total"><td>Benign reference</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">23.8&thinsp;s</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="margin-top:15px">What it really measures is <em>our onset distribution</em>,
+        which a real attacker chooses adversarially. The deployed model now uses 27 of 28
+        features. Including it buys 0.0012 AUC and 0.8&thinsp;% detection &mdash; reported as
+        an ablation, not shipped.</p>
+    </div>
+
+    <div class="finding col">
+      <span class="tag">Finding 6 &mdash; a hypothesis the sweep refuted</span>
+      <h3>Mimicry does not need a longer memory. It needs a feature we do not have.</h3>
+      <p>The obvious response to mimicry was more sequence horizon: its tell is a keystroke
+        script that cycles over 24&ndash;48 keys, far longer than a ten-second window. Sweeping
+        10, 20 and 30 windows changed detection by nothing at all.</p>
+      <p>The reason is upstream. Exactly <strong>one of the 28 per-window features</strong>
+        separated mimicry from benign typing, and it was the leaking session-position feature
+        from finding 5. A one-second window holds about five mostly-distinct keystrokes, so
+        payload novelty and repeat ratio were identical either side of onset. The script
+        repeat is a cross-window property, and the feature vector had nowhere to put it. A
+        longer horizon gives the model more of nothing to integrate.</p>
+    </div>
+
+    <div class="finding col">
+      <span class="tag">Finding 7 &mdash; the fix that followed</span>
+      <h3>Order is the signal, not the alphabet</h3>
+      <p>The obvious cross-window feature is &ldquo;have I seen this payload before?&rdquo;
+        It does not work. Human typing and a scripted payload draw keycodes from a similar
+        alphabet, so the <em>set</em> of distinct payloads looks much the same for both.</p>
+      <p>What differs is <em>order</em>. A script cycles a fixed set of consecutive payload
+        pairs forever; a person types novel pairs indefinitely. Feature 29 counts the
+        fraction of a window&rsquo;s payload transitions never seen earlier in the session,
+        judged causally and carried across window boundaries:</p>
+      <div class="tablewrap">
+        <table>
+          <caption>Transition novelty, by third of session</caption>
+          <thead><tr><th>Profile</th><th class="num">First third</th><th class="num">Second</th><th class="num">Third</th></tr></thead>
+          <tbody>
+            <tr><td class="name">keyboard (benign)</td><td class="num">0.997</td><td class="num">0.994</td><td class="num">0.982</td></tr>
+            <tr><td class="name">mimicry</td><td class="num">0.988</td><td class="num">0.870</td><td class="num">0.683</td></tr>
+            <tr><td class="name">staged_delay</td><td class="num">0.149</td><td class="num">0.008</td><td class="num">0.001</td></tr>
+            <tr><td class="name">hid_injection</td><td class="num">0.079</td><td class="num">0.000</td><td class="num">0.000</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="margin-top:15px">This made the extractor stateful &mdash; one instance per
+        device session, reset between them, or the next device inherits the previous
+        one&rsquo;s history and reads as suspiciously familiar traffic. It also forced a
+        contract major version: the vector changed width, so every earlier checkpoint is
+        invalid and the loader refuses them.</p>
+    </div>
+
+    <div class="finding col">
+      <span class="tag">Finding 8 &mdash; found by looking at live data</span>
+      <h3>The dashboard&rsquo;s first screen said a z-score of 4,472,091</h3>
+      <p>Within minutes of pointing the new dashboard at the stored alerts, it rendered a
+        device&rsquo;s evidence as <code>late_iface_flag 4472091.23</code>. That is not a
+        number an operator can act on, and it was not cosmetic.</p>
+      <p>Three features are <em>exactly</em> constant across benign traffic &mdash;
+        <code>class_behaviour_mismatch</code>, <code>late_iface_flag</code> and
+        <code>n_interfaces</code> are zero or one for every benign device, by construction.
+        Standardisation divided by their near-zero spread, so a single 0&rarr;1 flip became a
+        value around 10<sup>6</sup> that swamped all twenty-nine dimensions in both the
+        forest and the baseline. It is the same failure as finding&nbsp;3, one level up.</p>
+      <p>Bounding it rather than removing it &mdash; such a feature <em>is</em> informative
+        when it changes; that is the entire point of <code>class_behaviour_mismatch</code>
+        &mdash; left the headline intact but collapsed the Stage-1 ablation:</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th></th><th class="num">Before</th><th class="num">After</th></tr></thead>
+          <tbody>
+            <tr><td>IUDBMS window AUC</td><td class="num">0.9937</td><td class="num">0.9945</td></tr>
+            <tr><td>IUDBMS detection</td><td class="num">100&thinsp;%</td><td class="num">100&thinsp;%</td></tr>
+            <tr><td>IUDBMS benign FP</td><td class="num">0.0&thinsp;%</td><td class="num">0.6&thinsp;%</td></tr>
+            <tr class="fail"><td>Stage-1 detection</td><td class="num">44.2&thinsp;%</td><td class="num pt">11.7&thinsp;%</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="margin-top:15px"><strong>The Stage-1 collapse is the finding.</strong> Both
+        runs used the same threshold target, so it is entirely this fix. The old
+        44.2&thinsp;% was substantially artefact: <code>class_exfil</code> was being caught
+        because a feature exploded to 10<sup>6</sup>, not because the model ranked it. Stage 1
+        still <em>ranks</em> well &mdash; its window AUC is 0.9363 &mdash; but at a tight
+        operating point it now recovers almost nothing. That makes the case for temporal
+        modelling stronger, not weaker.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">06</span>What this does not yet show</h2>
+    <div class="col">
+      <ul>
+        <li><strong>No real USB traffic.</strong> Every number here comes from synthetic
+          sessions. The parser is validated against real kernel line formats, but a live
+          60&thinsp;s capture on the Linux VM is still outstanding.</li>
+        <li><strong>Attack families come from the code the features were designed against.</strong>
+          Per-profile rates are optimistic by construction. Test counts are now 16&ndash;29
+          sessions per class, up from 7&ndash;11, so the figures are at least stable.</li>
+        <li><strong>Multi-modal fusion (N1) is not supported by this evidence.</strong> The
+          payload modality alone matches the fused model exactly. Establishing N1 needs attack
+          families that differ from benign traffic on <em>one</em> axis at a time; ours differ
+          on several.</li>
+        <li><strong>Feature 29 was designed against a known failure.</strong> We knew which
+          attack we were missing and how the simulator builds it. The constraint it exploits is
+          real &mdash; an injection payload must type specific commands &mdash; but an
+          adversary who pads or reorders within limits will degrade it. It raises cost; it does
+          not solve.</li>
+        <li><strong>The dashboard reads a stored run, not a live device.</strong> It is
+          served from the same SQLite the evaluation writes, so it demonstrates the system
+          operating over real recorded sessions &mdash; but nothing is streaming.</li>
+        <li><strong>Enforcement has never executed.</strong> Every path that would write to
+          <code>/sys/bus/usb/&hellip;/authorized</code> raises instead. Four independent
+          interlocks guard it &mdash; dry-run default, a boot-keyboard allowlist, an
+          environment kill switch, and a review flag that is still false.</li>
+        <li><strong>No streaming detector.</strong> The pipeline runs offline over sessions;
+          nothing yet holds long-lived per-device state in production.</li>
+        <li><strong>eBPF is unstarted</strong> and, per the plan&rsquo;s schedule, may remain
+          documented future work.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Reproduce with <code>make eval</code> (seed 7) and <code>python3 -m eval.leakage_audit</code>.
+    Architectural ancestor: LBM, Tian et al., IEEE Symposium on Security and Privacy, 2019.
+  </footer>
+
+</div>
+</body>
+</html>
