@@ -19,6 +19,7 @@ axes:
 
 Full specification: [`docs/IUDBMS_Implementation_Plan.md`](docs/IUDBMS_Implementation_Plan.md).
 Working notes and decisions: [`CLAUDE.md`](CLAUDE.md).
+Report documents (standalone HTML, print to PDF): [`docs/report/`](docs/report/).
 
 ## Status
 
