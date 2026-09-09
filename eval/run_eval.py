@@ -107,7 +107,7 @@ def main() -> int:
     banner("[3/5] ABLATIONS")
     print("\n-- Stage-1 only (isolates pillar N3: temporal modelling) --")
     s1_only = run_configuration(fit, val, test, name="Stage 1 only",
-                                feature_idx=deployed,
+                                feature_idx=deployed, keep_scores=True,
                                 use_stage2=False, seed=args.seed, verbose=False)
     results["stage1_only"] = s1_only
 
@@ -145,6 +145,11 @@ def main() -> int:
     results["identity_whitelist"] = idw
     print(f"  attack detection: {idw['attack_detect']:.1%}  "
           f"(expected 0% — attacks present benign descriptors)")
+
+    y_te = np.concatenate([s.y for s in test])
+    p_te = np.concatenate([full.stage2[s.sid] for s in test])
+    p_s1_te = np.concatenate([s1_only.stage2.get(s.sid, s1_only.stage1[s.sid])
+                              for s in test]) if s1_only.stage1 else None
 
     banner("[4/5] RESULTS")
     print("\nWindow level, held-out test set")
@@ -227,7 +232,8 @@ def main() -> int:
 
     if not args.no_figures:
         from .figures import write_figures
-        for f in write_figures(OUT, full, s1_only, modality, test):
+        for f in write_figures(OUT, full, s1_only, modality, test,
+                               y_true=y_te, p_full=p_te, p_s1=p_s1_te):
             print(f"  wrote {f.relative_to(OUT.parent)}")
 
     print(f"\n  total runtime {metrics['runtime_sec']}s")
