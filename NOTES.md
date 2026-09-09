@@ -209,21 +209,77 @@ direction.** The plan's §10 claim that "class_exfil is invisible to timing
 features alone" was asserted, never measured; the ablation shows it false.
 Report the 81% and the mimicry bound, not the old 100%.
 
-### Current headline numbers (`make eval`, seed 7)
+### Scale-up and tuning (09 Sep, second pass)
 
-| model | window AUC | session detection |
-|---|---|---|
-| IUDBMS (S1+S2) | 0.9733 | 81.0% |
-| Stage 1 only | 0.8894 | 42.9% |
-| identity whitelist | — | 0.0% |
+Corpus tripled to **1000 sessions** (12.8 M usbmon lines, 62,986 windows).
+Test attack sessions per class went from 7-11 to 16-29, which is what makes the
+per-class rates worth quoting at all. `out/corpus_cache.npz` caches it; delete
+the file to rebuild.
 
-Benign session FP 0.0%, median latency 3.9 s. Per class: `class_exfil`,
-`hid_injection`, `identity_switch`, `staged_delay` all 100%; **`mimicry` 20%**.
-No single modality beats the fused 28 features (best single: protocol, 78.6%).
+**Tuning discipline.** `eval/tune.py` carves three disjoint inner splits out of
+fit+val (train / calibrate / select) and **never constructs the test set**.
+`run_configuration` now takes its splits as *roles* (`train`, `calib`,
+`report`) rather than `fit/val/test`, and raises if calibration and scoring name
+the same split — calibrating and scoring on the same sessions makes the FP rate
+hit its target by construction, so every sweep would look equally good. Naming
+them fit/val/test caused exactly that bug within minutes of being written.
 
-`log_time_since_enum` leave-one-out: AUC −0.0018, detection +2.4%. The feature
-is not load-bearing, so decision C (keep it) stands — but it is measured now,
-not assumed.
+**7. Sequence horizon is not a lever.** Swept T ∈ {10, 20, 30} × hidden ∈ {32, 64}
+on the selection split: detection is 86.3% for all six configurations, longer
+horizons slightly *reduce* AUC, and latency grows 3.6 s → 4.8 s. The hypothesis
+that mimicry needs a longer memory is wrong, and finding 9 says why. Deployed
+config stays T=10, hidden=32.
+
+**8. `log_time_since_enum` is a systematic label leak — decision C REVERSED.**
+Post-onset windows are later in a session *by construction*, so the feature
+separates every attack class from benign traffic without encoding any
+behaviour:
+
+| profile | KS D | critical | verdict |
+|---|---|---|---|
+| hid_injection | 0.0333 | 0.0239 | leak |
+| identity_switch | 0.3115 | 0.0301 | leak |
+| staged_delay | 0.4095 | 0.0335 | leak |
+| class_exfil | 0.1223 | 0.0239 | leak |
+| mimicry | 0.1155 | 0.0309 | leak |
+
+It encodes *our onset distribution*, which a real attacker chooses
+adversarially. **The deployed model now uses 27 of 28 features.** Including it
+buys AUC +0.0012 and detection +0.8% — reported as an ablation, not shipped.
+The contract still emits 28; the model selects columns, so no version bump.
+
+**9. `mimicry` is 0%, and that is the honest number.** The earlier 20% was 2 of
+10 sessions — noise. On 16 sessions it is 0. Only **1 of 28 per-window features**
+separates mimicry post-onset windows from benign keyboard windows, and it is the
+leaking `log_time_since_enum`. The structural tell (a replayed keystroke script)
+is real but **cross-window**: a 1 s window holds ~5 mostly-distinct keys, so
+`payload_novelty` and `repeat_ratio` are indistinguishable per window. There is
+nothing for the LSTM to integrate, which is why the horizon sweep moved nothing.
+Detecting mimicry needs a cross-window payload feature the frozen 28 do not
+contain. Do not tune at this; add the feature or report the bound.
+
+### Current headline numbers (`make eval --cache out/corpus_cache.npz`, seed 7)
+
+| model | window AUC | recall | session detection |
+|---|---|---|---|
+| IUDBMS (S1+S2), 27 features | 0.9837 | 0.848 | **86.7%** |
+| Stage 1 only | 0.9387 | 0.450 | 43.3% |
+| identity whitelist | — | — | 0.0% |
+
+Benign session FP 0.0%, median latency 3.5 s (p90 3.8 s). Per class:
+`class_exfil` (n=29), `hid_injection` (26), `identity_switch` (23),
+`staged_delay` (26) all 100%; **`mimicry` (16) 0%**.
+
+**N1 is not supported on this corpus.** Timing alone reaches 87.5% against the
+fused model's 86.7% — one test session out of 120. Our attack families differ
+from benign traffic on several axes at once, so fusion has nothing left to add.
+Say so rather than quoting the fused number as evidence for N1.
+
+Operating curve (descriptive, computed on test; the deployed point is calibrated
+on validation): loosening the target per-window FPR from 0.1% to 2% raises
+detection 86.7% → 94.2% but benign session FP 0% → 12.9%. The 4-of-6 gate is
+well chosen: 3-of-6 gives the same detection at 0.6% FP, 2-of-6 gives +0.8%
+detection at 1.7% FP and 1.5 s latency.
 
 ### eBPF go/no-go — **PENDING**
 
