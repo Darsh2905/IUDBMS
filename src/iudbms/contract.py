@@ -68,7 +68,10 @@ __all__ = [
 #: Bumped only when a field is added, removed or re-typed. Trained model
 #: checkpoints record this and refuse to load against a different major.
 #: 1.1.0 — added URBEvent.setup (append-only, defaulted; no checkpoint churn).
-CONTRACT_VERSION = "1.1.0"
+#: 2.0.0 — appended feature 29, payload_seq_novelty. MAJOR: the vector changed
+#:         width, so every checkpoint trained against 1.x is invalid and
+#:         LSTMDetector.load refuses them. Feature ORDER is still append-only.
+CONTRACT_VERSION = "2.0.0"
 
 
 class ContractError(ValueError):
@@ -329,7 +332,8 @@ class EventSource(Protocol):
 # L2 — the feature vector
 # --------------------------------------------------------------------------
 
-#: The 28-dimensional multi-modal vector (plan §4.2, novelty pillar N1).
+#: The multi-modal window vector (plan §4.2, novelty pillar N1). 28 features in
+#: contract 1.x; 29 from 2.0.0.
 #:
 #: **Order is frozen.** It is baked into trained checkpoints, the SQLite
 #: ``windows.features`` JSON, and every published figure. Append-only; never
@@ -362,6 +366,8 @@ FEATURE_SCHEMA: tuple[tuple[str, Modality], ...] = (
     # --- payload, continued (2) ---
     ("payload_novelty",          "payload"),
     ("repeat_ratio",             "payload"),
+    # --- payload, appended in contract 2.0.0 (see FeatureExtractor.reset) ---
+    ("payload_seq_novelty",      "payload"),
     # --- identity (6) ---
     ("n_interfaces",             "identity"),
     ("has_hid",                  "identity"),
@@ -411,10 +417,24 @@ class FeatureExtractor(ABC):
 
     Subclasses implement :meth:`extract`. Callers that want the contract
     enforced (tests, ``--strict`` runs) use :meth:`extract_checked`.
+
+    **Extractors carry per-device state and are not reusable across devices.**
+    Contract 2.0.0 added ``payload_seq_novelty``, which asks whether this
+    window's payload transitions have been seen earlier *in this session* — a
+    cross-window question a stateless extractor cannot answer. One extractor
+    instance therefore belongs to one device session; call :meth:`reset`
+    between sessions or the previous device's history leaks into the next one,
+    which reads as suspiciously familiar traffic.
+
+    In deployment this matches the natural arrangement: one extractor per
+    monitored device, created at enumeration.
     """
 
     WINDOW: float = 1.0    # seconds; plan §4.2
     STRIDE: float = 1.0    # tumbling
+
+    def reset(self) -> None:
+        """Forget per-session state. Called between device sessions."""
 
     @abstractmethod
     def extract(

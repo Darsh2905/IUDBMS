@@ -64,6 +64,8 @@ def main() -> int:
     ap.add_argument("--seq-len", type=int, nargs="+", default=[10, 20, 30])
     ap.add_argument("--hidden", type=int, nargs="+", default=[32, 64])
     ap.add_argument("--epochs", type=int, default=14)
+    ap.add_argument("--target-fpr", type=float, nargs="+",
+                    default=[0.0001, 0.0005, 0.001, 0.005])
     ap.add_argument("--cache", type=Path, default=OUT / "corpus_cache.npz")
     args = ap.parse_args()
 
@@ -87,15 +89,15 @@ def main() -> int:
     n_sel_attack = sum(1 for s in i_sel if s.label == 1)
     print(f"  selection set has   : {n_sel_attack} attack sessions\n", flush=True)
 
-    grid = list(itertools.product(args.seq_len, args.hidden))
-    print(f"{'seq_len':>8s} {'hidden':>7s} {'AUC':>8s} {'recall':>8s} {'detect':>8s} "
-          f"{'FP':>7s} {'mimicry':>8s} {'lat':>7s}", flush=True)
+    grid = list(itertools.product(args.seq_len, args.hidden, args.target_fpr))
+    print(f"{'seq_len':>8s} {'hidden':>7s} {'tgtFPR':>8s} {'AUC':>8s} {'recall':>8s} "
+          f"{'detect':>8s} {'FP':>7s} {'mimicry':>8s} {'lat':>7s}", flush=True)
     rows = []
-    for seq_len, hidden in grid:
+    for seq_len, hidden, tfpr in grid:
         r = run_configuration(
-            i_fit, i_cal, i_sel, name=f"T={seq_len},H={hidden}",
+            i_fit, i_cal, i_sel, name=f"T={seq_len},H={hidden},f={tfpr}",
             seed=args.seed, epochs=args.epochs, seq_len=seq_len, hidden=hidden,
-            verbose=False,
+            target_fpr=tfpr, verbose=False,
         )
         # The three positional arguments are roles: train / calibrate / report.
         # Here they carry inner_fit / inner_cal / inner_sel, so the defaults
@@ -103,21 +105,25 @@ def main() -> int:
         # disjoint splits, none of them the real test set.
         mim = r.per_profile.get("mimicry", {})
         lat = r.session["median_latency"]
-        rows.append({"seq_len": seq_len, "hidden": hidden,
+        rows.append({"seq_len": seq_len, "hidden": hidden, "target_fpr": tfpr,
                      "auc": r.window["auc"], "recall": r.window["recall"],
                      "detect": r.session["attack_detect"],
                      "fp": r.session["benign_fp"],
                      "mimicry": mim.get("detect_rate"),
                      "latency": lat})
-        print(f"{seq_len:8d} {hidden:7d} {r.window['auc']:8.4f} "
+        print(f"{seq_len:8d} {hidden:7d} {tfpr:8.4%} {r.window['auc']:8.4f} "
               f"{r.window['recall']:8.3f} {r.session['attack_detect']:8.1%} "
               f"{r.session['benign_fp']:7.1%} "
               f"{(mim.get('detect_rate') or 0):8.1%} "
-              f"{(f'{lat:.1f}s' if lat else '-'):>7s}")
+              f"{(f'{lat:.1f}s' if lat else '-'):>7s}", flush=True)
 
-    best = max(rows, key=lambda r: (r["detect"], r["auc"]))
+    # Detection first, then the FEWEST false positives, then AUC. Without the
+    # false-positive term a sweep happily picks the loosest threshold that
+    # saturates detection and ships an unusable alert rate.
+    best = max(rows, key=lambda r: (r["detect"], -r["fp"], r["auc"]))
     print(f"\n  best on the selection split: seq_len={best['seq_len']} "
-          f"hidden={best['hidden']}  detect={best['detect']:.1%}  AUC={best['auc']:.4f}", flush=True)
+          f"hidden={best['hidden']} target_fpr={best['target_fpr']:.4%}  "
+          f"detect={best['detect']:.1%}  FP={best['fp']:.1%}  AUC={best['auc']:.4f}", flush=True)
     print("  This is NOT applied automatically. Set it in eval/run_eval.py and run")
     print("  that once against the held-out test split.", flush=True)
 

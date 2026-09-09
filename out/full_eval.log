@@ -5,29 +5,29 @@
   sessions        : 1000  (600 benign / 400 malicious)   [cached]
   usbmon lines    : 12,823,600
   URB events      : 12,823,600
-  windows (1.0 s) : 62,986   features/window: 28
+  windows (1.0 s) : 62,986   features/window: 29
   split (sessions): fit=562  val=140  test=298
   split is BY SESSION, stratified by profile — never by window (plan §5)
 
 ==========================================================================
 [2/5] FULL SYSTEM  Stage 1 + Stage 2 (PyTorch LSTM)
 ==========================================================================
-  deployed features: 27 of 28 (log_time_since_enum excluded -- see ablation below)
+  deployed features: 28 of 29 (log_time_since_enum excluded -- see ablation below)
   sequence horizon: 10 windows   hidden units: 32
-  epoch 01/14  loss=0.2692  val_acc=0.9312  val_recall=0.8506
-  epoch 02/14  loss=0.1893  val_acc=0.9366  val_recall=0.8226
-  epoch 03/14  loss=0.1855  val_acc=0.9371  val_recall=0.8273
-  epoch 04/14  loss=0.1834  val_acc=0.9364  val_recall=0.8270
-  epoch 05/14  loss=0.1821  val_acc=0.9336  val_recall=0.8346
-  epoch 06/14  loss=0.1810  val_acc=0.9373  val_recall=0.8223
-  epoch 07/14  loss=0.1801  val_acc=0.9347  val_recall=0.8326
-  epoch 08/14  loss=0.1791  val_acc=0.9343  val_recall=0.8319
-  epoch 09/14  loss=0.1782  val_acc=0.9349  val_recall=0.8266
-  epoch 10/14  loss=0.1777  val_acc=0.9350  val_recall=0.8233
-  epoch 11/14  loss=0.1762  val_acc=0.9236  val_recall=0.8948
-  epoch 12/14  loss=0.1757  val_acc=0.9332  val_recall=0.8339
-  epoch 13/14  loss=0.1749  val_acc=0.9329  val_recall=0.8463
-  epoch 14/14  loss=0.1739  val_acc=0.9337  val_recall=0.8363
+  epoch 01/14  loss=0.2215  val_acc=0.9688  val_recall=0.9361
+  epoch 02/14  loss=0.1300  val_acc=0.9724  val_recall=0.9388
+  epoch 03/14  loss=0.1215  val_acc=0.9688  val_recall=0.9514
+  epoch 04/14  loss=0.1164  val_acc=0.9760  val_recall=0.9378
+  epoch 05/14  loss=0.1141  val_acc=0.9680  val_recall=0.9511
+  epoch 06/14  loss=0.1118  val_acc=0.9733  val_recall=0.9441
+  epoch 07/14  loss=0.1089  val_acc=0.9761  val_recall=0.9414
+  epoch 08/14  loss=0.1064  val_acc=0.9773  val_recall=0.9404
+  epoch 09/14  loss=0.1037  val_acc=0.9758  val_recall=0.9381
+  epoch 10/14  loss=0.1033  val_acc=0.9747  val_recall=0.9441
+  epoch 11/14  loss=0.0989  val_acc=0.9733  val_recall=0.9424
+  epoch 12/14  loss=0.0968  val_acc=0.9699  val_recall=0.9454
+  epoch 13/14  loss=0.0928  val_acc=0.9760  val_recall=0.9404
+  epoch 14/14  loss=0.0874  val_acc=0.9759  val_recall=0.9381
 
 ==========================================================================
 [3/5] ABLATIONS
@@ -37,14 +37,14 @@
 
 -- single-modality (isolates pillar N1: multi-modal fusion) --
   timing    ( 9 features)  AUC=0.9836  detect=87.5%  FP=1.7%
-  payload   ( 7 features)  AUC=0.9832  detect=86.7%  FP=1.1%
+  payload   ( 8 features)  AUC=0.9937  detect=100.0%  FP=2.2%
   protocol  ( 6 features)  AUC=0.9752  detect=86.7%  FP=1.7%
   identity  ( 6 features)  AUC=0.9111  detect=45.0%  FP=0.6%
 
 -- adding back log_time_since_enum (the leaking feature) --
-  deployed (27 features) : AUC=0.9837  detect=86.7%
-  plus the leak (28)     : AUC=0.9849  detect=87.5%
-  delta                  : AUC+0.0012  detect+0.8%
+  deployed (27 features) : AUC=0.9937  detect=100.0%
+  plus the leak (28)     : AUC=0.9960  detect=100.0%
+  delta                  : AUC+0.0023  detect+0.0%
   The feature separates every attack class from benign traffic purely
   because post-onset windows are later in a session. Whatever it adds
   is measuring our onset distribution, not the device's behaviour.
@@ -58,52 +58,60 @@
 
 Window level, held-out test set
   model                         ROC-AUC    prec  recall      F1
-  IUDBMS (S1+S2)                 0.9837   0.998   0.848   0.917
-  Stage 1 only                   0.9387   0.997   0.450   0.620
+  IUDBMS (S1+S2)                 0.9937   0.999   0.925   0.961
+  Stage 1 only                   0.9520   0.996   0.458   0.628
 
 Session level (threshold @ 0.1% validation FPR, 4-of-6 gate)
   profile              n   IUDBMS  S1-only  whitelist   latency
   class_exfil         29   100.0%   100.0%       0.0%      3.5s
   hid_injection       26   100.0%     0.0%       0.0%      3.6s
-  identity_switch     23   100.0%   100.0%       0.0%      3.3s
-  mimicry             16     0.0%     0.0%       0.0%         -
-  staged_delay        26   100.0%     0.0%       0.0%      3.4s
+  identity_switch     23   100.0%   100.0%       0.0%      3.5s
+  mimicry             16   100.0%     0.0%       0.0%     24.9s
+  staged_delay        26   100.0%     3.8%       0.0%      3.5s
 
-  overall attack detection         IUDBMS= 86.7%   S1-only= 43.3%   whitelist=  0.0%
+  overall attack detection         IUDBMS=100.0%   S1-only= 44.2%   whitelist=  0.0%
   benign session FP rate           IUDBMS=  0.0%   S1-only=  0.0%
   alerts per benign hour           IUDBMS=  0.00
-  detection latency                median=3.5s   p90=3.8s
+  detection latency                median=3.6s   p90=22.1s
 
 ==========================================================================
 [4b/5] OPERATING POINT  the trade-off curve, not one number (plan §6)
 ==========================================================================
   Per-window FPR the threshold is calibrated to (4-of-6 gate):
      target FPR  threshold  detection  benign FP  latency
-        0.0100%     0.7952      86.7%       0.0%     3.5s
-        0.0500%     0.7386      86.7%       0.0%     3.5s
-        0.1000%     0.7127      86.7%       0.0%     3.5s  <- deployed
-        0.5000%     0.6093      87.5%       3.9%     3.5s
-        1.0000%     0.5491      90.0%       7.9%     3.5s
-        2.0000%     0.4621      94.2%      12.9%     3.5s
+        0.0100%     0.9147     100.0%       0.0%     3.6s  <- deployed
+        0.0500%     0.8147     100.0%       0.6%     3.5s
+        0.1000%     0.6750     100.0%       2.8%     3.5s
+        0.5000%     0.4702     100.0%       5.1%     3.5s
+        1.0000%     0.3775     100.0%       6.7%     3.5s
+        2.0000%     0.2606     100.0%      10.7%     3.5s
 
-  Persistence gate at the deployed threshold 0.7127:
+  Persistence gate at the deployed threshold 0.9147:
        gate  detection  benign FP  latency
-     2-of-6      87.5%       1.7%     1.5s
-     3-of-6      86.7%       0.6%     2.5s
-     4-of-6      86.7%       0.0%     3.5s
-     5-of-6      86.7%       0.0%     4.5s
-     6-of-6      86.7%       0.0%     5.5s
+     2-of-6     100.0%       0.6%     1.6s
+     3-of-6     100.0%       0.0%     2.6s
+     4-of-6     100.0%       0.0%     3.6s
+     5-of-6      99.2%       0.0%     4.6s
+     6-of-6      99.2%       0.0%     5.6s
 
   The curve is DESCRIPTIVE. The deployed point is the one calibrated on
   validation benign windows; reading a better point off this table and
   adopting it would be selecting on the test split.
 
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  SUSPICIOUSLY GOOD RESULTS — investigate before reporting:
+    - every attack session detected -- a perfect rate is a leakage signal more often than a win, and hides which class is hardest
+    - 100% detection at 0% false positives on the same split
+    - no attack class is harder than any other -- check that the adversarial cases are still adversarial
+  Re-run `python3 -m eval.leakage_audit` and check the split.
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 ==========================================================================
 [5/5] ARTEFACTS
 ==========================================================================
   wrote out/metrics.json
-  wrote out/iudbms.db  {'devices': 1000, 'windows': 62986, 'baselines': 0, 'alerts': 694, 'actions': 694}
+  wrote out/iudbms.db  {'devices': 1000, 'windows': 62986, 'baselines': 0, 'alerts': 794, 'actions': 794}
   wrote out/detection_by_class.png
   wrote out/modality_ablation.png
 
-  total runtime 104.2s
+  total runtime 105.9s

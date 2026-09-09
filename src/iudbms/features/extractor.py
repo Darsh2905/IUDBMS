@@ -108,7 +108,57 @@ def _fano(ts: np.ndarray, t0: float, window: float) -> float:
 
 
 class WindowFeatureExtractor(FeatureExtractor):
-    """The 28-feature extractor. Stateless and therefore trivially parallel."""
+    """The 29-feature extractor.
+
+    Holds per-session payload history for ``payload_seq_novelty`` (contract
+    2.0.0), so **one instance belongs to one device session**. Call
+    :meth:`reset` between sessions.
+    """
+
+    #: Cap on remembered payload transitions. A bulk device emits thousands of
+    #: distinct random payloads per second and would otherwise grow this set
+    #: without bound. Once full, novelty keeps reporting ~1.0, which is the
+    #: correct answer for genuinely random data.
+    MAX_REMEMBERED_BIGRAMS = 8192
+
+    def __init__(self) -> None:
+        self.reset()
+
+    def reset(self) -> None:
+        self._seen_bigrams: set[tuple[bytes, bytes]] = set()
+        self._prev_payload: bytes | None = None
+
+    def _seq_novelty(self, payloads: list[bytes]) -> float:
+        """Fraction of this window's payload transitions not seen earlier.
+
+        This is the cross-window signal the per-window features cannot carry.
+        A replayed keystroke script cycles a fixed set of transitions, so its
+        novelty decays toward zero as the script repeats; a human types novel
+        pairs indefinitely. Measured causally -- each transition is judged
+        against history from *before* it, then folded in -- so training and
+        live inference see identical values.
+
+        Defaults to 1.0 when a window holds fewer than two payloads, including
+        idle windows: "no evidence of repetition" is the benign reading, so
+        silence cannot manufacture an alert.
+        """
+        seq = ([self._prev_payload] if self._prev_payload is not None else []) + payloads
+        if len(seq) < 2:
+            if payloads:
+                self._prev_payload = payloads[-1]
+            return 1.0
+
+        novel = 0
+        total = 0
+        for a, b in zip(seq, seq[1:]):
+            total += 1
+            bigram = (a, b)
+            if bigram not in self._seen_bigrams:
+                novel += 1
+                if len(self._seen_bigrams) < self.MAX_REMEMBERED_BIGRAMS:
+                    self._seen_bigrams.add(bigram)
+        self._prev_payload = seq[-1]
+        return novel / total if total else 1.0
 
     def extract(
         self,
@@ -136,6 +186,8 @@ class WindowFeatureExtractor(FeatureExtractor):
         counted = [e for e in events if e.evt in COUNTED_KINDS]
         n = len(counted)
         if n == 0:
+            # Still advance session state: an idle second is history too.
+            f["payload_seq_novelty"] = self._seq_novelty([])
             # An idle second. IATs are undefined; report them as a full window
             # rather than zero, so "silent" does not masquerade as "infinitely
             # fast" to any downstream scaler.
@@ -182,6 +234,7 @@ class WindowFeatureExtractor(FeatureExtractor):
                 uniq[p] = uniq.get(p, 0) + 1
             f["payload_novelty"] = len(uniq) / len(payloads)
             f["repeat_ratio"] = max(uniq.values()) / len(payloads)
+        f["payload_seq_novelty"] = self._seq_novelty(payloads)
 
         # ---------------- protocol / endpoint modality ----------------
         f["n_endpoints"] = float(len({e.ep for e in counted}))

@@ -258,28 +258,90 @@ nothing for the LSTM to integrate, which is why the horizon sweep moved nothing.
 Detecting mimicry needs a cross-window payload feature the frozen 28 do not
 contain. Do not tune at this; add the feature or report the bound.
 
-### Current headline numbers (`make eval --cache out/corpus_cache.npz`, seed 7)
+### Current headline numbers
+
+`make eval` == `python3 -m eval.run_eval --cache out/corpus_cache.npz
+--target-fpr 0.0001 --persist`, seed 7.
 
 | model | window AUC | recall | session detection |
 |---|---|---|---|
-| IUDBMS (S1+S2), 27 features | 0.9837 | 0.848 | **86.7%** |
-| Stage 1 only | 0.9387 | 0.450 | 43.3% |
+| IUDBMS (S1+S2), 28 of 29 features | 0.9937 | 0.925 | **100.0%** |
+| Stage 1 only | 0.9520 | 0.458 | 44.2% |
 | identity whitelist | — | — | 0.0% |
 
-Benign session FP 0.0%, median latency 3.5 s (p90 3.8 s). Per class:
-`class_exfil` (n=29), `hid_injection` (26), `identity_switch` (23),
-`staged_delay` (26) all 100%; **`mimicry` (16) 0%**.
+Benign session FP **0.0%** over 178 benign test sessions. Median latency 3.6 s,
+p90 22.1 s. Every attack class 100%: `class_exfil` (n=29), `hid_injection` (26),
+`identity_switch` (23), `staged_delay` (26), **`mimicry` (16)**.
 
-**N1 is not supported on this corpus.** Timing alone reaches 87.5% against the
-fused model's 86.7% — one test session out of 120. Our attack families differ
-from benign traffic on several axes at once, so fusion has nothing left to add.
-Say so rather than quoting the fused number as evidence for N1.
+Target per-window FPR is now **0.0001**, selected by `eval/tune.py` on the
+selection split (0.0001 / 0.0005 / 0.001 all gave 100% detection at 0% FP there;
+the tightest was taken). It was NOT read off the test operating curve.
 
-Operating curve (descriptive, computed on test; the deployed point is calibrated
-on validation): loosening the target per-window FPR from 0.1% to 2% raises
-detection 86.7% → 94.2% but benign session FP 0% → 12.9%. The 4-of-6 gate is
-well chosen: 3-of-6 gives the same detection at 0.6% FP, 2-of-6 gives +0.8%
-detection at 1.7% FP and 1.5 s latency.
+**Before quoting 100%, read this.** The harness prints three warnings on this
+result and they are correct to fire. What was checked:
+
+1. Leakage audit passes (duration, window count, VID:PID).
+2. `payload_seq_novelty` is behaviour, not session position — the failure mode
+   that killed `log_time_since_enum`. Positional control: benign typing holds
+   ~0.99 at *every* window position while mimicry decays to 0.72, and late
+   benign windows (0.991) score **above** early mimicry ones (0.975).
+   `test_seq_novelty_is_behaviour_not_session_position` asserts that ordering.
+3. `mimicry` costs **24.9 s** to detect against ~3.5 s for every other class —
+   a 7× latency gap. It is still much the hardest case, which is what you would
+   expect if the detection is real rather than leaked.
+
+**Declare the overfitting.** `payload_seq_novelty` was designed after seeing
+which attack we were failing, using knowledge of how the simulator builds
+mimicry. The defence is that the constraint is real — an injection payload must
+type specific commands and cannot randomise its sequence without ceasing to be a
+payload — but the claim is "raises the cost", not "solves". An adversary who
+pads or reorders within limits will degrade this.
+
+**N1 is still not supported.** The payload modality alone now matches the fused
+model exactly (AUC 0.9937, 100%). Establishing fusion needs attack families that
+differ from benign traffic on one axis at a time; ours differ on several.
+
+Operating curve: detection is 100% at every target FPR from 0.01% to 2%; what
+changes is benign FP (0.0% → 10.7%). The 4-of-6 gate remains well placed —
+3-of-6 matches it, 5-of-6 and 6-of-6 start losing detection.
+
+### Contract 2.0.0 — the cross-window feature (09 Sep, third pass)
+
+Finding 9 diagnosed mimicry precisely: its tell is a replayed keystroke script,
+which is a **cross-window** property, and the 28 per-window features had nowhere
+to put it. Contract 2.0.0 appends feature 29, `payload_seq_novelty`.
+
+**What it measures.** The fraction of this window's payload *transitions*
+(consecutive payload pairs) not seen earlier in the session, judged causally and
+carried across window boundaries. A replayed script cycles a fixed set of
+transitions so its novelty decays; a human types novel pairs indefinitely.
+Measured on the simulator before implementing:
+
+| profile | 1st third | 2nd third | 3rd third |
+|---|---|---|---|
+| keyboard (benign) | 0.997 | 0.994 | 0.982 |
+| mimicry (post-onset) | 0.988 | 0.870 | 0.683 |
+| hid_injection | 0.079 | 0.000 | 0.000 |
+| staged_delay | 0.149 | 0.008 | 0.001 |
+
+Note this is a *transition* count, not a payload-set count: both human and
+scripted typing draw keycodes from a similar alphabet, so distinct-payload
+novelty does **not** separate them. Order does.
+
+**The extractor is now stateful.** One `WindowFeatureExtractor` belongs to one
+device session; call `reset()` between sessions or the next device inherits the
+previous one's history and reads as suspiciously familiar traffic.
+`eval/corpus.py` constructs one per session. Remembered transitions are capped
+at 8192 so a bulk device emitting thousands of distinct random payloads per
+second cannot grow the set without bound.
+
+**Honesty caveat to state in the report.** This feature was designed *after*
+seeing which attack we were failing, using knowledge of how the simulator builds
+mimicry. That is overfitting to the corpus and must be declared. The defence is
+that the constraint is real, not synthetic: a keystroke-injection payload has to
+type specific commands, so it cannot randomise its sequence without ceasing to
+be a payload. An adversary can pad or reorder within limits, and the honest
+claim is "raises the cost", not "solves".
 
 ### eBPF go/no-go — **PENDING**
 

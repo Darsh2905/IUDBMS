@@ -51,6 +51,9 @@ def main() -> int:
     ap.add_argument("--seq-len", type=int, default=10,
                     help="LSTM sequence horizon in windows; tuned by eval.tune")
     ap.add_argument("--hidden", type=int, default=32)
+    ap.add_argument("--target-fpr", type=float, default=TARGET_FPR,
+                    help="per-window FPR the threshold is calibrated to; "
+                         "select it with eval.tune, never off the test curve")
     ap.add_argument("--cache", type=Path, default=None,
                     help="reuse a corpus built by eval.tune (out/corpus_cache.npz)")
     ap.add_argument("--quick", action="store_true", help="small corpus, few epochs")
@@ -98,7 +101,7 @@ def main() -> int:
                              feature_idx=deployed,
                              seed=args.seed, epochs=args.epochs,
                              seq_len=args.seq_len, hidden=args.hidden,
-                             keep_scores=True)
+                             target_fpr=args.target_fpr, keep_scores=True)
     results["full"] = full
 
     banner("[3/5] ABLATIONS")
@@ -193,7 +196,7 @@ def main() -> int:
         "config": {"n_benign": args.n_benign, "n_attack": args.n_attack,
                    "seed": args.seed, "epochs": args.epochs,
                    "seq_len": args.seq_len, "hidden": args.hidden,
-                   "target_fpr": TARGET_FPR, "gate": f"{GATE_K}-of-{GATE_N}"},
+                   "target_fpr": args.target_fpr, "gate": f"{GATE_K}-of-{GATE_N}"},
         "corpus": {"sessions": len(corpus.sessions), "usbmon_lines": corpus.n_lines,
                    "urb_events": corpus.n_events, "windows": corpus.n_windows,
                    "features": N_FEATURES},
@@ -241,8 +244,17 @@ def _sanity_warnings(full, s1_only) -> None:
     warnings = []
     if full.window["auc"] >= 0.9995:
         warnings.append(f"window AUC is {full.window['auc']:.4f} — effectively perfect")
+    if full.session["attack_detect"] == 1.0:
+        warnings.append(
+            "every attack session detected -- a perfect rate is a leakage signal more "
+            "often than a win, and hides which class is hardest")
     if full.session["attack_detect"] == 1.0 and full.session["benign_fp"] == 0.0:
         warnings.append("100% detection at 0% false positives on the same split")
+    per = full.per_profile
+    if per and all(v["detect_rate"] == 1.0 for v in per.values() if v["label"] == 1):
+        warnings.append(
+            "no attack class is harder than any other -- check that the adversarial "
+            "cases are still adversarial")
     if full.history and full.history[0].get("val_acc", 0) >= 0.99:
         warnings.append(f"epoch-1 validation accuracy is "
                         f"{full.history[0]['val_acc']:.4f} — the task may be trivially separable")
