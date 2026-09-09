@@ -20,10 +20,11 @@ from dataclasses import dataclass
 import numpy as np
 
 from iudbms.capture.simulator import SimulatedSource, Simulator
-from iudbms.contract import DeviceDescriptor
+from iudbms.contract import CONTRACT_VERSION, DeviceDescriptor
 from iudbms.features.extractor import WindowFeatureExtractor, window_events
 
-__all__ = ["SessionData", "Corpus", "build_corpus", "stratified_split"]
+__all__ = ["SessionData", "Corpus", "build_corpus", "stratified_split",
+           "save_corpus", "load_corpus"]
 
 
 @dataclass
@@ -132,3 +133,82 @@ def stratified_split(
     overlap = ({s.sid for s in fit} | {s.sid for s in val}) & {s.sid for s in test}
     assert not overlap, f"session leaked across the split: {overlap}"
     return fit, val, test
+
+
+def save_corpus(corpus: Corpus, path) -> None:
+    """Cache a built corpus so a hyperparameter sweep does not regenerate it.
+
+    Descriptors are stored structurally (not pickled) so a cache written by one
+    version of the contract cannot silently deserialise against another.
+    """
+    import json
+    from pathlib import Path
+
+    path = Path(path)
+    meta = {
+        "contract_version": CONTRACT_VERSION,
+        "n_lines": corpus.n_lines,
+        "n_events": corpus.n_events,
+        "sessions": [
+            {
+                "sid": s.sid, "profile": s.profile, "label": s.label,
+                "onset": s.onset, "duration": s.duration,
+                "descriptor": {
+                    "bus": s.descriptor.bus, "devnum": s.descriptor.devnum,
+                    "vid": s.descriptor.vid, "pid": s.descriptor.pid,
+                    "bDeviceClass": s.descriptor.bDeviceClass,
+                    "serial_present": s.descriptor.serial_present,
+                    "manufacturer": s.descriptor.manufacturer,
+                    "product": s.descriptor.product,
+                    "interfaces": [
+                        {"cls": i.bInterfaceClass, "sub": i.bInterfaceSubClass,
+                         "proto": i.bInterfaceProtocol, "first_seen_ts": i.first_seen_ts,
+                         "endpoints": [{"addr": e.addr, "type": e.type,
+                                        "interval": e.interval} for e in i.endpoints]}
+                        for i in s.descriptor.interfaces
+                    ],
+                },
+            }
+            for s in corpus.sessions
+        ],
+    }
+    arrays = {}
+    for i, s in enumerate(corpus.sessions):
+        arrays[f"X{i}"], arrays[f"t{i}"], arrays[f"y{i}"] = s.X, s.t, s.y
+    np.savez_compressed(path, meta=np.array(json.dumps(meta)), **arrays)
+
+
+def load_corpus(path) -> Corpus:
+    import json
+
+    from iudbms.contract import Endpoint, Interface
+
+    blob = np.load(path, allow_pickle=False)
+    meta = json.loads(str(blob["meta"]))
+    if meta["contract_version"].split(".")[0] != CONTRACT_VERSION.split(".")[0]:
+        raise RuntimeError(
+            f"corpus cache was built against contract {meta['contract_version']}, "
+            f"running {CONTRACT_VERSION}. Delete the cache and rebuild."
+        )
+
+    sessions = []
+    for i, m in enumerate(meta["sessions"]):
+        d = m["descriptor"]
+        desc = DeviceDescriptor(
+            bus=d["bus"], devnum=d["devnum"], vid=d["vid"], pid=d["pid"],
+            bDeviceClass=d["bDeviceClass"], serial_present=d["serial_present"],
+            manufacturer=d["manufacturer"], product=d["product"],
+            interfaces=tuple(
+                Interface(bInterfaceClass=f["cls"], bInterfaceSubClass=f["sub"],
+                          bInterfaceProtocol=f["proto"],
+                          endpoints=tuple(Endpoint(addr=e["addr"], type=e["type"],
+                                                   interval=e["interval"])
+                                          for e in f["endpoints"]),
+                          first_seen_ts=f["first_seen_ts"])
+                for f in d["interfaces"]),
+        )
+        sessions.append(SessionData(
+            sid=m["sid"], profile=m["profile"], label=m["label"], descriptor=desc,
+            X=blob[f"X{i}"], t=blob[f"t{i}"], y=blob[f"y{i}"],
+            onset=m["onset"], duration=m["duration"]))
+    return Corpus(sessions=sessions, n_lines=meta["n_lines"], n_events=meta["n_events"])

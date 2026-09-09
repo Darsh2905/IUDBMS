@@ -30,9 +30,9 @@ from pathlib import Path
 
 import numpy as np
 
-from iudbms.contract import MODALITIES, N_FEATURES, feature_index, modality_indices
+from iudbms.contract import MODALITIES, N_FEATURES, feature_index, modality_indices  # noqa: F401
 
-from .corpus import build_corpus, stratified_split
+from .corpus import build_corpus, load_corpus, stratified_split
 from .pipeline import GATE_K, GATE_N, TARGET_FPR, identity_whitelist_baseline, run_configuration
 
 OUT = Path(__file__).resolve().parent.parent / "out"
@@ -48,6 +48,11 @@ def main() -> int:
     ap.add_argument("--n-attack", type=int, default=140)
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--epochs", type=int, default=14)
+    ap.add_argument("--seq-len", type=int, default=10,
+                    help="LSTM sequence horizon in windows; tuned by eval.tune")
+    ap.add_argument("--hidden", type=int, default=32)
+    ap.add_argument("--cache", type=Path, default=None,
+                    help="reuse a corpus built by eval.tune (out/corpus_cache.npz)")
     ap.add_argument("--quick", action="store_true", help="small corpus, few epochs")
     ap.add_argument("--no-figures", action="store_true")
     ap.add_argument("--persist", action="store_true",
@@ -61,7 +66,15 @@ def main() -> int:
     OUT.mkdir(exist_ok=True)
 
     banner("[1/5] CORPUS  simulate -> usbmon text -> parse -> 28-dim windows")
-    corpus = build_corpus(args.n_benign, args.n_attack, seed=args.seed)
+    if args.cache and args.cache.exists():
+        corpus = load_corpus(args.cache)
+        n_b = sum(1 for s in corpus.sessions if s.label == 0)
+        print(f"  sessions        : {len(corpus.sessions)}  ({n_b} benign / "
+              f"{len(corpus.sessions) - n_b} malicious)   [cached]")
+        print(f"  usbmon lines    : {corpus.n_lines:,}")
+        print(f"  URB events      : {corpus.n_events:,}")
+    else:
+        corpus = build_corpus(args.n_benign, args.n_attack, seed=args.seed)
     fit, val, test = stratified_split(corpus.sessions, seed=args.seed)
     print(f"  windows (1.0 s) : {corpus.n_windows:,}   features/window: {N_FEATURES}")
     print(f"  split (sessions): fit={len(fit)}  val={len(val)}  test={len(test)}")
@@ -70,14 +83,28 @@ def main() -> int:
     results = {}
 
     banner("[2/5] FULL SYSTEM  Stage 1 + Stage 2 (PyTorch LSTM)")
+    # DEPLOYED FEATURE SET = 27 of 28. log_time_since_enum is excluded because
+    # it leaks the label: post-onset windows are later in a session by
+    # construction, so the feature separates every attack class from benign
+    # traffic (KS D = 0.03-0.41) without encoding any behaviour. A real
+    # attacker chooses onset adversarially; our corpus does not. Including it
+    # is reported below as an ablation rather than shipped.
+    deployed = np.array([i for i in range(N_FEATURES)
+                         if i != feature_index("log_time_since_enum")])
+    print(f"  deployed features: {len(deployed)} of {N_FEATURES} "
+          f"(log_time_since_enum excluded -- see ablation below)")
+    print(f"  sequence horizon: {args.seq_len} windows   hidden units: {args.hidden}")
     full = run_configuration(fit, val, test, name="IUDBMS (S1+S2)",
+                             feature_idx=deployed,
                              seed=args.seed, epochs=args.epochs,
-                             keep_scores=args.persist)
+                             seq_len=args.seq_len, hidden=args.hidden,
+                             keep_scores=True)
     results["full"] = full
 
     banner("[3/5] ABLATIONS")
     print("\n-- Stage-1 only (isolates pillar N3: temporal modelling) --")
     s1_only = run_configuration(fit, val, test, name="Stage 1 only",
+                                feature_idx=deployed,
                                 use_stage2=False, seed=args.seed, verbose=False)
     results["stage1_only"] = s1_only
 
@@ -86,26 +113,29 @@ def main() -> int:
     for m in MODALITIES:
         idx = np.array(modality_indices(m))
         r = run_configuration(fit, val, test, name=f"{m} only", feature_idx=idx,
-                              seed=args.seed, epochs=args.epochs, verbose=False)
+                              seed=args.seed, epochs=args.epochs,
+                              seq_len=args.seq_len, hidden=args.hidden, verbose=False)
         modality[m] = r
         print(f"  {m:9s} ({len(idx):2d} features)  AUC={r.window['auc']:.4f}  "
               f"detect={r.session['attack_detect']:.1%}  "
               f"FP={r.session['benign_fp']:.1%}")
     results["modality"] = modality
 
-    print("\n-- leave-one-out: log_time_since_enum (CLAUDE.md decision C) --")
-    keep = np.array([i for i in range(N_FEATURES) if i != feature_index("log_time_since_enum")])
-    loo = run_configuration(fit, val, test, name="without log_time_since_enum",
-                            feature_idx=keep, seed=args.seed, epochs=args.epochs,
-                            verbose=False)
-    results["without_time_feature"] = loo
+    print("\n-- adding back log_time_since_enum (the leaking feature) --")
+    loo = run_configuration(fit, val, test, name="with log_time_since_enum",
+                            feature_idx=None, seed=args.seed, epochs=args.epochs,
+                            seq_len=args.seq_len, hidden=args.hidden, verbose=False)
+    results["with_time_feature"] = loo
     d_auc = loo.window["auc"] - full.window["auc"]
     d_det = loo.session["attack_detect"] - full.session["attack_detect"]
-    print(f"  with    : AUC={full.window['auc']:.4f}  detect={full.session['attack_detect']:.1%}")
-    print(f"  without : AUC={loo.window['auc']:.4f}  detect={loo.session['attack_detect']:.1%}")
-    print(f"  delta   : AUC{d_auc:+.4f}  detect{d_det:+.1%}")
-    print("  A large drop would mean the model leans on session position rather")
-    print("  than behaviour. A small one means the feature is not load-bearing.")
+    print(f"  deployed (27 features) : AUC={full.window['auc']:.4f}  "
+          f"detect={full.session['attack_detect']:.1%}")
+    print(f"  plus the leak (28)     : AUC={loo.window['auc']:.4f}  "
+          f"detect={loo.session['attack_detect']:.1%}")
+    print(f"  delta                  : AUC{d_auc:+.4f}  detect{d_det:+.1%}")
+    print("  The feature separates every attack class from benign traffic purely")
+    print("  because post-onset windows are later in a session. Whatever it adds")
+    print("  is measuring our onset distribution, not the device's behaviour.")
 
     print("\n-- identity whitelist (USBGuard-style VID:PID allowlist) --")
     idw = identity_whitelist_baseline(fit, test)
@@ -145,12 +175,24 @@ def main() -> int:
         print(f"  {'detection latency':32s} median={fs['median_latency']:.1f}s   "
               f"p90={fs['p90_latency']:.1f}s")
 
+    banner("[4b/5] OPERATING POINT  the trade-off curve, not one number (plan §6)")
+    from .operating_curve import format_curves, sweep_gates, sweep_thresholds
+    thr_rows = sweep_thresholds(test, val, full,
+                                [0.0001, 0.0005, TARGET_FPR, 0.005, 0.01, 0.02])
+    gate_rows = sweep_gates(test, full, full.threshold,
+                            [(2, 6), (3, 6), (GATE_K, GATE_N), (5, 6), (6, 6)])
+    print(format_curves(thr_rows, gate_rows, full.threshold))
+    print("\n  The curve is DESCRIPTIVE. The deployed point is the one calibrated on")
+    print("  validation benign windows; reading a better point off this table and")
+    print("  adopting it would be selecting on the test split.")
+
     _sanity_warnings(full, s1_only)
 
     banner("[5/5] ARTEFACTS")
     metrics = {
         "config": {"n_benign": args.n_benign, "n_attack": args.n_attack,
                    "seed": args.seed, "epochs": args.epochs,
+                   "seq_len": args.seq_len, "hidden": args.hidden,
                    "target_fpr": TARGET_FPR, "gate": f"{GATE_K}-of-{GATE_N}"},
         "corpus": {"sessions": len(corpus.sessions), "usbmon_lines": corpus.n_lines,
                    "urb_events": corpus.n_events, "windows": corpus.n_windows,
@@ -163,9 +205,12 @@ def main() -> int:
                         "session": s1_only.session, "per_profile": s1_only.per_profile},
         "modality_ablation": {m: {"window": r.window, "session": r.session}
                               for m, r in modality.items()},
-        "without_time_feature": {"window": loo.window, "session": loo.session,
-                                 "delta_auc": d_auc, "delta_detect": d_det},
+        "deployed_features": len(deployed),
+        "with_time_feature": {"window": loo.window, "session": loo.session,
+                              "per_profile": loo.per_profile,
+                              "delta_auc": d_auc, "delta_detect": d_det},
         "identity_whitelist": idw,
+        "operating_curve": {"threshold_sweep": thr_rows, "gate_sweep": gate_rows},
         "runtime_sec": round(time.time() - t_start, 1),
     }
     path = OUT / "metrics.json"

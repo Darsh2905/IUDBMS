@@ -55,47 +55,66 @@ make baseline                             # re-run the Sprint-0 prototype for co
 
 ## Measured results
 
-Regenerate with `make eval` (seeded, ~65 s). Corpus: 350 synthetic
-sessions, 4,198,276 usbmon lines, 22,037 windows.
-Split by session, stratified by profile.
+Regenerate with `make eval` (seeded, ~105 s). Corpus: 1000 synthetic sessions,
+12,823,600 usbmon lines, 62,986 windows. Split by session, stratified
+by profile: fit=562 / val=140 / test=298.
+
+The deployed model uses **27 of the 28 features** —
+`log_time_since_enum` is excluded because it leaks the label (see below).
 
 | model | window ROC-AUC | precision | recall | session detection |
 |---|---|---|---|---|
-| IUDBMS (Stage 1 + Stage 2) | 0.9733 | 0.999 | 0.722 | **81.0%** |
-| Stage 1 only (no temporal model) | 0.8894 | 0.995 | 0.406 | 42.9% |
+| IUDBMS (Stage 1 + Stage 2) | 0.9837 | 0.998 | 0.848 | **86.7%** |
+| Stage 1 only (no temporal model) | 0.9387 | 0.997 | 0.450 | 43.3% |
 | Identity whitelist (USBGuard-style) | — | — | — | 0.0% |
 
-Benign session false-positive rate 0.0%
-(0.00 alerts/benign-hour);
-median detection latency 3.9 s.
-
-Per attack class:
+Benign session false-positive rate 0.0%; median detection latency
+3.5 s (p90 3.8 s).
 
 | attack | n | IUDBMS | Stage-1 only | median latency |
 |---|---|---|---|---|
-| `class_exfil` | 7 | 100% | 100% | 3.8 s |
-| `hid_injection` | 7 | 100% | 0% | 4.5 s |
-| `identity_switch` | 11 | 100% | 100% | 3.6 s |
-| `mimicry` | 10 | 20% | 0% | 6.4 s |
-| `staged_delay` | 7 | 100% | 0% | 4.0 s |
+| `class_exfil` | 29 | 100% | 100% | 3.5 s |
+| `hid_injection` | 26 | 100% | 0% | 3.6 s |
+| `identity_switch` | 23 | 100% | 100% | 3.3 s |
+| `mimicry` | 16 | 0% | 0% | — |
+| `staged_delay` | 26 | 100% | 0% | 3.4 s |
 
-**`mimicry` is the honest hard case and we do not solve it.** It clones a
-keyboard descriptor *and* draws its keystroke timing from the same distribution
-as a human operator, leaving only a structural tell (a replayed script). We
-detect 20% of them. The plan
-anticipated this (§8, risk register) and the correct response is to report it
-as a bound, not to tune it away.
+**`mimicry` is detected 0 % of the time, on 16 test sessions.** It clones a keyboard
+descriptor *and* draws keystroke timing from the same distribution as a human operator.
+Only 1 of the 28 per-window features separates it from benign typing — and that one is
+`log_time_since_enum`, which we removed as a leak. There is no per-window signal left for
+the LSTM to integrate, which is why a sequence-horizon sweep (10 / 20 / 30 windows) moved
+it not at all. Detecting it needs a *cross-window* payload feature the frozen 28 do not
+contain. The plan anticipated this case (§8) and specified reporting it as a bound.
 
-Single-modality ablation (novelty pillar N1) — no single modality reaches the
-fused system:
+Single-modality ablation (novelty pillar N1):
 
 | modality | features | window AUC | session detection |
 |---|---|---|---|
-| timing | 9 | 0.9692 | 76.2% |
-| payload | 7 | 0.9651 | 76.2% |
-| protocol | 6 | 0.9533 | 78.6% |
-| identity | 6 | 0.9075 | 45.2% |
-| **all four fused** | **28** | **0.9733** | **81.0%** |
+| timing | 9 | 0.9836 | 87.5% |
+| payload | 7 | 0.9832 | 86.7% |
+| protocol | 6 | 0.9752 | 86.7% |
+| identity | 6 | 0.9111 | 45.0% |
+| **deployed (fused)** | **27** | **0.9837** | **86.7%** |
+
+Fusion is *not* clearly earning its keep: timing alone reaches 87.5%,
+which is one test session more than the fused model out of 120. On this corpus N1 is
+unsupported; the honest reading is that our attack families differ from benign traffic on
+several axes at once.
+
+Operating point (plan §6 — the curve, not one number):
+
+| target per-window FPR | threshold | detection | benign session FP |
+|---|---|---|---|
+| 0.01% | 0.7952 | 86.7% | 0.0% |
+| 0.05% | 0.7386 | 86.7% | 0.0% |
+| 0.10% | 0.7127 | 86.7% | 0.0% |  ← deployed
+| 0.50% | 0.6093 | 87.5% | 3.9% |
+| 1.00% | 0.5491 | 90.0% | 7.9% |
+| 2.00% | 0.4621 | 94.2% | 12.9% |
+
+The curve is descriptive. The deployed point is calibrated on *validation* benign windows;
+picking a better row off this table would be selecting on the test split.
 
 ## Honest caveats
 
