@@ -14,9 +14,10 @@ taken since* the plan was written.
 
 Milestones 1-7, 9 and 10 are done. Only M8 (eBPF) remains, deferred by plan §7.
 Run the dashboard with `uvicorn iudbms.api.app:app` and open http://localhost:8000.
-There is no long-lived streaming detector yet — the harness constructs a
-DeviceBaseline per session and discards it, which is why the SQLite
-`baselines` table persists as empty.
+`iudbms.live.StreamingDetector` is the long-lived detector a deployment runs:
+per-device extractor, baseline, sequence window and gate, advanced one window at
+a time. `scripts/live_replay.py` drives it at wall-clock speed
+(`make demo` / `make demo-hard`).
 `make eval` regenerates every reported number in ~65 s. `prototype/` is the Sprint-0 vertical slice: it runs end to end and
 produced the numbers in `out/metrics.json`, but it is being ported module by
 module into `src/iudbms/` and should not be extended in place.
@@ -377,6 +378,29 @@ FPR, so it is entirely this fix. Its old 44.2% was substantially artefact:
 because the model ranked it. Stage 1 now catches only `identity_switch` (60.9%)
 while its window AUC stays high (0.9363) — it still *ranks* well, it is the tight
 operating point that costs recall. This strengthens N3 rather than weakening it.
+
+### Milestone 11 (unplanned) — the streaming detector
+
+Everything else scores a *stored* session: the harness builds an extractor and a
+baseline per session, scores the whole array, throws the state away. Fine for
+measurement, useless as a monitor, and the reason the `baselines` table was
+always empty. It also meant **nothing demonstrated the closed loop the thesis
+rests on** — a reviewer could fairly say we had built a batch classifier.
+
+`src/iudbms/live/detector.py` holds the per-device state a deployment needs and
+advances one window at a time with no future information. Causality is
+structural rather than promised: it cannot see a future window because it has
+not been given one.
+
+`test_streaming_matches_offline_scoring` asserts live scores are numerically
+identical to the offline ones. **Keep that test.** If they ever diverge, either
+the reported numbers stop describing the deployed system or the demo becomes a
+mock, and both are silent failures.
+
+`eval/run_eval.py --persist` now also writes `out/models/` (stage1.pkl,
+stage2.pt, deploy.json) so the replay runs the exact weights the reported
+numbers came from, and `Stage1.save/load` refuses a contract major mismatch the
+way the LSTM already did.
 
 ### eBPF go/no-go — **PENDING**
 

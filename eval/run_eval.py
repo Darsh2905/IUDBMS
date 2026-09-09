@@ -30,7 +30,9 @@ from pathlib import Path
 
 import numpy as np
 
-from iudbms.contract import MODALITIES, N_FEATURES, feature_index, modality_indices  # noqa: F401
+from iudbms.contract import (  # noqa: F401
+    CONTRACT_VERSION, MODALITIES, N_FEATURES, feature_index, modality_indices,
+)
 
 from .corpus import build_corpus, load_corpus, stratified_split
 from .pipeline import GATE_K, GATE_N, TARGET_FPR, identity_whitelist_baseline, run_configuration
@@ -224,6 +226,23 @@ def main() -> int:
     path = OUT / "metrics.json"
     path.write_text(json.dumps(metrics, indent=2, default=float))
     print(f"  wrote {path.relative_to(OUT.parent)}")
+
+    # Save the trained models so the streaming detector runs the exact weights
+    # these numbers were produced by.
+    if full.models:
+        mdir = OUT / "models"
+        mdir.mkdir(exist_ok=True)
+        s1m, s2m = full.models
+        s1m.save(mdir / "stage1.pkl")
+        if s2m is not None:
+            s2m.save(mdir / "stage2.pt")
+        (mdir / "deploy.json").write_text(json.dumps({
+            "feature_idx": [int(i) for i in deployed],
+            "threshold": full.threshold, "target_fpr": args.target_fpr,
+            "seq_len": args.seq_len, "k": GATE_K, "n": GATE_N,
+            "contract_version": CONTRACT_VERSION,
+        }, indent=2))
+        print(f"  wrote out/models/  (stage1.pkl, stage2.pt, deploy.json)")
 
     if args.persist:
         from .persist import persist_run
