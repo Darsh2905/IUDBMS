@@ -12,8 +12,8 @@ taken since* the plan was written.
 
 ## 1. Current state
 
-Milestone 1 (repo skeleton + frozen data contract) is done. Milestones 2–10 are
-not started. `prototype/` is the Sprint-0 vertical slice: it runs end to end and
+Milestones 1 (data contract) and 2 (usbmon reader) are done. Milestones 3–10
+are not started. `prototype/` is the Sprint-0 vertical slice: it runs end to end and
 produced the numbers in `out/metrics.json`, but it is being ported module by
 module into `src/iudbms/` and should not be extended in place.
 
@@ -87,13 +87,13 @@ Use `URBEvent.validate()` in tests and at source boundaries.
 
 Found by adversarial reading before any porting. Do not rediscover these.
 
-1. **The parser silently drops four real `usbmon` line forms.** Tested against
+1. **FIXED in M2.** **The parser silently dropped four real `usbmon` line forms.** Tested against
    `Documentation/usb/usbmon.rst`: control submissions with a setup packet
    (`s 80 06 ...`), *every* submission line (`<` data tag), every line where
    the payload was not captured (`-` tag), and iso completions carrying
    `status:interval:start_frame:errcount`. Dropped with no counter, so the
    plan's "< 0.1 % loss" criterion could not be evaluated at all.
-2. **`length` read the polling interval.** Given `0:4` with a true data length
+2. **FIXED in M2.** **`length` read the polling interval.** Given `0:4` with a true data length
    of 8, the old parser returned 4. Invisible on simulator output only because
    the simulator emits `0:8` for 8-byte HID reports, so the two coincide.
    Affects `mean_len`, `max_len`, `bytes_in_rate`, `bytes_out_rate`.
@@ -124,6 +124,26 @@ Found by adversarial reading before any porting. Do not rediscover these.
 | 09 Sep | Keep `log_time_since_enum`, add leave-one-feature-out ablation | Legitimate in deployment, but it is the channel defect 4 flows through, so its contribution is measured rather than assumed. |
 | 09 Sep | VM used for *recorded* captures, not live demos | Capture 60 s of real usbmon on the Linux VM, commit it under `tests/fixtures/usbmon/`, replay through the identical `EventSource` path. Avoids USB passthrough and root prompts during a review, and doubles as a permanent regression fixture. |
 | 09 Sep | `src/` layout; simulator demoted to one `EventSource` | See §2. |
+
+### Milestone 2 notes
+
+`capture/usbmon.py` parses by whitespace tokenisation, not one large regex: the
+optional-field combinatorics in the status word make a single pattern slower
+and much harder to audit, and tokenisation tolerates unknown fields (iso frame
+descriptors) by scanning forward for the data tag instead of failing outright.
+Measured 194k events/s — ~10x the plan §4.1 floor of 20k.
+
+`UsbmonSource` reads a live debugfs node and a recorded file through the same
+code path, which is what makes a VM-recorded trace replayable on macOS.
+`scripts/vm_capture.sh` records both the trace and a sysfs descriptor snapshot;
+run it on the VM and commit the output under `tests/fixtures/usbmon/`.
+
+Contract bumped to **1.1.0**: `URBEvent.setup` was added when control
+submissions turned out to have nowhere to put their 8-byte SETUP packet. It is
+kept out of `data` because `length` is the requested *data* length, routinely
+smaller than 8, so SETUP in `data` would break the `len(data) <= length`
+invariant. Append-only with a default, and no checkpoints existed yet, so
+nothing retrained.
 
 ### eBPF go/no-go — **PENDING**
 
