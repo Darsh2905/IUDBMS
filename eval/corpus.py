@@ -62,12 +62,16 @@ def build_corpus(
     verbose: bool = True,
 ) -> Corpus:
     sim = Simulator(seed=seed)
-    ex = WindowFeatureExtractor()
     sessions: list[SessionData] = []
     n_lines = n_events = 0
 
     for sid, profile in sim.plan(n_benign=n_benign, n_attack=n_attack):
         s = sim.session(sid, profile)
+        # One extractor per session. It carries payload history for
+        # payload_seq_novelty (contract 2.0.0); sharing one across sessions
+        # would make each device inherit the previous device's history and
+        # read as suspiciously familiar traffic.
+        ex = WindowFeatureExtractor()
         n_lines += len(s.lines)
         events = list(SimulatedSource(s).events())
         n_events += len(events)

@@ -337,3 +337,131 @@ def test_event_exactly_on_a_window_boundary_is_not_dropped():
     assert len(got) == 5
     assert got[4][1] and got[4][0] == 4.0
     assert sum(len(b) for _, b in got) == 1
+
+
+# --------------------------------------------------------------------------
+# payload_seq_novelty — the cross-window feature (contract 2.0.0)
+# --------------------------------------------------------------------------
+
+def _run_session(payload_seq, ex=None):
+    """Feed one payload per window and return payload_seq_novelty per window."""
+    ex = ex or WindowFeatureExtractor()
+    out = []
+    for w, chunk in enumerate(payload_seq):
+        evs = [ev(w + 0.01 * i, data=p) for i, p in enumerate(chunk)]
+        out.append(feat(ex.extract_checked(evs, float(w), kbd()), "payload_seq_novelty"))
+    return out
+
+
+def test_seq_novelty_stays_high_for_novel_payloads():
+    rng = np.random.default_rng(0)
+    windows = [[bytes(rng.integers(0, 255, 8)) for _ in range(6)] for _ in range(10)]
+    vals = _run_session(windows)
+    assert min(vals) > 0.9
+
+
+def test_seq_novelty_decays_for_a_replayed_script():
+    """A BadUSB payload replays a fixed keystroke sequence, so its payload
+    transitions repeat. This is the signal the per-window features cannot
+    carry, and the reason mimicry was undetectable without it."""
+    script = [bytes([0, 0, k, 0, 0, 0, 0, 0]) for k in range(4, 12)]
+    windows = [script for _ in range(10)]
+    vals = _run_session(windows)
+    assert vals[0] > 0.5, "first pass through the script is genuinely novel"
+    assert vals[-1] < 0.1, "after cycling, nothing is new"
+    assert vals[0] > vals[-1]
+
+
+def test_seq_novelty_is_measured_causally():
+    """Each transition is judged against history from before it, so training
+    and live inference see identical values."""
+    script = [bytes([0, 0, k, 0, 0, 0, 0, 0]) for k in range(4, 10)]
+    full = _run_session([script] * 6)
+    prefix = _run_session([script] * 3)
+    assert full[:3] == pytest.approx(prefix)
+
+
+def test_seq_novelty_spans_window_boundaries():
+    """The transition between the last payload of one window and the first of
+    the next is real and must be counted."""
+    a, b = bytes([1] * 8), bytes([2] * 8)
+    ex = WindowFeatureExtractor()
+    _run_session([[a, b], [a, b]], ex=ex)
+    assert ((a, b) in ex._seen_bigrams) and ((b, a) in ex._seen_bigrams), (
+        "the b->a transition only exists across the window boundary"
+    )
+
+
+def test_idle_window_is_neutral_not_suspicious():
+    """Silence must not manufacture an alert."""
+    assert feat(EX.extract_checked([], 0.0, kbd()), "payload_seq_novelty") == 1.0
+
+
+def test_single_payload_window_is_neutral():
+    ex = WindowFeatureExtractor()
+    assert _run_session([[bytes([1] * 8)]], ex=ex)[0] == 1.0
+
+
+def test_reset_forgets_session_history():
+    """One extractor per device. Without reset, the next device inherits this
+    one's history and reads as suspiciously familiar traffic."""
+    script = [bytes([0, 0, k, 0, 0, 0, 0, 0]) for k in range(4, 10)]
+    ex = WindowFeatureExtractor()
+    _run_session([script] * 5, ex=ex)
+    stale = _run_session([script], ex=ex)[0]
+    ex.reset()
+    assert ex._prev_payload is None and not ex._seen_bigrams
+    fresh = _run_session([script], ex=ex)[0]
+    assert stale < 0.1, "history was still present before reset"
+    assert fresh > 0.5, "history survived the reset"
+
+
+def test_remembered_history_is_bounded():
+    """A bulk device emits thousands of distinct random payloads per second."""
+    rng = np.random.default_rng(1)
+    ex = WindowFeatureExtractor()
+    cap = ex.MAX_REMEMBERED_BIGRAMS
+    windows = [[bytes(rng.integers(0, 255, 8)) for _ in range(400)] for _ in range(40)]
+    vals = _run_session(windows, ex=ex)
+    assert len(ex._seen_bigrams) <= cap
+    assert vals[-1] > 0.9, "random data stays novel once the cap is reached"
+
+
+@pytest.mark.slow
+def test_seq_novelty_is_behaviour_not_session_position():
+    """The guard that separates this feature from log_time_since_enum.
+
+    payload_seq_novelty decays over a session by nature, and malicious windows
+    are post-onset (hence later) by construction -- exactly the shape of the
+    label leak that got log_time_since_enum removed. The distinguishing test is
+    positional control: benign typing must hold its novelty at *every* window
+    position, so that late benign windows score no worse than early attack ones.
+    If that inverts, the feature is measuring position and must go.
+    """
+    from iudbms.capture.simulator import Simulator, SimulatedSource
+
+    sim = Simulator(seed=77)
+    late_benign, early_mimicry = [], []
+    for i in range(5):
+        s = sim.session(f"S{i:04d}", "keyboard")
+        ex = WindowFeatureExtractor()
+        for t0, bucket in window_events(list(SimulatedSource(s).events()),
+                                        duration=s.duration):
+            v = feat(ex.extract(bucket, t0, s.descriptor), "payload_seq_novelty")
+            if t0 >= 40:
+                late_benign.append(v)
+    for i in range(5):
+        s = sim.session(f"A{i:04d}", "mimicry")
+        ex = WindowFeatureExtractor()
+        for t0, bucket in window_events(list(SimulatedSource(s).events()),
+                                        duration=s.duration):
+            v = feat(ex.extract(bucket, t0, s.descriptor), "payload_seq_novelty")
+            if s.onset is not None and t0 > s.onset and t0 < 25:
+                early_mimicry.append(v)
+
+    assert late_benign and early_mimicry
+    assert np.mean(late_benign) > np.mean(early_mimicry), (
+        f"late benign {np.mean(late_benign):.3f} scored below early mimicry "
+        f"{np.mean(early_mimicry):.3f} -- the feature tracks session position, "
+        f"not behaviour, and is a label leak like log_time_since_enum was"
+    )

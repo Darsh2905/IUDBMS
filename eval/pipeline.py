@@ -71,6 +71,7 @@ def run_configuration(
     keep_scores: bool = False,
     score_on: str = "report",
     calibrate_on: str = "calib",
+    target_fpr: float = TARGET_FPR,
 ) -> Result:
     """Train and evaluate one configuration.
 
@@ -142,7 +143,7 @@ def run_configuration(
         )
     cal = {"report": report, "calib": calib, "train": train}[calibrate_on]
     cal_benign = np.concatenate([scores[s.sid][s.y == 0] for s in cal])
-    threshold = float(np.quantile(cal_benign, 1 - TARGET_FPR))
+    threshold = float(np.quantile(cal_benign, 1 - target_fpr))
 
     # ---------------- window level ----------------------------------------
     # score_on="val" is what every hyperparameter sweep uses. The test split is
