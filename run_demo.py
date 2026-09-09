@@ -19,13 +19,13 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_auc_score, precision_recall_fscore_support
 
-from iudbms.simulator import Simulator, ATTACK_PROFILES
-from iudbms.usbmon_parser import parse
-from iudbms.features import sessionise, FEATURE_NAMES
-from iudbms.stage1 import Stage1, DeviceBaseline, class_group
-from iudbms.stage2_lstm import LSTMClassifier, build_sequences, SEQ_LEN
-from iudbms.storage import Store
-from iudbms.enforcement import PolicyEngine
+from prototype.simulator import Simulator, ATTACK_PROFILES
+from prototype.usbmon_parser import parse
+from prototype.features import sessionise, FEATURE_NAMES
+from prototype.stage1 import Stage1, DeviceBaseline, class_group
+from prototype.stage2_lstm import LSTMClassifier, build_sequences, SEQ_LEN
+from prototype.storage import Store
+from prototype.enforcement import PolicyEngine
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out")
 SEED = 7
