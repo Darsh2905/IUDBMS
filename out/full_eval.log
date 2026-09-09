@@ -75,7 +75,8 @@ Session level (threshold @ 0.1% validation FPR, 4-of-6 gate)
 [5/5] ARTEFACTS
 ==========================================================================
   wrote out/metrics.json
+  wrote out/iudbms.db  {'devices': 350, 'windows': 22037, 'baselines': 0, 'alerts': 216, 'actions': 216}
   wrote out/detection_by_class.png
   wrote out/modality_ablation.png
 
-  total runtime 64.9s
+  total runtime 71.2s

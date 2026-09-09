@@ -13,8 +13,11 @@ taken since* the plan was written.
 ## 1. Current state
 
 Milestones 1-7 and 10 are done (contract, usbmon reader, features, Stage 1,
-Stage 2, policy engine, SQLite storage, evaluation harness). Not started:
-the FastAPI layer, the React dashboard (M9), and eBPF (M8, deferred by plan §7).
+Stage 2, policy engine, SQLite storage + FastAPI, evaluation harness).
+Not started: the React dashboard (M9) and eBPF (M8, deferred by plan §7).
+There is no long-lived streaming detector yet — the harness constructs a
+DeviceBaseline per session and discards it, which is why the SQLite
+`baselines` table persists as empty.
 `make eval` regenerates every reported number in ~65 s. `prototype/` is the Sprint-0 vertical slice: it runs end to end and
 produced the numbers in `out/metrics.json`, but it is being ported module by
 module into `src/iudbms/` and should not be extended in place.

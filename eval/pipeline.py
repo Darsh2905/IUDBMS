@@ -40,6 +40,11 @@ class Result:
     session: dict = field(default_factory=dict)
     per_profile: dict = field(default_factory=dict)
     history: list = field(default_factory=list)
+    #: Populated only when keep_scores=True, so the default path does not
+    #: retain per-window arrays for every session in the corpus.
+    stage1: dict = field(default_factory=dict)
+    stage2: dict = field(default_factory=dict)
+    evidence: dict = field(default_factory=dict)
 
 
 def _stack(sessions: list[SessionData], idx: np.ndarray | None, key: str) -> np.ndarray:
@@ -60,6 +65,7 @@ def run_configuration(
     seed: int = 7,
     epochs: int = 14,
     verbose: bool = True,
+    keep_scores: bool = False,
 ) -> Result:
     """Train and evaluate one configuration.
 
@@ -173,8 +179,11 @@ def run_configuration(
             "median_latency": float(np.median(lats)) if lats else None,
         }
 
-    return Result(name=name, threshold=threshold, window=window,
-                  session=session, per_profile=per_profile, history=history)
+    result = Result(name=name, threshold=threshold, window=window,
+                    session=session, per_profile=per_profile, history=history)
+    if keep_scores:
+        result.stage1, result.stage2, result.evidence = S1, scores, EXPL
+    return result
 
 
 def identity_whitelist_baseline(fit: list[SessionData], test: list[SessionData]) -> dict:
