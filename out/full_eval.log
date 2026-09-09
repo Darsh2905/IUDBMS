@@ -109,6 +109,7 @@ Session level (threshold @ 0.1% validation FPR, 4-of-6 gate)
 [5/5] ARTEFACTS
 ==========================================================================
   wrote out/metrics.json
+  wrote out/models/  (stage1.pkl, stage2.pt, deploy.json)
   wrote out/iudbms.db  {'devices': 1000, 'windows': 62986, 'baselines': 0, 'alerts': 796, 'actions': 796}
   wrote out/detection_by_class.png
   wrote out/modality_ablation.png
@@ -116,4 +117,4 @@ Session level (threshold @ 0.1% validation FPR, 4-of-6 gate)
   wrote out/session_timelines.png
   wrote out/seq_novelty_decay.png
 
-  total runtime 101.6s
+  total runtime 109.1s

@@ -49,7 +49,9 @@ make test                                 # 189 tests
 make eval                                 # regenerate every reported number (~70 s)
 python3 -m eval.leakage_audit             # plan §5 mandatory leakage audit
 python3 -m eval.run_eval --persist        # also populate out/iudbms.db
-uvicorn iudbms.api.app:app                # control API on :8000
+make dashboard                            # operator dashboard on :8000
+make demo                                 # live replay: watch the loop close
+make demo-hard                            # the same, on the mimicry adversary
 make baseline                             # re-run the Sprint-0 prototype for comparison
 ```
 

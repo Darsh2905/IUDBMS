@@ -1,5 +1,5 @@
 # IUDBMS — development entry points.
-.PHONY: help install test test-fast lint eval demo baseline clean
+.PHONY: help install test test-fast lint eval demo demo-hard dashboard baseline clean
 
 help:
 	@grep -E '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -18,6 +18,15 @@ lint:  ## ruff check (no-op if ruff is absent)
 
 eval:  ## regenerate every reported table/figure (seeded)
 	python3 -m eval.run_all
+
+demo:  ## live replay: watch the loop close in real time (needs `make eval` first)
+	python3 scripts/live_replay.py --profile staged_delay --speed 6
+
+demo-hard:  ## the same, on the mimicry adversary (slow, noisy detection)
+	python3 scripts/live_replay.py --profile mimicry --speed 6
+
+dashboard:  ## operator dashboard on http://localhost:8000
+	python3 -m uvicorn iudbms.api.app:app
 
 baseline:  ## re-run the Sprint-0 prototype for comparison (~46 s)
 	python3 run_demo.py

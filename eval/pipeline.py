@@ -45,6 +45,9 @@ class Result:
     stage1: dict = field(default_factory=dict)
     stage2: dict = field(default_factory=dict)
     evidence: dict = field(default_factory=dict)
+    #: (Stage1, LSTMDetector|None) — saved so the live detector runs the same
+    #: weights the reported numbers were produced by.
+    models: tuple = ()
 
 
 def _stack(sessions: list[SessionData], idx: np.ndarray | None, key: str) -> np.ndarray:
@@ -111,6 +114,7 @@ def run_configuration(
 
     # ---------------- Stage 2 ----------------
     history: list = []
+    model = None
     if use_stage2:
         def seqset(group):
             Xs = [build_sequences(np.hstack([s.X[:, sel], S1[s.sid].reshape(-1, 1)]),
@@ -209,6 +213,7 @@ def run_configuration(
                     session=session, per_profile=per_profile, history=history)
     if keep_scores:
         result.stage1, result.stage2, result.evidence = S1, scores, EXPL
+    result.models = (s1, model if use_stage2 else None)
     return result
 
 

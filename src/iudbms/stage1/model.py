@@ -214,6 +214,40 @@ class Stage1:
         v = float(np.percentile(dev_raw_benign, 99)) if len(dev_raw_benign) else 1.0
         self.scale["dev"] = v if v > 0 else 1.0
 
+    # ------------------------------------------------------------------
+    # persistence
+    # ------------------------------------------------------------------
+
+    def save(self, path) -> None:
+        import pickle
+        from pathlib import Path
+
+        from ..contract import CONTRACT_VERSION
+        Path(path).write_bytes(pickle.dumps({
+            "contract_version": CONTRACT_VERSION,
+            "forests": self.forests, "mu": self.mu, "sd": self.sd,
+            "scale": self.scale, "seed": self.seed,
+            "feature_names": self.feature_names,
+        }))
+
+    @classmethod
+    def load(cls, path) -> "Stage1":
+        import pickle
+        from pathlib import Path
+
+        from ..contract import CONTRACT_VERSION
+        blob = pickle.loads(Path(path).read_bytes())
+        got = blob.get("contract_version")
+        if got and got.split(".")[0] != CONTRACT_VERSION.split(".")[0]:
+            raise RuntimeError(
+                f"Stage 1 was fit against contract {got}, running {CONTRACT_VERSION}. "
+                f"The feature vector changed width; retrain rather than load."
+            )
+        m = cls(seed=blob["seed"], feature_names=blob["feature_names"])
+        m.forests, m.mu, m.sd, m.scale = (
+            blob["forests"], blob["mu"], blob["sd"], blob["scale"])
+        return m
+
     def score_session(
         self,
         X: np.ndarray,
