@@ -12,8 +12,8 @@ taken since* the plan was written.
 
 ## 1. Current state
 
-Milestones 1 (data contract) and 2 (usbmon reader) are done. Milestones 3–10
-are not started. `prototype/` is the Sprint-0 vertical slice: it runs end to end and
+Milestones 1 (data contract), 2 (usbmon reader) and 3 (feature extractor)
+are done. Milestones 4–10 are not started. `prototype/` is the Sprint-0 vertical slice: it runs end to end and
 produced the numbers in `out/metrics.json`, but it is being ported module by
 module into `src/iudbms/` and should not be extended in place.
 
@@ -144,6 +144,24 @@ kept out of `data` because `length` is the requested *data* length, routinely
 smaller than 8, so SETUP in `data` would break the `len(data) <= length`
 invariant. Append-only with a default, and no checkpoints existed yet, so
 nothing retrained.
+
+### Milestone 3 notes
+
+**Features are computed over completions and errors only (`C`, `E`), never
+submissions (`S`).** Every submission has a matching completion, so counting
+both doubles every rate while adding no information and makes the result depend
+on kernel scheduling rather than device behaviour; the completion is also the
+event that actually moved data (a submission's `length` is only the *requested*
+size).
+
+This resolves defect 3's second half. Adding `S` events to the simulator makes
+the trace realistic **without shifting any baseline**, because L2 ignores them —
+`test_submissions_do_not_change_the_vector` asserts the vector is bit-identical
+with and without them. It is also what lets the usbmon and eBPF backends agree
+on event counts (plan §4.1) regardless of whether a backend reports submissions.
+
+`frac_ctrl` is live as soon as the corpus contains control traffic; that half of
+defect 3 is fixed by the simulator work, not here.
 
 ### eBPF go/no-go — **PENDING**
 
