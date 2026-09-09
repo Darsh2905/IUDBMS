@@ -50,6 +50,9 @@ def main() -> int:
     ap.add_argument("--epochs", type=int, default=14)
     ap.add_argument("--quick", action="store_true", help="small corpus, few epochs")
     ap.add_argument("--no-figures", action="store_true")
+    ap.add_argument("--persist", action="store_true",
+                    help="write devices/windows/alerts/actions to out/iudbms.db "
+                         "so the API and dashboard have something to serve")
     args = ap.parse_args()
     if args.quick:
         args.n_benign, args.n_attack, args.epochs = 60, 40, 4
@@ -68,7 +71,8 @@ def main() -> int:
 
     banner("[2/5] FULL SYSTEM  Stage 1 + Stage 2 (PyTorch LSTM)")
     full = run_configuration(fit, val, test, name="IUDBMS (S1+S2)",
-                             seed=args.seed, epochs=args.epochs)
+                             seed=args.seed, epochs=args.epochs,
+                             keep_scores=args.persist)
     results["full"] = full
 
     banner("[3/5] ABLATIONS")
@@ -167,6 +171,11 @@ def main() -> int:
     path = OUT / "metrics.json"
     path.write_text(json.dumps(metrics, indent=2, default=float))
     print(f"  wrote {path.relative_to(OUT.parent)}")
+
+    if args.persist:
+        from .persist import persist_run
+        db = persist_run(OUT / "iudbms.db", corpus.sessions, full)
+        print(f"  wrote out/iudbms.db  {db}")
 
     if not args.no_figures:
         from .figures import write_figures

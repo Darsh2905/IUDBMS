@@ -30,7 +30,7 @@ Working notes and decisions: [`CLAUDE.md`](CLAUDE.md).
 | 4 | Stage 1 — iForest + per-device EWMA baseline | **done** |
 | 5 | Stage 2 — PyTorch LSTM | **done** |
 | 6 | Policy engine — k-of-n gate, escalation, safety interlocks | **done** |
-| 7 | SQLite storage + FastAPI | storage **done**; API not started |
+| 7 | SQLite storage + FastAPI | **done** |
 | 8 | eBPF capture path | deferred (plan §7 W11 — designated sacrifice) |
 | 9 | React dashboard | not started |
 | 10 | Evaluation harness + ablations | **done** |
@@ -44,9 +44,13 @@ project results — see the caveats in plan §10 and the defect list in
 ## Quick start
 
 ```bash
-make install     # editable install + dev extras
-make test        # pytest
-make baseline    # re-run the Sprint-0 prototype (~46 s, seeded)
+make install                              # editable install + dev extras
+make test                                 # 189 tests
+make eval                                 # regenerate every reported number (~70 s)
+python3 -m eval.leakage_audit             # plan §5 mandatory leakage audit
+python3 -m eval.run_eval --persist        # also populate out/iudbms.db
+uvicorn iudbms.api.app:app                # control API on :8000
+make baseline                             # re-run the Sprint-0 prototype for comparison
 ```
 
 ## Measured results
