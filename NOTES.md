@@ -12,8 +12,10 @@ taken since* the plan was written.
 
 ## 1. Current state
 
-Milestones 1 (data contract), 2 (usbmon reader) and 3 (feature extractor)
-are done. Milestones 4–10 are not started. `prototype/` is the Sprint-0 vertical slice: it runs end to end and
+Milestones 1-7 and 10 are done (contract, usbmon reader, features, Stage 1,
+Stage 2, policy engine, SQLite storage, evaluation harness). Not started:
+the FastAPI layer, the React dashboard (M9), and eBPF (M8, deferred by plan §7).
+`make eval` regenerates every reported number in ~65 s. `prototype/` is the Sprint-0 vertical slice: it runs end to end and
 produced the numbers in `out/metrics.json`, but it is being ported module by
 module into `src/iudbms/` and should not be extended in place.
 
@@ -162,6 +164,63 @@ on event counts (plan §4.1) regardless of whether a backend reports submissions
 
 `frac_ctrl` is live as soon as the corpus contains control traffic; that half of
 defect 3 is fixed by the simulator work, not here.
+
+### Milestones 4-7, 10 notes — two defects found by the ablations
+
+Both were found by *running* an ablation that the plan had only asserted the
+result of. Neither was visible in any previously reported number.
+
+**5. Pillar N2 was inert — the per-device baseline contributed nothing.**
+`DeviceBaseline` z-scores in standardised space, and many features are
+near-constant for a given device (a keyboard's `frac_iso` is always 0, `has_hid`
+always 1, `frac_ctrl` is 0 except during enumeration). Their EWMA variance
+collapses toward zero, so any change at all produces an enormous |z|. Measured
+on a 200-session corpus the benign device-deviation had median 0.8 but a 99th
+percentile of 90.8 and a maximum of 1267 — and since `calibrate_dev()` divides
+by that 99th percentile, the 0.45-weighted device term contributed ~0.009 to a
+score in [0, 1]. Pillar N2 was in the architecture diagram and absent from the
+arithmetic.
+
+Fixed with `VAR_FLOOR = 0.05` (never claim a device is more stable than 5% of
+population variance for a feature). Swept {0, 0.01, 0.05, 0.1, 0.25, 0.5}; 0.05
+maximised Stage-1 AUC and cut benign window FPR at the operating threshold from
+0.26% to 0.07%. Symptom that led here: the Stage-1-only ablation reported
+*exactly zero* detection, because Stage-1 scores were compressed into a narrow
+band where the benign and malicious upper tails overlapped.
+
+**6. The `mimicry` profile was not actually timing-indistinguishable.**
+It drew think-pauses from `uniform(0.35, 1.1)` while human typing used
+`uniform(0.4, 3.0)`, leaving a blatant timing signature in the one profile whose
+entire purpose is to lack one. Consequence: a **timing-only** model detected
+mimicry at 100%, and every single modality independently reached 100% session
+detection — which made the N1 fusion ablation look like fusion was pointless,
+while simultaneously inflating overall detection to 100%.
+
+Fixed by sharing one set of human timing constants between both generators
+(`HUMAN_IAT_LOGNORM`, `HUMAN_BURST_KEYS`, `HUMAN_PAUSE_RANGE`), with a KS test
+asserting the two are not separable. Mimicry now leaves only a structural tell
+(a replayed keystroke script).
+
+**This is why overall detection fell from 100% to 81%, and it is the correct
+direction.** The plan's §10 claim that "class_exfil is invisible to timing
+features alone" was asserted, never measured; the ablation shows it false.
+Report the 81% and the mimicry bound, not the old 100%.
+
+### Current headline numbers (`make eval`, seed 7)
+
+| model | window AUC | session detection |
+|---|---|---|
+| IUDBMS (S1+S2) | 0.9733 | 81.0% |
+| Stage 1 only | 0.8894 | 42.9% |
+| identity whitelist | — | 0.0% |
+
+Benign session FP 0.0%, median latency 3.9 s. Per class: `class_exfil`,
+`hid_injection`, `identity_switch`, `staged_delay` all 100%; **`mimicry` 20%**.
+No single modality beats the fused 28 features (best single: protocol, 78.6%).
+
+`log_time_since_enum` leave-one-out: AUC −0.0018, detection +2.4%. The feature
+is not load-bearing, so decision C (keep it) stands — but it is measured now,
+not assumed.
 
 ### eBPF go/no-go — **PENDING**
 
