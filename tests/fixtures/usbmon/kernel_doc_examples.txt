@@ -1,0 +1,34 @@
+# Real usbmon 1u text lines. Sources:
+#   [D] Documentation/usb/usbmon.rst, "Raw text format" examples
+#   [F] format variants described in that document and emitted by
+#       drivers/usb/mon/mon_text.c (setup packets, iso status words, data tags)
+#
+# This file exists because the Sprint-0 parser was written against simulator
+# output and silently dropped four of these forms. Every line here must parse.
+#
+# --- control: GET_DESCRIPTOR, submission with SETUP packet, no data yet [D]
+e7217400 3730515507 S Ci:1:001:0 s 80 06 0100 0000 0012 18 <
+# --- control: the matching completion, 18 bytes of descriptor [D]
+e7217400 3730515559 C Ci:1:001:0 0 18 = 12010000 00000008 6b1d0200 00000103
+# --- control: OUT with a short payload (HID SET_REPORT) [F]
+f1a2b3c0 3730600000 S Co:1:003:0 s 21 09 0200 0000 0001 1 = 00
+# --- interrupt: submission, -EINPROGRESS with polling interval [D]
+f5ca4980 3854338202 S Ii:1:003:1 -115:8 8 <
+# --- interrupt: completion, 8-byte HID boot keyboard report [D]
+f5ca4980 3854346339 C Ii:1:003:1 0:8 8 = 00000000 00000000
+# --- interrupt: completion where interval != data length (regression guard)
+f5ca4981 3854346400 C Ii:1:003:1 0:4 8 = 00001600 00000000
+# --- bulk: submission [F]
+f4849cc0 3854384800 S Bo:1:005:2 -115 512 = deadbeef cafebabe
+# --- bulk: completion where usbmon did NOT capture the payload ('-' tag) [D]
+f4849cc0 3854384867 C Bi:1:005:1 0 512 -
+# --- bulk: zero-length completion [F]
+f4849cc1 3854384900 C Bi:1:005:1 0 0
+# --- isochronous: submission, status:interval:start_frame [F]
+d6c0c000 3854385000 S Zi:1:006:3 -115:1:2054 3072 <
+# --- isochronous: completion, status:interval:start_frame:error_count [F]
+d6c0c000 3854385100 C Zi:1:006:3 0:1:2054:0 3072 = aabbccdd
+# --- submission error event [D]
+f4849cc0 3854390000 E Bi:1:005:1 -71 0
+# --- bus number printed unpadded, device zero-padded to 3 [D]
+e7217400 3854400000 C Ci:12:001:0 0 8 = 12010000 00000008

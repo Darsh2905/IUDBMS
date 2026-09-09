@@ -37,6 +37,7 @@ where = ["src"]
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-q --strict-markers"
+asyncio_default_fixture_loop_scope = "function"
 markers = [
     "slow: takes more than ~5 s (deselect with '-m \"not slow\"')",
     "linux: requires Linux debugfs/usbmon; skipped elsewhere",

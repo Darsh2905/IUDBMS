@@ -29,6 +29,14 @@ its own field so the two cannot be confused again.
 payload-modality features silently treat an uncaptured bulk stream as a
 perfectly repeating one.
 
+``setup`` carries the 8-byte SETUP packet that usbmon prints in place of a
+status word on control submissions (``s 80 06 0100 0000 0012``). It is kept out
+of ``data`` because ``length`` is the *requested data* length, which is
+routinely smaller than 8 — putting SETUP in ``data`` would make well-formed
+events fail the ``len(data) <= length`` invariant. No current feature reads it;
+it is captured because discarding protocol content at the capture layer is
+irreversible.
+
 ``URBEvent`` is frozen as well as slotted: events are values, and freezing them
 means one feature extractor cannot mutate the stream a later extractor sees.
 Validation is deliberately *not* in ``__post_init__`` — the plan requires
@@ -59,7 +67,8 @@ __all__ = [
 
 #: Bumped only when a field is added, removed or re-typed. Trained model
 #: checkpoints record this and refuse to load against a different major.
-CONTRACT_VERSION = "1.0.0"
+#: 1.1.0 — added URBEvent.setup (append-only, defaulted; no checkpoint churn).
+CONTRACT_VERSION = "1.1.0"
 
 
 class ContractError(ValueError):
@@ -187,6 +196,7 @@ class URBEvent:
     data: bytes = b""              # captured payload prefix; may be shorter than length
     interval: int | None = None    # polling interval; intr/iso only
     data_truncated: bool = False   # payload absent or clipped by the capture layer
+    setup: bytes = b""             # 8-byte SETUP packet; control submissions only
 
     @property
     def device_key(self) -> str:
@@ -231,6 +241,15 @@ class URBEvent:
             raise ContractError(
                 f"interval is only meaningful for intr/iso, got {self.ttype!r}"
             )
+        if self.setup:
+            if self.ttype != "control":
+                raise ContractError(
+                    f"setup packet is only meaningful for control, got {self.ttype!r}"
+                )
+            if len(self.setup) != 8:
+                raise ContractError(
+                    f"SETUP packet must be exactly 8 bytes, got {len(self.setup)}"
+                )
 
 
 @dataclass(slots=True)
