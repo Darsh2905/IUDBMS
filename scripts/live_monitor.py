@@ -40,6 +40,32 @@ from iudbms.stage1 import Stage1  # noqa: E402
 from iudbms.stage2 import LSTMDetector  # noqa: E402
 
 MODELS = ROOT / "out" / "models"
+
+
+def _load_descriptors(path):
+    """Rebuild DeviceDescriptors from a vm_capture.sh snapshot."""
+    if path is None or not Path(path).exists():
+        return {}
+    from iudbms.contract import DeviceDescriptor, Endpoint, Interface
+    xfer = {0: "control", 1: "iso", 2: "bulk", 3: "intr"}
+    out = {}
+    for key, d in json.loads(Path(path).read_text()).items():
+        ifaces = []
+        for i in d.get("interfaces", []):
+            eps = tuple(Endpoint(addr=e["addr"], type=xfer.get(e["bmAttributes"] & 3, "control"),
+                                 interval=e.get("bInterval"))
+                        for e in i.get("endpoints", []))
+            ifaces.append(Interface(bInterfaceClass=i["bInterfaceClass"],
+                                    bInterfaceSubClass=i.get("bInterfaceSubClass", 0),
+                                    bInterfaceProtocol=i.get("bInterfaceProtocol", 0),
+                                    endpoints=eps))
+        out[key] = DeviceDescriptor(
+            bus=d["bus"], devnum=d["devnum"], vid=d["vid"], pid=d["pid"],
+            bDeviceClass=d.get("bDeviceClass", 0),
+            serial_present=bool(d.get("serial_present")),
+            manufacturer=d.get("manufacturer"), product=d.get("product"),
+            interfaces=tuple(ifaces))
+    return out
 RESET, BOLD, DIM = "\033[0m", "\033[1m", "\033[2m"
 RED, AMBER, GREEN, GREY = "\033[31m", "\033[33m", "\033[32m", "\033[90m"
 STATE_COLOUR = {"observe": GREEN, "throttled": AMBER, "revoked": RED}
@@ -59,9 +85,17 @@ def main() -> int:
                     help="windows between sysfs descriptor rescans")
     ap.add_argument("--quiet-devices", action="store_true",
                     help="only print a device's line when it has traffic or a state change")
+    ap.add_argument("--replay", type=Path, metavar="FILE",
+                    help="drive the SAME monitor loop from a recorded usbmon file "
+                         "instead of debugfs. Use this to verify the monitor works "
+                         "before trusting it on live traffic -- it exercises every "
+                         "part except the kernel read, and runs on any OS.")
+    ap.add_argument("--descriptors", type=Path, metavar="FILE",
+                    help="descriptor snapshot JSON to accompany --replay "
+                         "(from scripts/vm_capture.sh)")
     args = ap.parse_args()
 
-    if platform.system() != "Linux":
+    if args.replay is None and platform.system() != "Linux":
         sys.exit(f"Live capture needs Linux; this is {platform.system()}.\n"
                  f"Use scripts/live_replay.py --capture <file> to replay a trace here.")
 
@@ -78,26 +112,41 @@ def main() -> int:
         s1, s2, PolicyEngine(threshold=cfg["threshold"], k=cfg["k"], n=cfg["n"]),
         feature_idx=np.array(cfg["feature_idx"]), seq_len=cfg["seq_len"])
 
-    source = UsbmonSource.live(bus=args.bus, usbmon_dir=args.usbmon_dir)
-    scanner = SysfsScanner()
     cache: dict = {}
     state = {"w": 0}
+    if args.replay is not None:
+        source = UsbmonSource(path=args.replay)
+        cache.update(_load_descriptors(args.descriptors))
 
-    def descriptor_for(key: str):
-        # rescan periodically: a device that enumerates mid-session, or grows an
-        # interface, only becomes visible on a later scan
-        if key not in cache or state["w"] % args.rescan_every == 0:
-            cache.update(scanner.scan())
-        return cache.get(key)
+        def descriptor_for(key: str):
+            return cache.get(key)
+    else:
+        source = UsbmonSource.live(bus=args.bus, usbmon_dir=args.usbmon_dir)
+        scanner = SysfsScanner()
+
+        def descriptor_for(key: str):
+            # rescan periodically: a device that enumerates mid-session, or
+            # grows an interface, only becomes visible on a later scan
+            if key not in cache or state["w"] % args.rescan_every == 0:
+                cache.update(scanner.scan())
+            return cache.get(key)
 
     monitor = LiveMonitor(detector, source, descriptor_for, window=1.0)
     signal.signal(signal.SIGINT, lambda *_: monitor.stop())
 
-    print(f"\n{BOLD}IUDBMS live monitor{RESET}  {DIM}bus {args.bus or 'all'}{RESET}")
+    origin = (f"replay of {args.replay.name}" if args.replay
+              else f"bus {args.bus or 'all'} (live)")
+    print(f"\n{BOLD}IUDBMS live monitor{RESET}  {DIM}{origin}{RESET}")
     print(f"{DIM}threshold {cfg['threshold']:.4f}   gate {cfg['k']}-of-{cfg['n']}   "
           f"{len(cfg['feature_idx'])} features{RESET}")
     print(f"{DIM}enforcement is dry-run (ENFORCEMENT_REVIEWED={ENFORCEMENT_REVIEWED}); "
           f"nothing is written to sysfs{RESET}")
+    if args.replay is None:
+        print(f"{AMBER}  ! The deployed model was trained on SIMULATED traffic. Its "
+              f"thresholds are\n    calibrated against synthetic benign windows, so "
+              f"scores on a real host are\n    out of distribution and should not be "
+              f"read as verdicts yet. What this\n    demonstrates is that the capture "
+              f"and scoring path runs end to end on real\n    kernel output.{RESET}")
     print(f"{DIM}Ctrl-C to stop.{RESET}\n")
 
     last_state: dict[str, str] = {}
