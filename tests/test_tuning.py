@@ -139,3 +139,26 @@ def test_format_marks_the_deployed_point(scored):
     out = format_curves(rows, sweep_gates(test, r, r.threshold, [(4, 6)]), rows[0]["threshold"])
     assert "<- deployed" in out
     assert "4-of-6" in out
+
+
+def test_cache_refuses_a_stale_simulator(tmp_path, splits, monkeypatch):
+    """A cache that only records the contract version will serve traffic from a
+    simulator that has since changed. That happened during development and
+    silently produced results for the previous adversary."""
+    import json
+
+    from eval import corpus as corpus_mod
+
+    p = tmp_path / "c.npz"
+    save_corpus(splits[0], p)
+    load_corpus(p)                     # matching fingerprint loads fine
+
+    monkeypatch.setattr(corpus_mod, "simulator_fingerprint", lambda: "deadbeefdeadbeef")
+    with pytest.raises(RuntimeError, match="different simulator"):
+        load_corpus(p)
+
+
+def test_fingerprint_tracks_the_generating_code():
+    from eval.corpus import simulator_fingerprint
+    a = simulator_fingerprint()
+    assert len(a) == 16 and a == simulator_fingerprint()

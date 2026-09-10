@@ -1,0 +1,21 @@
+corpus 1000 sessions | scoring on the SELECTION split (298 test sessions held back and never touched)
+  inner train=449 calibrate=127 select=126
+
+STAGE 1 candidates — unsupervised, benign-only training
+  IsolationForest (incumbent)    AUC=0.8694  detect=  0.0%  FP= 0.0%    0.3s
+  LocalOutlierFactor             AUC=0.7872  detect=  0.0%  FP= 0.0%    0.3s
+  OneClassSVM (rbf)              AUC=0.4388  detect=100.0%  FP=100.0%    0.2s
+  EllipticEnvelope               AUC=0.8291  detect=  0.0%  FP= 0.0%    0.5s
+
+STAGE 2 candidates — supervised, sequence input
+  LSTM (incumbent)               AUC=0.9798  detect= 88.0%  FP= 0.0%    6.8s
+  GRU                            AUC=0.9790  detect= 88.0%  FP= 0.0%    5.5s
+  1-D CNN (no recurrence)        AUC=0.9753  detect= 88.0%  FP= 1.3%   37.8s
+  HistGradientBoosting (flat seq) AUC=0.9770  detect= 86.0%  FP= 0.0%    1.7s
+  LogisticRegression (flat seq)  AUC=0.9271  detect= 72.0%  FP= 0.0%    2.4s
+
+ARCHITECTURE CONTROL — one supervised model, one window, no pipeline
+  HistGradientBoosting (1 window) AUC=0.9564  detect= 80.0%  FP= 0.0%    0.7s
+  RandomForest (1 window)        AUC=0.9537  detect= 76.0%  FP= 0.0%    0.4s
+
+wrote out/model_zoo.json   (61.8s)

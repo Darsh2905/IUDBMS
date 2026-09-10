@@ -1,5 +1,5 @@
 # IUDBMS — development entry points.
-.PHONY: help install test test-fast lint eval report demo demo-hard dashboard baseline clean
+.PHONY: help install test test-fast lint eval zoo report demo demo-hard dashboard baseline clean
 
 help:
 	@grep -E '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -18,6 +18,9 @@ lint:  ## ruff check (no-op if ruff is absent)
 
 eval:  ## regenerate every reported table/figure (seeded)
 	python3 -m eval.run_all
+
+zoo:  ## compare model families on the selection split (~60 s)
+	python3 -m eval.model_zoo --on selection
 
 report:  ## regenerate docs/report/ from the last eval (charts + numbers)
 	python3 -m eval.build_report
