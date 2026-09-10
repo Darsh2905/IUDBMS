@@ -20,10 +20,20 @@ offline, so the files stay readable with no network.
 
 ## Keeping them current
 
-They are exports, not sources. After changing any measured number, re-run
+`iudbms_review.html` is **generated**, not hand-edited:
 
-    make eval
+    make eval      # produces out/metrics.json and out/figure_data.json
+    make report    # regenerates iudbms_review.html from them
 
-and update the figures in the documents to match `out/metrics.json`. Nothing
-regenerates these automatically — a stale number here is the same defect as a
-stale number in a paper.
+Every figure and every chart in it comes from those two files, so it cannot
+drift from the results. Edit `eval/build_report.py`, never the HTML.
+
+`iudbms_algorithms.html` is still a hand-written reference — it documents method
+rather than measurements, so it only needs revisiting when an algorithm changes.
+
+## About the charts
+
+They are inline SVG rather than embedded PNGs, drawn by `eval/render_svg.py`
+from `out/figure_data.json`. That keeps them sharp on a projector, responsive to
+the reader's light/dark theme, and correct in print. Every value is direct-
+labelled or repeated in the adjacent table, so nothing depends on hover.
