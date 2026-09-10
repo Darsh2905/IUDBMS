@@ -536,6 +536,57 @@ appears to would be fitting the conclusion.
 **Scorecard: N1 unsupported, N2 unsupported, N3 strongly supported (15.8% →
 89.2%), N4 demonstrated.** Two of four pillars lack evidence. Report that.
 
+### Finding 15 — model-family comparison (`make zoo`, 10 Sep)
+
+The project had never justified its algorithm choices against alternatives.
+`eval/model_zoo.py` compares them, scored on the **selection split** by default
+so the table can drive a decision; `--on test` is exploratory only. Noise floor
+on that split is one session = 2.0%.
+
+**Stage 1 — unsupervised, benign-only.** IsolationForest is the right choice:
+
+| model | window AUC |
+|---|---|
+| **IsolationForest (incumbent)** | **0.8694** |
+| EllipticEnvelope | 0.8291 |
+| LocalOutlierFactor | 0.7872 |
+| OneClassSVM (rbf) | 0.4388 — degenerate, alerts on everything |
+
+**Stage 2 — supervised, sequence input.** The LSTM is *not* justified over much
+simpler alternatives, though it is not wrong either:
+
+| model | AUC | detect | train |
+|---|---|---|---|
+| LSTM (incumbent) | 0.9798 | 88.0% | 6.8 s |
+| GRU | 0.9790 | 88.0% | 5.5 s |
+| 1-D CNN (no recurrence) | 0.9753 | 88.0% | 37.8 s |
+| HistGradientBoosting (flat sequence) | 0.9770 | 86.0% | **1.7 s** |
+| LogisticRegression (flat sequence) | 0.9271 | 72.0% | 2.4 s |
+
+GRU and the CNN tie the LSTM exactly; gradient boosting is one session behind at
+a quarter of the training cost. All four are within noise. **Recurrence is not
+doing the work.** Incumbent kept because no challenger clears the noise floor —
+the same rule as finding 13, not a preference.
+
+**Architecture control — one supervised model, one window, no pipeline:**
+HistGradientBoosting 80.0%, RandomForest 76.0%, against 88.0% for the sequence
+models. So **temporal context is worth ~8 points and N3 survives** — but N3 is
+about *sequence*, not about *recurrence*, and the report should say so.
+
+**The cost of the labelling constraint.** A supervised single-window model
+reaches 80.0%; our unsupervised Stage 1 reaches 0.0% at the deployed threshold
+(AUC 0.87). That gap is what training on benign traffic alone costs, and it is
+the strongest argument for the two-stage design: Stage 2 recovers it using
+labels that Stage 1 is not allowed to see.
+
+### Finding 16 — the corpus cache had no simulator fingerprint
+
+`load_corpus` checked the contract version but not the code that generated the
+windows, so changing the simulator and forgetting to rebuild silently evaluated
+the *previous* adversary. This happened during development. The cache now stores
+a hash of `capture/simulator.py` plus `features/extractor.py` and refuses to
+load against different code.
+
 ### eBPF go/no-go — **PENDING**
 
 Plan §2 sets the decision at end of W6: proceed only if the usbmon path is

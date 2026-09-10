@@ -1,0 +1,198 @@
+{
+  "scored_on": "selection",
+  "stage1": [
+    {
+      "name": "IsolationForest (incumbent)",
+      "supervised": false,
+      "auc": 0.8693795979247161,
+      "threshold": 0.3567145507283489,
+      "detect": 0.0,
+      "benign_fp": 0.0,
+      "per_profile": {
+        "class_exfil": 0.0,
+        "hid_injection": 0.0,
+        "identity_switch": 0.0,
+        "mimicry": 0.0,
+        "mimicry_adaptive": 0.0,
+        "staged_delay": 0.0
+      },
+      "seconds": 0.3
+    },
+    {
+      "name": "LocalOutlierFactor",
+      "supervised": false,
+      "auc": 0.7872217069665016,
+      "threshold": 1.0,
+      "detect": 0.0,
+      "benign_fp": 0.0,
+      "per_profile": {
+        "class_exfil": 0.0,
+        "hid_injection": 0.0,
+        "identity_switch": 0.0,
+        "mimicry": 0.0,
+        "mimicry_adaptive": 0.0,
+        "staged_delay": 0.0
+      },
+      "seconds": 0.3
+    },
+    {
+      "name": "OneClassSVM (rbf)",
+      "supervised": false,
+      "auc": 0.4387550200803213,
+      "threshold": 1.0,
+      "detect": 1.0,
+      "benign_fp": 1.0,
+      "per_profile": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 1.0,
+        "mimicry_adaptive": 1.0,
+        "staged_delay": 1.0
+      },
+      "seconds": 0.2
+    },
+    {
+      "name": "EllipticEnvelope",
+      "supervised": false,
+      "auc": 0.8291441578059776,
+      "threshold": 0.7631194962165209,
+      "detect": 0.0,
+      "benign_fp": 0.0,
+      "per_profile": {
+        "class_exfil": 0.0,
+        "hid_injection": 0.0,
+        "identity_switch": 0.0,
+        "mimicry": 0.0,
+        "mimicry_adaptive": 0.0,
+        "staged_delay": 0.0
+      },
+      "seconds": 0.5
+    }
+  ],
+  "stage2": [
+    {
+      "name": "LSTM (incumbent)",
+      "supervised": true,
+      "auc": 0.9798157240417342,
+      "threshold": 0.9974828721880911,
+      "detect": 0.88,
+      "benign_fp": 0.0,
+      "per_profile": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 1.0,
+        "mimicry_adaptive": 0.25,
+        "staged_delay": 1.0
+      },
+      "seconds": 6.8
+    },
+    {
+      "name": "GRU",
+      "supervised": true,
+      "auc": 0.9790281153801637,
+      "threshold": 0.9963347105383873,
+      "detect": 0.88,
+      "benign_fp": 0.0,
+      "per_profile": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 1.0,
+        "mimicry_adaptive": 0.25,
+        "staged_delay": 1.0
+      },
+      "seconds": 5.5
+    },
+    {
+      "name": "1-D CNN (no recurrence)",
+      "supervised": true,
+      "auc": 0.9753006187464194,
+      "threshold": 0.9955445893406867,
+      "detect": 0.88,
+      "benign_fp": 0.013157894736842105,
+      "per_profile": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 1.0,
+        "mimicry_adaptive": 0.25,
+        "staged_delay": 1.0
+      },
+      "seconds": 37.8
+    },
+    {
+      "name": "HistGradientBoosting (flat seq)",
+      "supervised": true,
+      "auc": 0.9770318779679096,
+      "threshold": 0.9191452804465065,
+      "detect": 0.86,
+      "benign_fp": 0.0,
+      "per_profile": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 1.0,
+        "mimicry_adaptive": 0.125,
+        "staged_delay": 1.0
+      },
+      "seconds": 1.7
+    },
+    {
+      "name": "LogisticRegression (flat seq)",
+      "supervised": true,
+      "auc": 0.9271421329242544,
+      "threshold": 0.8457073111671198,
+      "detect": 0.72,
+      "benign_fp": 0.0,
+      "per_profile": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 0.0,
+        "mimicry_adaptive": 0.0,
+        "staged_delay": 1.0
+      },
+      "seconds": 2.4
+    }
+  ],
+  "control": [
+    {
+      "name": "HistGradientBoosting (1 window)",
+      "supervised": true,
+      "auc": 0.9564467648045667,
+      "threshold": 0.9321917058169942,
+      "detect": 0.8,
+      "benign_fp": 0.0,
+      "per_profile": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 0.6666666666666666,
+        "mimicry_adaptive": 0.0,
+        "staged_delay": 1.0
+      },
+      "seconds": 0.7
+    },
+    {
+      "name": "RandomForest (1 window)",
+      "supervised": true,
+      "auc": 0.9536969109564855,
+      "threshold": 0.9022949999999992,
+      "detect": 0.76,
+      "benign_fp": 0.0,
+      "per_profile": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 0.3333333333333333,
+        "mimicry_adaptive": 0.0,
+        "staged_delay": 1.0
+      },
+      "seconds": 0.4
+    }
+  ],
+  "seed": 7,
+  "seconds": 61.8
+}
