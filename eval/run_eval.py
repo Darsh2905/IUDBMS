@@ -244,6 +244,11 @@ def main() -> int:
         }, indent=2))
         print(f"  wrote out/models/  (stage1.pkl, stage2.pt, deploy.json)")
 
+    from .figure_data import export_figure_data
+    fd = export_figure_data(OUT, full, s1_only, modality, corpus, test,
+                            y_te, p_te, p_s1_te, thr_rows, gate_rows)
+    print(f"  wrote {fd.relative_to(OUT.parent)}")
+
     if args.persist:
         from .persist import persist_run
         db = persist_run(OUT / "iudbms.db", corpus.sessions, full)
