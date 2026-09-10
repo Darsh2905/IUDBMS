@@ -1,0 +1,1 @@
+{"2-2": {"bus": 2, "devnum": 2, "vid": 6700, "pid": 11555, "bDeviceClass": 0, "serial_present": 1, "manufacturer": "keyboard", "product": "keyboard", "interfaces": [{"bInterfaceClass": 3, "bInterfaceSubClass": 1, "bInterfaceProtocol": 1, "endpoints": [{"addr": 129, "bmAttributes": 3, "bInterval": 10}]}]}}
