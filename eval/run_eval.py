@@ -113,6 +113,26 @@ def main() -> int:
                                 use_stage2=False, seed=args.seed, verbose=False)
     results["stage1_only"] = s1_only
 
+    print("\n-- no per-device baseline (isolates pillar N2: adaptive baselines) --")
+    no_baseline = run_configuration(fit, val, test, name="no device baseline",
+                                    feature_idx=deployed, use_device_baseline=False,
+                                    seed=args.seed, epochs=args.epochs,
+                                    seq_len=args.seq_len, hidden=args.hidden, verbose=False)
+    results["no_device_baseline"] = no_baseline
+    nb_s1 = run_configuration(fit, val, test, name="Stage 1, forest only",
+                              feature_idx=deployed, use_device_baseline=False,
+                              use_stage2=False, seed=args.seed, verbose=False)
+    print(f"  full system      : AUC={full.window['auc']:.4f}  "
+          f"detect={full.session['attack_detect']:.1%}")
+    print(f"  forest only      : AUC={no_baseline.window['auc']:.4f}  "
+          f"detect={no_baseline.session['attack_detect']:.1%}")
+    print(f"  Stage 1 w/ base  : AUC={s1_only.window['auc']:.4f}  "
+          f"detect={s1_only.session['attack_detect']:.1%}")
+    print(f"  Stage 1 forest   : AUC={nb_s1.window['auc']:.4f}  "
+          f"detect={nb_s1.session['attack_detect']:.1%}")
+    print("  The Stage-1 pair is the honest test of N2: Stage 2 can compensate for a")
+    print("  weaker Stage 1, so a full-system comparison understates the baseline's role.")
+
     print("\n-- single-modality (isolates pillar N1: multi-modal fusion) --")
     modality = {}
     for m in MODALITIES:
@@ -220,6 +240,12 @@ def main() -> int:
                               "per_profile": loo.per_profile,
                               "delta_auc": d_auc, "delta_detect": d_det},
         "identity_whitelist": idw,
+        "n2_ablation": {
+            "full": {"window": full.window, "session": full.session},
+            "no_baseline": {"window": no_baseline.window, "session": no_baseline.session},
+            "stage1_with_baseline": {"window": s1_only.window, "session": s1_only.session},
+            "stage1_forest_only": {"window": nb_s1.window, "session": nb_s1.session},
+        },
         "operating_curve": {"threshold_sweep": thr_rows, "gate_sweep": gate_rows},
         "runtime_sec": round(time.time() - t_start, 1),
     }

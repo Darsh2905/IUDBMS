@@ -141,8 +141,15 @@ class DeviceBaseline:
 class Stage1:
     """Class-conditioned Isolation Forests fused with a per-device baseline."""
 
+    #: Fusion weights: (population forest, per-device baseline). They sum to 1,
+    #: so setting the device weight to 0 gives a forest-only model on the same
+    #: score scale -- that is the N2 ablation, and the comparison is only fair
+    #: because the scale does not move.
+    DEFAULT_WEIGHTS = (0.55, 0.45)
+
     def __init__(self, seed: int = 0, n_estimators: int = 200, contamination: float = 0.02,
-                 feature_names: tuple[str, ...] | None = None):
+                 feature_names: tuple[str, ...] | None = None,
+                 weights: tuple[float, float] | None = None):
         self.forests: dict[str, IsolationForest] = {}
         self.mu: np.ndarray | None = None
         self.sd: np.ndarray | None = None
@@ -150,6 +157,11 @@ class Stage1:
         self.seed = seed
         self.n_estimators = n_estimators
         self.contamination = contamination
+        w = weights if weights is not None else self.DEFAULT_WEIGHTS
+        total = w[0] + w[1]
+        if total <= 0:
+            raise ValueError("fusion weights must sum to a positive number")
+        self.weights = (w[0] / total, w[1] / total)
         # None until fit(); the modality ablations fit on column subsets, and
         # the baseline needs the matching names to label alert evidence.
         self.feature_names: tuple[str, ...] | None = (
@@ -227,7 +239,7 @@ class Stage1:
             "contract_version": CONTRACT_VERSION,
             "forests": self.forests, "mu": self.mu, "sd": self.sd,
             "scale": self.scale, "seed": self.seed,
-            "feature_names": self.feature_names,
+            "feature_names": self.feature_names, "weights": self.weights,
         }))
 
     @classmethod
@@ -243,7 +255,8 @@ class Stage1:
                 f"Stage 1 was fit against contract {got}, running {CONTRACT_VERSION}. "
                 f"The feature vector changed width; retrain rather than load."
             )
-        m = cls(seed=blob["seed"], feature_names=blob["feature_names"])
+        m = cls(seed=blob["seed"], feature_names=blob["feature_names"],
+                weights=blob.get("weights"))
         m.forests, m.mu, m.sd, m.scale = (
             blob["forests"], blob["mu"], blob["sd"], blob["scale"])
         return m
@@ -283,7 +296,9 @@ class Stage1:
             d, top = bl.deviation(x)
             dev_raw[i] = d
             b = d / (self.scale["dev"] + EPS)
-            s = float(np.clip(0.55 * np.clip(a, 0, 3) / 3 + 0.45 * np.clip(b, 0, 3) / 3, 0, 1))
+            w_if, w_dev = self.weights
+            s = float(np.clip(w_if * np.clip(a, 0, 3) / 3
+                              + w_dev * np.clip(b, 0, 3) / 3, 0, 1))
             # Update-gate: an already-anomalous window must not teach the
             # baseline that it is normal.
             if s < GATE or bl.n < WARMUP:

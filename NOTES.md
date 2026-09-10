@@ -498,6 +498,44 @@ horizon is not a lever" was correct when no cross-window signal existed, and
 became wrong the moment feature 29 created one. **Re-run sweeps after changing
 the feature set.**
 
+### Finding 14 — N2 has no ablation, and when run, does not support N2 (10 Sep)
+
+Four headline pillars, three ablations. N1 had the modality sweep, N3 the
+Stage-1-only comparison, N4 the enforcement path — **N2, the per-device adaptive
+baseline, had never been isolated.** Pointed, because this session claimed N2 was
+"inert", fixed it with `VAR_FLOOR`, and never measured whether it contributes now.
+
+`Stage1` now takes fusion `weights`; `(1.0, 0.0)` is forest-only on the same
+score scale (weights renormalise, so the comparison is fair).
+
+| configuration | window AUC | session detection |
+|---|---|---|
+| full system | 0.9762 | 89.2% |
+| forest only, no device baseline | 0.9755 | **90.8%** |
+| Stage 1 with baseline | 0.8847 | 15.8% |
+| Stage 1, forest only | **0.8876** | 0.0% |
+
+**N2 is not supported.** Removing the device baseline leaves full-system
+detection unchanged within noise (2 sessions of 120) and marginally *better*.
+Its AUC contribution is negative at both levels — forest-only ranks slightly
+higher in both rows. The one place it looks decisive, Stage-1-only going
+0.0% → 15.8%, is a **threshold artefact**: with near-identical AUC, the baseline
+shifts the score distribution so that a fixed operating point happens to land
+better. That is fragile, not a capability.
+
+A plausible explanation, worth stating rather than asserting: the forests are
+already **class-conditioned**, so a device's class-specific normality is largely
+modelled at population level, leaving the per-device term little to add on a
+corpus where devices within a class are near-identical. Real devices vary more,
+so N2 may earn its keep on real captures — which is a hypothesis, not a defence.
+
+**Do not rescue this by sweeping the fusion weight.** The measurement is that
+the component contributes nothing on this corpus, and tuning the weight until it
+appears to would be fitting the conclusion.
+
+**Scorecard: N1 unsupported, N2 unsupported, N3 strongly supported (15.8% →
+89.2%), N4 demonstrated.** Two of four pillars lack evidence. Report that.
+
 ### eBPF go/no-go — **PENDING**
 
 Plan §2 sets the decision at end of W6: proceed only if the usbmon path is

@@ -35,6 +35,14 @@
 
 -- Stage-1 only (isolates pillar N3: temporal modelling) --
 
+-- no per-device baseline (isolates pillar N2: adaptive baselines) --
+  full system      : AUC=0.9762  detect=89.2%
+  forest only      : AUC=0.9755  detect=90.8%
+  Stage 1 w/ base  : AUC=0.8847  detect=15.8%
+  Stage 1 forest   : AUC=0.8876  detect=0.0%
+  The Stage-1 pair is the honest test of N2: Stage 2 can compensate for a
+  weaker Stage 1, so a full-system comparison understates the baseline's role.
+
 -- single-modality (isolates pillar N1: multi-modal fusion) --
   timing    ( 9 features)  AUC=0.9662  detect=77.5%  FP=0.0%
   payload   ( 8 features)  AUC=0.9752  detect=90.8%  FP=1.7%
@@ -112,4 +120,4 @@ Session level (threshold @ 0.1% validation FPR, 4-of-6 gate)
   wrote out/session_timelines.png
   wrote out/seq_novelty_decay.png
 
-  total runtime 100.3s
+  total runtime 121.7s

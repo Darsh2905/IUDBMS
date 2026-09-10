@@ -151,7 +151,9 @@ class StreamingDetector:
         a = float(m._raw_if(x.reshape(1, -1), g)[0]) / (m.scale["if"] + 1e-6)
         d, top = st.baseline.deviation(z)
         b = d / (m.scale["dev"] + 1e-6)
-        s = float(np.clip(0.55 * np.clip(a, 0, 3) / 3 + 0.45 * np.clip(b, 0, 3) / 3, 0, 1))
+        w_if, w_dev = m.weights
+        s = float(np.clip(w_if * np.clip(a, 0, 3) / 3
+                          + w_dev * np.clip(b, 0, 3) / 3, 0, 1))
         # Update-gate, exactly as offline: an already-anomalous window must not
         # teach the baseline that it is normal.
         from ..stage1 import GATE, WARMUP
