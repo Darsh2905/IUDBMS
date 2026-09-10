@@ -58,86 +58,62 @@ make baseline                             # re-run the Sprint-0 prototype for co
 
 ## Measured results
 
-Regenerate with `make eval` (seeded, ~106 s). Corpus: 1000 synthetic sessions,
-12,823,600 usbmon lines, 62,986 windows. Split by session, stratified
-by profile: fit=562 / val=140 / test=298.
-
-Deployed model uses **28 of the 29 features**
-(`log_time_since_enum` excluded as a label leak). Threshold calibrated at a
-0.01% per-window FPR — selected on a held-out
-*selection* split by `eval/tune.py`, never off the test curve.
+Regenerate with `make eval` (seeded, ~110 s). Corpus: 1000 synthetic sessions,
+11,333,822 usbmon lines, 62,070 windows. Split by session, stratified
+by profile: fit=562 / val=140 / test=298. Deployed model uses
+28 of 29 features.
 
 | model | window ROC-AUC | precision | recall | session detection |
 |---|---|---|---|---|
-| IUDBMS (Stage 1 + Stage 2) | 0.9945 | 0.998 | 0.929 | **100.0%** |
-| Stage 1 only (no temporal model) | 0.9363 | 0.985 | 0.094 | 11.7% |
+| IUDBMS (Stage 1 + Stage 2) | 0.9753 | 0.997 | 0.747 | **84.2%** |
+| Stage 1 only (no temporal model) | 0.8922 | 0.986 | 0.162 | 18.3% |
 | Identity whitelist (USBGuard-style) | — | — | — | 0.0% |
 
-0.0% benign session false positives across
-178 benign test sessions; median latency
-3.6 s, p90 22.1 s.
+0.0% benign session false positives across 178
+benign test sessions; median latency 3.7 s.
 
 | attack | n | IUDBMS | Stage-1 only | median latency |
 |---|---|---|---|---|
-| `class_exfil` | 29 | 100% | 100% | 3.5 s |
-| `hid_injection` | 26 | 100% | 0% | 3.6 s |
-| `identity_switch` | 23 | 100% | 100% | 3.5 s |
-| `mimicry` | 16 | 100% | 0% | 24.9 s |
-| `staged_delay` | 26 | 100% | 4% | 3.5 s |
+| `class_exfil` | 24 | 100% | 21% | 3.4 s |
+| `hid_injection` | 21 | 100% | 0% | 3.6 s |
+| `identity_switch` | 20 | 100% | 85% | 3.5 s |
+| `mimicry` | 15 | 100% | 0% | 27.9 s |
+| `mimicry_adaptive` | 20 | 5% | 0% | 74.7 s |
+| `staged_delay` | 20 | 100% | 0% | 3.7 s |
 
-### Read this before quoting 100 %
+### The bound: a single-shot human-paced injection is undetectable
 
-A perfect detection rate is a leakage signal more often than a win, and the
-evaluation harness prints a warning when it sees one. Three things were checked
-before reporting it:
+`mimicry_adaptive` is the strongest adversary in the corpus and **we detect
+5% of it.** It clones a keyboard descriptor, draws its keystroke
+timing from the same distribution as a human operator, and — the part that
+matters — **types its payload once instead of cycling a script.** That is what a
+real BadUSB does: it types `powershell -enc <base64>` and stops.
 
-- **The leakage audit passes** — no separable duration, window-count or VID:PID
-  axis between benign and malicious sessions.
-- **The new feature is behaviour, not session position.** `payload_seq_novelty`
-  decays over a session by nature, and malicious windows are post-onset (hence
-  later) by construction — the exact shape of the leak that got
-  `log_time_since_enum` removed. Under positional control it holds up: benign
-  typing stays at ~0.99 at *every* window position while mimicry decays to 0.72,
-  and late benign windows (0.991) score **above** early mimicry ones (0.975).
-  A regression test asserts that ordering.
-- **`mimicry` costs 25 s to detect against ~3.5 s for every other class.**
-  It is still by far the hardest case; the script has to cycle before its
-  novelty decays. That 7× latency gap is itself the result.
+Our original `mimicry` cycled a 27-key script three times per session, and a
+cycling script necessarily exhausts its own payload transitions. That is what
+`payload_seq_novelty` detects. Against a payload typed once, a per-feature
+Kolmogorov–Smirnov scan finds **zero of the 28 deployed features separate it
+from benign typing** (the only separable feature is `log_time_since_enum`, which
+we removed as a label leak). The 5% is noise, not detection.
 
-**The honest caveat: `payload_seq_novelty` was designed after seeing which
-attack we were failing, knowing how the simulator builds it.** That is
-overfitting to the corpus and must be declared. The defence is that the
-constraint is real — a keystroke-injection payload has to type specific
-commands, so it cannot randomise its sequence without ceasing to be a payload.
-The claim is "raises the cost", not "solves".
+**This is a bound on what single-device HID behaviour can reveal, not a tuning
+failure.** The principled next defence is cross-device correlation — a human
+typing produces concurrent mouse activity, a BadUSB typing alone does not — and
+that sits outside the current single-device architecture.
+
+One caveat in the other direction: our adaptive adversary draws fresh keycodes
+indefinitely, so it is the *limiting case*. A real payload has finite content and
+may be marginally easier.
 
 Single-modality ablation (novelty pillar N1):
 
 | modality | features | window AUC | session detection |
 |---|---|---|---|
-| timing | 9 | 0.9836 | 87.5% |
-| payload | 8 | 0.9937 | 100.0% |
-| protocol | 6 | 0.9752 | 86.7% |
-| identity | 6 | 0.9111 | 45.0% |
-| **deployed (fused)** | **28** | **0.9937** | **100.0%** |
-
-**N1 remains unsupported.** The payload modality alone now matches the fused
-model exactly. Establishing that fusion earns its keep needs attack families
-that differ from benign traffic on one axis at a time; ours differ on several.
-
-Operating point (plan §6 — the curve, not one number):
-
-| target per-window FPR | threshold | detection | benign session FP |
-|---|---|---|---|
-| 0.01% | 0.9147 | 100.0% | 0.0% |  ← deployed
-| 0.05% | 0.8147 | 100.0% | 0.6% |
-| 0.10% | 0.6750 | 100.0% | 2.8% |
-| 0.50% | 0.4702 | 100.0% | 5.1% |
-| 1.00% | 0.3775 | 100.0% | 6.7% |
-| 2.00% | 0.2606 | 100.0% | 10.7% |
-
-Descriptive only. The deployed row was chosen on a selection split, not read off
-this table — that would be selecting on test.
+| timing | 9 | 0.9665 | 70.8% |
+| payload | 8 | 0.9755 | 85.0% |
+| protocol | 6 | 0.9509 | 70.8% |
+| identity | 6 | 0.8940 | 39.2% |
+| **deployed (fused)** | **28** | **0.9753** | **84.2%** |
 
 ## Honest caveats
 

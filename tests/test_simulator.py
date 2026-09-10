@@ -180,7 +180,14 @@ def test_staged_delay_keeps_a_long_dwell_without_a_longer_session():
 
 @pytest.mark.slow
 def test_leakage_audit_passes_on_the_current_simulator():
-    assert audit(n_benign=120, n_attack=80)["findings"] == []
+    assert audit(n_benign=200, n_attack=300)["findings"] == []
+
+
+@pytest.mark.slow
+def test_audit_declares_itself_underpowered_on_a_small_corpus():
+    """Silence from a test that could not have failed is not evidence."""
+    findings = audit(n_benign=40, n_attack=30)["findings"]
+    assert any("underpowered" in f for f in findings), findings
 
 
 @pytest.mark.slow
@@ -195,7 +202,11 @@ def test_audit_catches_a_reintroduced_duration_leak(monkeypatch):
         return real_session(self, sid, profile, duration)
 
     monkeypatch.setattr(Simulator, "session", leaky)
-    findings = audit(n_benign=120, n_attack=80)["findings"]
+    # Enough attack sessions that the per-profile KS test actually has power.
+    # With six attack profiles, n_attack=80 leaves ~13 sessions each and a
+    # critical value near 0.45 -- above the effect size, so the test could not
+    # have failed. The audit now says so itself rather than printing "ok".
+    findings = audit(n_benign=200, n_attack=300)["findings"]
     assert any("staged_delay" in f for f in findings), (
         f"audit failed to catch a re-introduced duration leak; got {findings}"
     )
@@ -253,3 +264,54 @@ def test_mimicry_still_carries_a_structural_tell():
         return max(counts.values()) / len(payloads)
 
     assert repeat_ratio("mimicry", True) > repeat_ratio("keyboard", False)
+
+
+def test_adaptive_mimicry_leaves_no_sequence_signal():
+    """mimicry_adaptive types its payload once instead of cycling a script, which
+    is what a real BadUSB does. It exists to answer whether payload_seq_novelty
+    detects the attack or merely the loop — and the answer is the loop."""
+    from iudbms.contract import feature_index
+    from iudbms.features.extractor import WindowFeatureExtractor
+
+    i = feature_index("payload_seq_novelty")
+
+    def mean_novelty(profile):
+        vals = []
+        sim = Simulator(seed=61)
+        for k in range(4):
+            s = sim.session(f"T{k}", profile)
+            ex = WindowFeatureExtractor()
+            for t0, b in window_events(list(SimulatedSource(s).events()),
+                                       duration=s.duration):
+                if s.onset is None or t0 > s.onset:
+                    vals.append(float(ex.extract(b, t0, s.descriptor)[i]))
+                else:
+                    ex.extract(b, t0, s.descriptor)
+        return float(np.mean(vals))
+
+    benign = mean_novelty("keyboard")
+    looping = mean_novelty("mimicry")
+    adaptive = mean_novelty("mimicry_adaptive")
+
+    assert looping < benign - 0.05, "the looping script must exhaust its transitions"
+    assert adaptive > benign - 0.03, (
+        f"mimicry_adaptive novelty {adaptive:.3f} is separable from benign "
+        f"{benign:.3f}; the profile is not the limiting adversary it claims to be"
+    )
+
+
+def test_adaptive_mimicry_timing_matches_human_typing():
+    sim = Simulator(seed=63)
+    human, adaptive = [], []
+    for i in range(5):
+        s = sim.session(f"S{i:04d}", "keyboard")
+        ts = [e.ts for e in SimulatedSource(s).events()
+              if e.evt == "C" and e.ttype == "intr"]
+        human.extend(np.diff(ts))
+    for i in range(5):
+        s = sim.session(f"A{i:04d}", "mimicry_adaptive")
+        ts = [e.ts for e in SimulatedSource(s).events()
+              if e.evt == "C" and e.ttype == "intr" and e.ts > s.onset]
+        adaptive.extend(np.diff(ts))
+    d, crit = ks_statistic(np.array(human), np.array(adaptive))
+    assert d < crit, f"timing is separable (KS D={d:.4f} > {crit:.4f})"

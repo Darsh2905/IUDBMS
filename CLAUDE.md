@@ -402,6 +402,50 @@ stage2.pt, deploy.json) so the replay runs the exact weights the reported
 numbers came from, and `Stage1.save/load` refuses a contract major mismatch the
 way the LSTM already did.
 
+### Finding 11 — payload_seq_novelty detected the LOOP, not the attack (10 Sep)
+
+`mimicry` cycled a 27-key script ~3 times per session. A cycling script
+necessarily exhausts its own payload transitions, which is exactly what feature
+29 measures. **A real BadUSB types its payload once and stops.**
+
+`mimicry_adaptive` is the same profile with the payload typed once. Result:
+
+| | mimicry (looping) | mimicry_adaptive |
+|---|---|---|
+| seq-novelty, post-onset | 0.848 | 0.992 (benign: 0.996) |
+| detection | 100% | **5.0%** (n=20) |
+| latency | 27.9 s | 74.7 s |
+
+A per-feature KS scan against benign keyboard windows finds **zero of the 28
+deployed features separate it**; the only separable feature is
+`log_time_since_enum`, removed as a leak. The 5% is noise.
+
+**Overall detection therefore falls 100% → 84.2%, and that is the correct
+number.** Do not remove this profile to restore the headline. The four crude
+classes and the looping mimicry are still caught at 100% with 0.0% benign FP,
+which is a real and defensible result; the single-shot case is a bound.
+
+**The bound is architectural.** Within single-device URB behaviour there is no
+signal — the adversary is statistically the same process as a human typing. The
+principled next defence is **cross-device correlation**: a human typing produces
+concurrent mouse activity, a BadUSB typing alone does not. That needs the
+simulator to generate multi-device host sessions and a feature over concurrent
+devices, which the current single-device architecture does not have. Named as
+the next step rather than half-built before a review.
+
+Caveat in the other direction: `_adaptive_typing` draws fresh keycodes forever,
+so it is the limiting case. A real payload has finite content.
+
+### Audit power (same session)
+
+Adding a sixth attack profile at fixed corpus size dropped per-profile n from
+~16 to ~13, and the KS critical value scales as 1/√n — so
+`test_audit_catches_a_reintroduced_duration_leak` began passing *because the
+audit could no longer fail*. The audit now reports **UNDERPOWERED** when a
+profile's critical value exceeds `TARGET_DETECTABLE_D = 0.35`, and says how many
+sessions it would need. Silence from a test that could not have failed is not
+evidence. At the deployed 600/400 corpus every profile has power.
+
 ### eBPF go/no-go — **PENDING**
 
 Plan §2 sets the decision at end of W6: proceed only if the usbmon path is

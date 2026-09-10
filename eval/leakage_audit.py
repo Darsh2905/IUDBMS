@@ -29,6 +29,12 @@ from iudbms.capture.simulator import ATTACK_PROFILES, BENIGN_PROFILES, Simulator
 #: 1.63 * sqrt((n+m)/(n*m)). We flag above this.
 KS_ALPHA_COEFF = 1.63
 
+#: Smallest effect the audit is expected to catch, as a KS distance. A profile
+#: whose critical value exceeds this cannot detect a leak of that size, so the
+#: audit reports "underpowered" rather than "ok" -- silence from a test that
+#: could not have failed is not evidence.
+TARGET_DETECTABLE_D = 0.35
+
 
 def ks_statistic(a: np.ndarray, b: np.ndarray) -> tuple[float, float]:
     """Two-sample KS statistic and its alpha=0.01 critical value."""
@@ -85,15 +91,32 @@ def audit(n_benign: int = 210, n_attack: int = 140, seed: int = 7) -> dict:
     # Aggregate agreement can hide a single leaking profile, which is exactly
     # how defect 4 survived the first round of fixing.
     print("\nper-profile duration vs benign pool (this is the check that matters):")
-    print(f"{'profile':18s} {'KS D':>8s} {'crit':>8s}  verdict")
+    print(f"{'profile':18s} {'n':>4s} {'KS D':>8s} {'crit':>8s}  verdict")
     worst = 0.0
+    underpowered = []
     for p in ATTACK_PROFILES:
         d, crit = ks_statistic(ben, np.array(durs[p]))
         worst = max(worst, d - crit)
         flag = d > crit
         if flag:
             findings.append(f"{p}: duration differs from benign (KS D={d:.4f} > {crit:.4f})")
-        print(f"{p:18s} {d:8.4f} {crit:8.4f}  {'FLAG' if flag else 'ok'}")
+        # A test that cannot fail proves nothing. If the critical value for this
+        # profile sits above the smallest effect we care about, say so.
+        weak = (not flag) and crit > TARGET_DETECTABLE_D
+        if weak:
+            underpowered.append((p, len(durs[p]), crit))
+        verdict = "FLAG" if flag else ("UNDERPOWERED" if weak else "ok")
+        print(f"{p:18s} {len(durs[p]):4d} {d:8.4f} {crit:8.4f}  {verdict}")
+
+    if underpowered:
+        need = int(np.ceil((KS_ALPHA_COEFF / TARGET_DETECTABLE_D) ** 2)) + 1
+        print(f"\n  {len(underpowered)} profile(s) cannot detect a KS shift of "
+              f"{TARGET_DETECTABLE_D}; each needs about {need} sessions.")
+        print("  Passing here means 'no leak found', NOT 'no leak'. Re-run with a "
+              "larger corpus before trusting it.")
+        findings.append(
+            f"underpowered: {', '.join(p for p, _, _ in underpowered)} "
+            f"(need ~{need} sessions each to detect D={TARGET_DETECTABLE_D})")
 
     # Window count is a direct proxy for duration and is what the model sees.
     wb = np.concatenate([n_windows[p] for p in BENIGN_PROFILES])

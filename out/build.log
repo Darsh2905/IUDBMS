@@ -1,0 +1,4 @@
+  sessions        : 1000  (600 benign / 400 malicious)
+  usbmon lines    : 11,333,822
+  URB events      : 11,333,822
+  windows: 62,070

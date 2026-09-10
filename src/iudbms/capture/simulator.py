@@ -61,7 +61,7 @@ __all__ = [
 
 BENIGN_PROFILES = ("keyboard", "mouse", "mass_storage", "webcam", "audio")
 ATTACK_PROFILES = ("hid_injection", "identity_switch", "staged_delay",
-                   "class_exfil", "mimicry")
+                   "class_exfil", "mimicry", "mimicry_adaptive")
 ALL_PROFILES = BENIGN_PROFILES + ATTACK_PROFILES
 
 CTRL, ISO, INTR, BULK = "C", "Z", "I", "B"
@@ -350,6 +350,39 @@ class Simulator:
             t += self.rng.uniform(*HUMAN_PAUSE_RANGE)
         return t
 
+    def _adaptive_typing(self, t, dur, bus, dev, lines, ep=1):
+        """The strongest adversary in the corpus, and the most realistic.
+
+        Identical to ``_mimicry_typing`` in timing -- same log-normal
+        inter-arrivals, same burst lengths, same think-pauses -- but it types
+        its payload **once** rather than cycling a short script.
+
+        That is what a real BadUSB does. It types
+        ``powershell -enc <base64> <Enter>`` and stops; it does not replay the
+        same twenty-seven keystrokes three times over. Our original mimicry
+        cycled, and a cycling script necessarily exhausts its own payload
+        transitions -- which is what ``payload_seq_novelty`` (contract 2.0.0)
+        detects. This profile exists to answer whether that feature detects the
+        attack or merely the loop.
+
+        Keystrokes are drawn fresh, so no payload transition repeats and the
+        feature has nothing to bite on. Every other feature already matched
+        benign typing by construction. If this is undetectable, that is a
+        genuine bound on what HID behaviour alone can reveal, not a tuning
+        failure -- and it should be reported as one.
+        """
+        end = t + dur
+        while t < end:
+            for _ in range(self.rng.randint(*HUMAN_BURST_KEYS)):
+                t += min(float(self.np_rng.lognormal(*HUMAN_IAT_LOGNORM)), HUMAN_IAT_CAP)
+                if t >= end:
+                    break
+                # a fresh keycode every time: a payload typed once, never replayed
+                self._urb(lines, t, INTR, "in", bus, dev, ep,
+                          _hid_report(self.rng), interval=10)
+            t += self.rng.uniform(*HUMAN_PAUSE_RANGE)
+        return t
+
     def _covert_bulk_out(self, t, dur, bus, dev, lines, ep=2):
         """HID-declared device pushing bulk OUT: class/behaviour mismatch."""
         end = t + dur
@@ -487,6 +520,16 @@ class Simulator:
             onset = rng.uniform(4, 12)
             self._human_typing(t, onset - t, bus, dev, lines)
             self._mimicry_typing(onset, dur - onset, bus, dev, lines)
+
+        elif profile == "mimicry_adaptive":
+            # Same descriptor and same timing as mimicry, but the payload is
+            # typed once instead of cycled. See _adaptive_typing.
+            d, label = hid_desc(), 1
+            t = self._enumerate(lines, bus, dev, d.vid, d.pid)
+            t = self._hid_class_setup(lines, t, bus, dev)
+            onset = rng.uniform(4, 12)
+            self._human_typing(t, onset - t, bus, dev, lines)
+            self._adaptive_typing(onset, dur - onset, bus, dev, lines)
 
         elif profile == "class_exfil":
             d, label = hid_desc(), 1
