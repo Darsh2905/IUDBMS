@@ -75,6 +75,7 @@ def run_configuration(
     score_on: str = "report",
     calibrate_on: str = "calib",
     target_fpr: float = TARGET_FPR,
+    use_device_baseline: bool = True,
 ) -> Result:
     """Train and evaluate one configuration.
 
@@ -97,7 +98,10 @@ def run_configuration(
     groups = [class_group(s.descriptor) for s in train if s.label == 0
               for _ in range(len(s.X))]
     names = tuple(FEATURE_NAMES[i] for i in sel)
-    s1 = Stage1(seed=seed, feature_names=names).fit(Xb, groups)
+    # use_device_baseline=False is the N2 ablation: population forest only,
+    # on the same score scale because the weights are renormalised.
+    weights = None if use_device_baseline else (1.0, 0.0)
+    s1 = Stage1(seed=seed, feature_names=names, weights=weights).fit(Xb, groups)
 
     dev_raw = []
     for s in train:

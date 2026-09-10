@@ -187,6 +187,9 @@ def build() -> Path:
         f'<tr><td>{r["name"]}</td><td class="num">{r["features"]}</td>'
         f'<td class="num">{r["auc"]:.4f}</td><td class="num">{pct(r["detect"])}</td></tr>'
         for r in fd["modality"])
+    n2 = m.get("n2_ablation", {})
+    def n2v(key, field, sub="window"):
+        return n2.get(key, {}).get(sub, {}).get(field, float("nan"))
     gates = "".join(
         f'<tr{" class=lead" if r["k"] == cfg["gate"].split("-")[0] and r["n"] == 6 else ""}>'
         f'<td class="name mono">{r["k"]}-of-{r["n"]}</td><td class="num">{pct(r["detect"])}</td>'
@@ -213,6 +216,15 @@ def build() -> Path:
     tl_ma = svg.get("timeline_mimicry_adaptive", "")
     ma, mi = per["mimicry_adaptive"], per["mimicry"]
 
+    n2f_auc = n2v("full", "auc")
+    n2n_auc = n2v("no_baseline", "auc")
+    n2sb_auc = n2v("stage1_with_baseline", "auc")
+    n2sf_auc = n2v("stage1_forest_only", "auc")
+    n2f_det = pct(n2v("full", "attack_detect", "session"))
+    n2n_det = pct(n2v("no_baseline", "attack_detect", "session"))
+    n2sb_det = pct(n2v("stage1_with_baseline", "attack_detect", "session"))
+    n2sf_det = pct(n2v("stage1_forest_only", "attack_detect", "session"))
+    natk = f["session"]["n_attack"]
     html = f"""<title>IUDBMS Review 2</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -383,6 +395,34 @@ def build() -> Path:
         <td class="num">{f['window']['auc']:.4f}</td>
         <td class="num">{pct(f['session']['attack_detect'])}</td></tr>
     </tbody></table></div>
+
+  <div class="callout" style="background:var(--surface-2);border-color:var(--rule)">
+    <h3 style="color:var(--ink)">N2 &mdash; per-device adaptive baselines: unsupported</h3>
+    <p>Four pillars, and until now only three ablations. Isolating the device baseline by
+      setting its fusion weight to zero &mdash; forest only, same score scale &mdash; gives:</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Configuration</th><th class="num">Window AUC</th>
+        <th class="num">Session detection</th></tr></thead>
+      <tbody>
+        <tr><td>Full system</td><td class="num">{n2f_auc:.4f}</td><td class="num">{n2f_det}</td></tr>
+        <tr><td>Forest only, no device baseline</td><td class="num">{n2n_auc:.4f}</td>
+          <td class="num">{n2n_det}</td></tr>
+        <tr><td>Stage 1 with baseline</td><td class="num">{n2sb_auc:.4f}</td>
+          <td class="num">{n2sb_det}</td></tr>
+        <tr><td>Stage 1, forest only</td><td class="num">{n2sf_auc:.4f}</td>
+          <td class="num">{n2sf_det}</td></tr>
+      </tbody></table></div>
+    <p style="margin-top:14px">Removing the baseline leaves detection unchanged within noise
+      &mdash; two sessions of {natk} &mdash; and marginally better. Its AUC contribution is
+      negative at both levels. The one place it looks decisive, Stage-1-only rising from
+      {n2sf_det} to {n2sb_det}, is a <em>threshold artefact</em>: with near-identical AUC the
+      baseline shifts the score distribution so a fixed operating point lands better. That is
+      fragile, not a capability.</p>
+    <p>A plausible explanation, offered as hypothesis rather than defence: the forests are
+      already class-conditioned, so a device&rsquo;s class-specific normality is largely
+      captured at population level, leaving little for a per-device term on a corpus where
+      devices within a class are near-identical. Real devices vary more.</p>
+  </div>
 
   <figure>{svg['roc']}
     <figcaption><b>N3 is the pillar the evidence supports most clearly.</b> Stage 1 is

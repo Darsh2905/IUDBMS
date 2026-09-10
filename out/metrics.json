@@ -379,6 +379,88 @@
     "n_attack": 120,
     "n_benign": 178
   },
+  "n2_ablation": {
+    "full": {
+      "window": {
+        "auc": 0.9761532000069374,
+        "precision": 0.9991107158737217,
+        "recall": 0.7486256871564217,
+        "f1": 0.8559184839539091,
+        "n_windows": 18672,
+        "n_malicious": 6003
+      },
+      "session": {
+        "attack_detect": 0.8916666666666667,
+        "benign_fp": 0.0,
+        "revoked": 0.8666666666666667,
+        "median_latency": 4.299803074238076,
+        "p90_latency": 34.76807424575374,
+        "fp_per_benign_hour": 0.0,
+        "n_attack": 120,
+        "n_benign": 178
+      }
+    },
+    "no_baseline": {
+      "window": {
+        "auc": 0.9754931911264354,
+        "precision": 0.9971615720524017,
+        "recall": 0.7607862735299017,
+        "f1": 0.8630823018047813,
+        "n_windows": 18672,
+        "n_malicious": 6003
+      },
+      "session": {
+        "attack_detect": 0.9083333333333333,
+        "benign_fp": 0.011235955056179775,
+        "revoked": 0.8833333333333333,
+        "median_latency": 3.603984389973512,
+        "p90_latency": 38.81250423882638,
+        "fp_per_benign_hour": 0.6545878527567761,
+        "n_attack": 120,
+        "n_benign": 178
+      }
+    },
+    "stage1_with_baseline": {
+      "window": {
+        "auc": 0.8847226937745377,
+        "precision": 0.9852941176470589,
+        "recall": 0.14509411960686325,
+        "f1": 0.2529403223464498,
+        "n_windows": 18672,
+        "n_malicious": 6003
+      },
+      "session": {
+        "attack_detect": 0.15833333333333333,
+        "benign_fp": 0.0,
+        "revoked": 0.15833333333333333,
+        "median_latency": 3.5101842969741313,
+        "p90_latency": 3.8341544392065376,
+        "fp_per_benign_hour": 0.0,
+        "n_attack": 120,
+        "n_benign": 178
+      }
+    },
+    "stage1_forest_only": {
+      "window": {
+        "auc": 0.8876218151613015,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "n_windows": 18672,
+        "n_malicious": 6003
+      },
+      "session": {
+        "attack_detect": 0.0,
+        "benign_fp": 0.0,
+        "revoked": 0.0,
+        "median_latency": null,
+        "p90_latency": null,
+        "fp_per_benign_hour": 0.0,
+        "n_attack": 120,
+        "n_benign": 178
+      }
+    }
+  },
   "operating_curve": {
     "threshold_sweep": [
       {
@@ -462,5 +544,5 @@
       }
     ]
   },
-  "runtime_sec": 100.3
+  "runtime_sec": 121.7
 }
