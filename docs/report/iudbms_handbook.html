@@ -1,0 +1,624 @@
+<title>IUDBMS Handbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&display=swap">
+
+<style>
+  :root {
+    --paper:#f5f6f8; --surface:#fff; --surface-2:#eef0f4;
+    --ink:#12171d; --ink-2:#3c4653; --slate:#5f6b79;
+    --rule:#d9dee5; --rule-soft:#e7ebf0;
+    --signal:#b45309; --signal-dim:#f5ede0;
+    --ok:#0f766e; --ok-dim:#e2f1ef;
+    --crit:#9f1239; --crit-dim:#fbe8ed;
+    --c1:#2a78d6; --c2:#eb6834; --c3:#1baf7a;
+    --measure:70ch; --wide:1180px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:#0d1116; --surface:#141a21; --surface-2:#1b232c;
+      --ink:#e8ecf1; --ink-2:#b3bdc9; --slate:#8593a3;
+      --rule:#27313c; --rule-soft:#1e262f;
+      --signal:#e8a13c; --signal-dim:#2e2410;
+      --ok:#4fd1c5; --ok-dim:#102d2b;
+      --crit:#f4708f; --crit-dim:#331019;
+      --c1:#3987e5; --c2:#d95926; --c3:#199e70;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:#0d1116; --surface:#141a21; --surface-2:#1b232c;
+    --ink:#e8ecf1; --ink-2:#b3bdc9; --slate:#8593a3;
+    --rule:#27313c; --rule-soft:#1e262f;
+    --signal:#e8a13c; --signal-dim:#2e2410;
+    --ok:#4fd1c5; --ok-dim:#102d2b;
+    --crit:#f4708f; --crit-dim:#331019;
+    --c1:#3987e5; --c2:#d95926; --c3:#199e70;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper); color: var(--ink);
+    font-family: "IBM Plex Serif", Georgia, serif;
+    font-size: 16.5px; line-height: 1.64; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: var(--wide); margin: 0 auto; padding: 0 24px 100px; }
+  .col { max-width: var(--measure); }
+  h1, h2, h3, h4, th, .eyebrow, .metak, .chip, .tag { font-family: "IBM Plex Sans", system-ui, sans-serif; }
+  code, .mono, td.num, .pathline { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+
+  header.masthead { border-bottom: 2px solid var(--ink); padding: 54px 0 22px; margin-bottom: 10px; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--signal); margin: 0 0 14px; }
+  h1 { font-size: clamp(2.1rem, 4.6vw, 3rem); font-weight: 700; letter-spacing: -.02em; line-height: 1.05; margin: 0 0 15px; text-wrap: balance; }
+  .standfirst { font-size: 1.13rem; color: var(--ink-2); margin: 0; max-width: 64ch; }
+  .runmeta { display: flex; flex-wrap: wrap; gap: 0 30px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--rule-soft); }
+  .runmeta div { display: flex; flex-direction: column; gap: 2px; }
+  .metak { font-size: 10px; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; color: var(--slate); }
+  .metav { font-family: "IBM Plex Mono", monospace; font-size: 13.5px; }
+
+  .toc { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 3px 26px; margin: 24px 0 0; padding: 16px 0 0; border-top: 1px solid var(--rule-soft); }
+  .toc a { color: var(--ink-2); text-decoration: none; font-size: 13px; line-height: 1.9; display: block; }
+  .toc a b { color: var(--signal); font-family: "IBM Plex Mono", monospace; font-weight: 600; margin-right: .5em; }
+  .toc a:hover { color: var(--signal); }
+
+  section { margin-top: 52px; }
+  h2 { font-size: 1.4rem; font-weight: 600; letter-spacing: -.012em; margin: 0 0 6px; text-wrap: balance; }
+  h2 .n { font-family: "IBM Plex Mono", monospace; font-size: .68em; color: var(--signal); font-weight: 500; margin-right: .6em; }
+  h3 { font-size: 1.04rem; font-weight: 600; margin: 28px 0 8px; }
+  .lede { color: var(--slate); margin: 0 0 20px; font-size: .95rem; max-width: var(--measure); }
+  p { margin: 0 0 14px; max-width: var(--measure); }
+  .full p { max-width: none; }
+  .col p:last-child { margin-bottom: 0; }
+  code { font-size: .87em; background: var(--surface-2); padding: .1em .36em; border-radius: 3px; color: var(--ink-2); }
+  strong { font-weight: 600; }
+
+  .tablewrap { overflow-x: auto; margin: 18px 0 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  caption { caption-side: top; text-align: left; font-family: "IBM Plex Sans", sans-serif; font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--slate); padding-bottom: 9px; }
+  th { text-align: left; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--slate); padding: 0 13px 8px 0; border-bottom: 1px solid var(--ink); white-space: nowrap; }
+  th.num, td.num { text-align: right; }
+  td { padding: 9px 13px 9px 0; border-bottom: 1px solid var(--rule-soft); vertical-align: top; font-size: 13.8px; }
+  td.num { font-variant-numeric: tabular-nums; }
+  td.name { font-family: "IBM Plex Mono", monospace; font-size: 13px; }
+  tr.total td { border-top: 1px solid var(--ink); border-bottom: none; font-weight: 600; padding-top: 10px; }
+  tr.lead td { background: var(--signal-dim); }
+  tr.lead td:first-child { box-shadow: inset 3px 0 0 var(--signal); padding-left: 10px; }
+  tr.crit td.pt { color: var(--crit); font-weight: 600; }
+  tr.ok td.pt { color: var(--ok); font-weight: 600; }
+
+  /* verdict chips for the scorecard */
+  .verdict { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 3px 9px; border-radius: 3px; white-space: nowrap; }
+  .verdict.supported { background: var(--ok-dim); color: var(--ok); }
+  .verdict.refuted { background: var(--crit-dim); color: var(--crit); }
+  .verdict.partial { background: var(--signal-dim); color: var(--signal); }
+  .verdict.unbuilt { background: var(--surface-2); color: var(--slate); }
+  .verdict::before { content: "●"; font-size: 8px; }
+
+  .claimcard { border: 1px solid var(--rule); border-radius: 7px; background: var(--surface); padding: 20px 22px; margin-top: 20px; }
+  .claimcard .head { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 10px; }
+  .claimcard h3 { margin: 0; font-size: 1.02rem; }
+  .claimcard .quote { font-style: italic; color: var(--slate); font-size: .92rem; border-left: 2px solid var(--rule); padding-left: 13px; margin: 0 0 13px; }
+  .claimcard .evidence { font-size: .93rem; }
+  .claimcard .evidence p { margin-bottom: 10px; }
+
+  .diffgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--rule-soft); border: 1px solid var(--rule-soft); border-radius: 7px; overflow: hidden; margin-top: 18px; }
+  .diffgrid .h { background: var(--surface-2); padding: 9px 15px; font-family: "IBM Plex Sans"; font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--slate); }
+  .diffgrid .cell { background: var(--surface); padding: 13px 15px; font-size: 13.5px; }
+  .diffgrid .cell.gap { color: var(--slate); }
+  @media (max-width: 640px) { .diffgrid { grid-template-columns: 1fr; } }
+
+  .layerrow { display: grid; grid-template-columns: 90px 1fr; gap: 16px; padding: 13px 0; border-bottom: 1px solid var(--rule-soft); align-items: baseline; }
+  .layerrow .lnum { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--slate); font-weight: 600; }
+  .layerrow .lbody b { display: block; font-family: "IBM Plex Sans"; font-size: 13.5px; margin-bottom: 3px; }
+  .layerrow .lbody span { font-size: 13px; color: var(--slate); }
+
+  .finding { border-left: 2px solid var(--rule); padding-left: 18px; margin-top: 20px; }
+  .finding h4 { margin: 0 0 4px; font-size: .97rem; font-weight: 600; font-family: "IBM Plex Sans"; }
+  .finding .tag { font-family: "IBM Plex Mono", monospace; font-size: 10.5px; color: var(--signal); font-weight: 600; display: block; margin-bottom: 4px; letter-spacing: .04em; }
+  .finding p { font-size: .93rem; margin-bottom: 8px; }
+
+  .callout { background: var(--surface-2); border: 1px solid var(--rule); border-radius: 7px; padding: 18px 20px; margin-top: 18px; }
+  .callout.warn { background: var(--crit-dim); border-color: var(--crit); }
+  .callout.warn h3, .callout.warn h4 { color: var(--crit); }
+  .callout h3, .callout h4 { margin-top: 0; }
+  .callout p:last-child { margin-bottom: 0; }
+
+  pre { margin: 0; background: var(--surface-2); border: 1px solid var(--rule); border-radius: 6px; padding: 13px 15px; overflow-x: auto; font-family: "IBM Plex Mono", monospace; font-size: 12.5px; line-height: 1.6; }
+  ul { margin: 0 0 14px; padding-left: 1.15em; max-width: var(--measure); }
+  li { margin-bottom: 7px; } li::marker { color: var(--slate); }
+  .cmdlist div { display: flex; gap: 14px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--rule-soft); }
+  .cmdlist code { flex: 0 0 auto; white-space: nowrap; }
+  .cmdlist .d { color: var(--slate); font-size: 13px; }
+
+  footer { margin-top: 68px; padding-top: 20px; border-top: 1px solid var(--rule); font-size: .84rem; color: var(--slate); max-width: var(--measure); }
+  @media (max-width: 640px) { body { font-size: 16px; } .wrap { padding: 0 18px 72px; } }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+  @media print {
+    :root { --paper:#fff; --surface:#fff; --surface-2:#f4f4f4; --ink:#000; --ink-2:#222; --slate:#555; --rule:#999; --rule-soft:#ccc; }
+    body { font-size: 10.5pt; } .wrap { max-width: none; padding: 0; }
+    section { break-before: page; } .claimcard, table, .finding, .callout, .diffgrid { break-inside: avoid; }
+    h1, h2, h3 { break-after: avoid; }
+  }
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <p class="eyebrow">IUDBMS &middot; complete project reference</p>
+  <h1>Everything we built, checked against everything we claimed</h1>
+  <p class="standfirst">This document walks the whole project end to end — the problem, the
+    literature it sits inside, the architecture as designed versus as built, the data, the
+    algorithm, the measured results, and the audit trail of defects found along the way. Its
+    spine is Section&nbsp;3: your Review&nbsp;1 paper made four specific novelty claims, and this
+    is the first time all four have been checked against the project's own ablations.</p>
+  <div class="runmeta">
+    <div><span class="metak">Tests</span><span class="metav">310 passing</span></div>
+    <div><span class="metak">Commits</span><span class="metav">21</span></div>
+    <div><span class="metak">Corpus</span><span class="metav">1,000 sessions</span></div>
+    <div><span class="metak">Raw lines</span><span class="metav">11,367,542</span></div>
+    <div><span class="metak">Windows</span><span class="metav">62,791</span></div>
+    <div><span class="metak">Detection</span><span class="metav">89.2%</span></div>
+  </div>
+  <div class="toc">
+    <a href="#s0"><b>00</b>The problem</a>
+    <a href="#s1"><b>01</b>Where this sits in the literature</a>
+    <a href="#s2"><b>02</b>The scorecard — four claims, checked</a>
+    <a href="#s3"><b>03</b>Architecture — designed vs. built</a>
+    <a href="#s4"><b>04</b>The data</a>
+    <a href="#s5"><b>05</b>The algorithm</a>
+    <a href="#s6"><b>06</b>Measured results</a>
+    <a href="#s7"><b>07</b>The audit trail</a>
+    <a href="#s8"><b>08</b>What runs, right now</a>
+    <a href="#s9"><b>09</b>Honest limitations</a>
+  </div>
+</header>
+
+<section id="s0" style="margin-top:40px">
+  <h2><span class="n">00</span>The problem</h2>
+  <div class="col">
+    <p>USB has trusted devices by default since 1996. A device self-reports its Vendor ID, Product
+      ID and interface descriptors at enumeration, and the host accepts these claims with no
+      cryptographic verification at all.</p>
+    <p><strong>BadUSB attacks exploit exactly this.</strong> Firmware is altered to declare an
+      interface it doesn't honestly represent — almost always an HID keyboard — so something that
+      looks like an ordinary flash drive or cable can inject a pre-programmed keystroke payload the
+      instant it's plugged in. Because keyboard input is inherently trusted, this bypasses
+      file-based antivirus entirely and executes within seconds.</p>
+    <p>Every existing defence — allowlisting by VID/PID, user role-confirmation, static kernel
+      filter rules — verifies <em>identity at connection</em>. None of them judge how a device
+      <em>actually behaves</em> once it's running, so a device that spoofs an allowed identity, or
+      misbehaves inside an approved role, defeats them completely. <strong>IUDBMS's whole premise
+      is to trust devices by observed behaviour instead.</strong></p>
+  </div>
+</section>
+
+<section id="s1">
+  <h2><span class="n">01</span>Where this sits in the literature</h2>
+  <p class="lede">Three separate research strands, none of which overlap on their own. Condensed
+    from the Review&nbsp;1 paper's literature review.</p>
+
+  <div class="tablewrap"><table>
+    <caption>The three strands, and what each one does and doesn't cover</caption>
+    <thead><tr><th>Strand</th><th>Key works</th><th>Establishes</th><th>Leaves open</th></tr></thead>
+    <tbody>
+      <tr><td>USB / BadUSB defences</td><td>WMUD [1], SafeUSB [2]</td>
+        <td>Tamper-resistant allowlisting; userspace behavioural keystroke monitoring</td>
+        <td>Identity-bound (WMUD); ~1s userspace activation delay lets short payloads succeed (SafeUSB)</td></tr>
+      <tr><td>eBPF kernel observability</td><td>eIDPS [3], Rajurkar&amp;Deshmukh survey [4], Song survey [5]</td>
+        <td>Kernel-extract / userspace-infer as the dominant pattern for fast, verified in-kernel ML</td>
+        <td>Applied almost exclusively to <em>networks</em> — never to USB, where the natural unit is the URB</td></tr>
+      <tr><td>LSTM temporal anomaly detection</td><td>LSTM-AE [7], Baek&amp;Jung [6], Saini et al. [8],
+        attention-LSTM [9], IIoT-LSTM [10]</td>
+        <td>Layered LSTM designs catch multi-stage, zero-day behaviour in real time</td>
+        <td>Never applied to a single USB peripheral's own event stream</td></tr>
+    </tbody></table></div>
+
+  <p style="margin-top:18px" class="col"><strong>IUDBMS's stated position:</strong> not a new
+    technique in any of the three strands individually — the paper is explicit that eBPF capture,
+    unsupervised anomaly scoring, and LSTM temporal modelling all already exist elsewhere. The
+    claimed novelty is <em>combining</em> them into one per-device, closed-loop pipeline, and
+    <em>pointing that pipeline at USB</em> specifically — which no eBPF-ML work and no USB-defence
+    work has done.</p>
+</section>
+
+<section id="s2">
+  <h2><span class="n">02</span>The scorecard — four claims, checked against our own evidence</h2>
+  <p class="lede">The paper (§3.3) makes four specific novelty claims. This project has spent the
+    build phase running ablations that directly test each one. Two hold up. Two don't.</p>
+
+  <div class="claimcard">
+    <div class="head"><h3>N1 — Multi-modal feature fusion</h3>
+      <span class="verdict refuted">Refuted by our own ablation</span></div>
+    <p class="quote">&ldquo;Fuses event timing, traffic volume, and descriptor changes into one
+      feature stream&hellip; answering the network-only gap.&rdquo;</p>
+    <div class="evidence">
+      <p>Built as stated — 28 deployed features across four modalities (timing, payload, protocol,
+        identity), fused into one vector. But holding each modality out one at a time and testing
+        it <em>alone</em> shows fusion isn't earning its keep:</p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Modality alone</th><th class="num">Window AUC</th><th class="num">Session detection</th></tr></thead>
+        <tbody>
+          <tr><td>Timing (9 features)</td><td class="num">0.9662</td><td class="num">77.5%</td></tr>
+          <tr class="lead"><td>Payload (8 features)</td><td class="num">0.9752</td><td class="num"><strong>90.8%</strong></td></tr>
+          <tr><td>Protocol (6 features)</td><td class="num">0.9458</td><td class="num">77.5%</td></tr>
+          <tr><td>Identity (6 features)</td><td class="num">0.8884</td><td class="num">39.2%</td></tr>
+          <tr class="total"><td>All 28 fused (deployed)</td><td class="num">0.9762</td><td class="num">89.2%</td></tr>
+        </tbody></table></div>
+      <p style="margin-top:12px">The payload modality <em>alone</em> reaches 90.8% — a full point
+        <em>higher</em> than the fully fused model. Fusion adds essentially nothing measurable on
+        this corpus, because payload sequence novelty (the feature that catches most attacks) is
+        already strong enough on its own.</p>
+    </div>
+  </div>
+
+  <div class="claimcard">
+    <div class="head"><h3>N2 — Per-device adaptive behavioural baselines</h3>
+      <span class="verdict refuted">Refuted by our own ablation</span></div>
+    <p class="quote">&ldquo;Each device is scored against its own learned norm rather than a global
+      rule set, answering the identity-bound trust gap left by WMUD.&rdquo;</p>
+    <div class="evidence">
+      <p>Built exactly as described — an online EWMA baseline per device, fused 45% into Stage 1's
+        score alongside the class-conditioned Isolation Forest. Setting that weight to zero (forest
+        only, same score scale) isolates its contribution:</p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Configuration</th><th class="num">Window AUC</th><th class="num">Session detection</th></tr></thead>
+        <tbody>
+          <tr><td>Full system</td><td class="num">0.9762</td><td class="num">89.2%</td></tr>
+          <tr class="lead"><td>Forest only, no device baseline</td><td class="num">0.9755</td><td class="num"><strong>90.8%</strong></td></tr>
+          <tr><td>Stage 1 with baseline</td><td class="num">0.8847</td><td class="num">15.8%</td></tr>
+          <tr><td>Stage 1, forest only</td><td class="num">0.8876</td><td class="num">0.0%</td></tr>
+        </tbody></table></div>
+      <p style="margin-top:12px">Removing the per-device baseline changes detection by less than a
+        session either way, and its window-level AUC contribution is <em>negative</em> at both
+        rows. Likely explanation, offered as hypothesis: the forests are already
+        class-conditioned, so a device's class-specific normality is largely captured at the
+        population level, leaving little for a per-device term to add — at least on a corpus where
+        devices within one class are close to identical.</p>
+    </div>
+  </div>
+
+  <div class="claimcard">
+    <div class="head"><h3>N3 — Closed-loop kernel-level enforcement</h3>
+      <span class="verdict unbuilt">Not built as specified</span></div>
+    <p class="quote">&ldquo;Verdicts&hellip; execute inside the kernel with no userspace round-trip,
+      answering SafeUSB's activation-latency limitation.&rdquo;</p>
+    <div class="evidence">
+      <p>This is the one claim we can't score with an ablation, because the described mechanism —
+        in-kernel eBPF enforcement — was never built. What exists is a userspace Python policy
+        engine that generates the correct rule (<code>echo 0 &gt;
+        /sys/bus/usb/devices/&lt;dev&gt;/authorized</code>) and the correct trigger logic, but
+        <strong>never executes it.</strong> A module-level constant,
+        <code>ENFORCEMENT_REVIEWED = False</code>, sits in front of every execution path and raises
+        rather than writing to sysfs. This was a deliberate safety choice, not an oversight — but
+        it means the activation-latency gap the paper set out to close is currently closed only on
+        paper, not in the kernel fast-path the paper specifically describes.</p>
+    </div>
+  </div>
+
+  <div class="claimcard">
+    <div class="head"><h3>N4 — Temporal sequence modelling</h3>
+      <span class="verdict supported">Strongly supported</span></div>
+    <p class="quote">&ldquo;A userspace LSTM analyses rolling event windows to catch slow-escalation
+      attacks single-point detectors miss, bringing temporal modelling to USB for the first
+      time.&rdquo;</p>
+    <div class="evidence">
+      <p>This is the pillar the evidence backs most clearly. Stage 1 alone (memoryless, one window
+        at a time) detects <strong>15.8%</strong> of attack sessions. Adding the LSTM's 10-second
+        rolling context takes that to <strong>89.2%</strong> — a 5.6&times; improvement that shows
+        up consistently across every corpus size and every fix made this session.</p>
+      <p>One caveat worth being precise about: a separate comparison (§7, finding 15) tested GRU,
+        a 1-D CNN, and gradient boosting against the LSTM, all fed the identical 10-window sequence.
+        All four landed within one session of each other. <strong>Sequence context is the
+        pillar that matters — recurrence specifically, or LSTM specifically, is not uniquely
+        justified by this evidence.</strong> The paper's claim should be read as "temporal
+        modelling," which holds, rather than "LSTM architecture," which is one of several
+        equally-good ways to consume that same sequence.</p>
+    </div>
+  </div>
+
+  <div class="callout" style="margin-top:28px">
+    <h3>The honest one-paragraph summary</h3>
+    <p>Of four claimed contributions, one (N4, temporal modelling) is strongly supported by direct
+      measurement; one (N3, kernel-level enforcement) was never actually built and remains a design
+      on paper; and two (N1 fusion, N2 adaptive baselines) were built exactly as specified and then
+      <strong>measured to contribute nothing</strong> on this corpus once properly isolated. That
+      last part — building something, then finding your own ablation doesn't support it, then
+      reporting that plainly instead of hiding it — is itself the project's strongest methodological
+      asset, and is documented in full in Section&nbsp;7.</p>
+  </div>
+</section>
+
+<section id="s3">
+  <h2><span class="n">03</span>Architecture — designed vs. built</h2>
+  <p class="lede">The paper specifies a four-layer pipeline (§4, Objectives 1&ndash;4). Here's each
+    layer exactly as designed, next to what actually exists.</p>
+
+  <div class="layerrow">
+    <div class="lnum">L1</div>
+    <div class="lbody"><b>In-kernel eBPF capture</b>
+      <span><strong>Designed:</strong> an eBPF program at the kernel/driver boundary intercepting
+      URBs via <code>usb_submit_urb</code>/<code>__usb_hcd_giveback_urb</code>, passing compact
+      records through shared BPF maps. &nbsp;<strong>Built:</strong> a usbmon (debugfs) text-log
+      reader in userspace Python — explicitly framed in the paper itself as an acceptable fallback,
+      "the design is agnostic to this choice." Fully working and fixture-validated against real
+      kernel line formats; eBPF is deferred (plan's own designated sacrifice week).</span></div>
+  </div>
+  <div class="layerrow">
+    <div class="lnum">L2</div>
+    <div class="lbody"><b>In-kernel anomaly scoring</b>
+      <span><strong>Designed:</strong> per-device baseline + Isolation Forest, running <em>in the
+      kernel fast-path</em>. &nbsp;<strong>Built:</strong> Isolation Forest + EWMA baseline exactly
+      as specified algorithmically — but running in userspace Python, not the kernel. One-Class SVM
+      (the paper's named alternative) was tested and found degenerate (AUC 0.44, alerts on
+      everything) — Isolation Forest was the right call.</span></div>
+  </div>
+  <div class="layerrow">
+    <div class="lnum">L3</div>
+    <div class="lbody"><b>Userspace temporal sequence modelling</b>
+      <span><strong>Designed:</strong> a PyTorch LSTM over rolling event windows.
+      &nbsp;<strong>Built:</strong> exactly this — the most faithfully implemented layer relative to
+      the paper. 10-window sequences, PyTorch, trained with onset-based transition labelling.</span></div>
+  </div>
+  <div class="layerrow">
+    <div class="lnum">L4</div>
+    <div class="lbody"><b>Closed-loop kernel-level enforcement</b>
+      <span><strong>Designed:</strong> verdicts execute inside the kernel, no userspace round-trip.
+      &nbsp;<strong>Built:</strong> a correct escalation ladder and rule generator in userspace
+      Python — but every execution path is dry-run only. Nothing has ever been written to sysfs.</span></div>
+  </div>
+  <div class="layerrow" style="border-bottom:none">
+    <div class="lnum">L5</div>
+    <div class="lbody"><b>Data store and interface</b>
+      <span><strong>Designed:</strong> SQLite persistence of baselines/event history/alerts, exposed
+      via a FastAPI/Flask dashboard. &nbsp;<strong>Built:</strong> closely matches — SQLite with
+      five tables, FastAPI, a working dashboard. Gap: "event history" in the plan's own words meant
+      raw traces; the database stores only post-extraction feature vectors, never raw URBs (see
+      §4). The <code>baselines</code> table is currently empty — it's populated by the live
+      streaming detector, which has been run against a replayed recording but never against a real
+      host.</span></div>
+  </div>
+
+  <div class="callout warn">
+    <h4>The evaluation methodology, separately from the four layers</h4>
+    <p>The paper's Objective 6 specifies evaluation against Pi Pico / Digispark hardware attacks,
+      measuring detection rate, false-positive rate, enforcement latency and throughput overhead,
+      compared against an identity-based baseline. The <em>metrics measured</em> match this almost
+      exactly — detection rate, benign FP rate, latency, and an identity-whitelist baseline are all
+      in Section&nbsp;6. What doesn't match: <strong>zero of it comes from real hardware.</strong>
+      Every session, benign and malicious, is generated by a simulator. This is the single largest
+      gap between the paper's evaluation plan and what has actually been measured.</p>
+  </div>
+</section>
+
+<section id="s4">
+  <h2><span class="n">04</span>The data</h2>
+  <p class="lede">One continuous chain, each step throwing away everything the next step doesn't need.</p>
+
+  <div class="tablewrap"><table>
+    <caption>From raw kernel text to one training example</caption>
+    <thead><tr><th>Stage</th><th>Unit</th><th>Example</th></tr></thead>
+    <tbody>
+      <tr><td>Raw kernel log line</td><td>1 line of text</td>
+        <td class="mono">f5ca4980 3854346339 C Ii:1:003:1 0:8 8 = 00000000...</td></tr>
+      <tr><td>Parsed event</td><td>1 <code>URBEvent</code></td>
+        <td>ts=3.854s, type=interrupt, direction=in, length=8 bytes</td></tr>
+      <tr><td>Window</td><td>1 second of events</td><td>14 events this second, bucketed together</td></tr>
+      <tr><td>Feature row</td><td>29 numbers</td><td><code>n_events=14, cv_iat=1.12, payload_seq_novelty=1.0, ...</code></td></tr>
+      <tr><td>Session</td><td>40&ndash;85s, one device</td><td>one full plug-in-to-unplug story, one ground-truth label</td></tr>
+      <tr class="total"><td>Corpus</td><td>the whole dataset</td><td>1,000 sessions &rarr; 62,791 rows, the actual training table</td></tr>
+    </tbody></table></div>
+
+  <h3>Ten session profiles</h3>
+  <p class="col">Five benign — <code>keyboard, mouse, mass_storage, webcam, audio</code> — each with
+    its own realistic timing model (human keystrokes drawn log-normal, mouse motion bursts, bulk
+    file-copy patterns). Six attack — <code>hid_injection</code> (fast robotic typing),
+    <code>identity_switch</code> (enumerates as storage, grows a keyboard interface mid-session),
+    <code>staged_delay</code> (human-like for ~47s, then fires), <code>class_exfil</code> (declares
+    HID, sends bulk data), <code>mimicry</code> (human-paced but loops a short script),
+    <code>mimicry_adaptive</code> (human-paced, types a real payload once — the hardest case, see §7).</p>
+
+  <div class="callout warn">
+    <h4>Every one of those 62,791 rows is synthetic</h4>
+    <p>No physical device, no Rubber Ducky, no real usbmon capture feeds any of this. The raw-line
+      <em>format</em> is real and validated against kernel documentation, but the <em>content</em> —
+      every timestamp, every byte count, every keystroke — is generated by
+      <code>src/iudbms/capture/simulator.py</code>. This is the single biggest asterisk on every
+      number in this document, and it's the reason the paper's own hardware-evaluation objective
+      (§4, Objective 6) remains unmet.</p>
+  </div>
+
+  <h3>Nothing raw ever reaches the database</h3>
+  <p class="col">The five SQLite tables (<code>devices, windows, baselines, alerts, actions</code>)
+    store only post-extraction feature rows, model scores, and generated rules — never a raw
+    <code>URBEvent</code>. This diverges from the plan's own stated intent to "store raw traces, not
+    just features, so the feature set can be revised without re-collecting" — that raw-trace archive
+    was specified but never built.</p>
+</section>
+
+<section id="s5">
+  <h2><span class="n">05</span>The algorithm — from one second to one decision</h2>
+  <p class="lede">Full formulas and parameter values live in the companion
+    <code>iudbms_algorithms.html</code> reference. This section is the conceptual chain that
+    connects them.</p>
+
+  <div class="layerrow"><div class="lnum">1</div><div class="lbody"><b>Stage 1 — memoryless, per-second</b>
+    <span>Two questions fused per window: an Isolation Forest asks "unusual for this device's
+    <em>declared class</em>?" (trained once, offline, benign windows only); an online EWMA baseline
+    asks "unusual for <em>this specific device's own history</em>?" Fused 55%/45%, output one number
+    0&ndash;1.</span></div></div>
+  <div class="layerrow"><div class="lnum">2</div><div class="lbody"><b>The relay, not a vote</b>
+    <span>Stage 1's number is appended as a 29th input dimension — it never independently votes.
+    Every second's score is forwarded unconditionally, whether suspicious or not; there is no gate
+    between the two stages.</span></div></div>
+  <div class="layerrow"><div class="lnum">3</div><div class="lbody"><b>Stage 2 — a 10-second LSTM</b>
+    <span>Reads the last 10 rows of 29 numbers as one sequence, left-padded by repetition, strictly
+    causal. Outputs one continuous number: P(this window is part of an attack). Trained with
+    onset-based labelling — pre-onset windows of a malicious session are labelled benign — which is
+    what forces the model to key on the <em>transition</em>, since the same device sits on both
+    sides of that boundary.</span></div></div>
+  <div class="layerrow"><div class="lnum">4</div><div class="lbody"><b>Threshold — calibrated, not guessed</b>
+    <span>A held-out calibration split (140 sessions, touched by neither training nor final
+    reporting) is scored by the frozen models; every benign score is sorted, and the value at the
+    99.99th percentile becomes the threshold (target FPR = 0.0001 &rarr; threshold = 0.9916). Frozen
+    from that point on — never re-derived from test or live data.</span></div></div>
+  <div class="layerrow" style="border-bottom:none"><div class="lnum">5</div><div class="lbody"><b>The persistence gate</b>
+    <span>A single second crossing the threshold does nothing. A rolling 6-second window tracks
+    hits; 4-of-6 &rarr; THROTTLE (severity high); 8 cumulative hits &rarr; DEAUTHORIZE (severity
+    critical). This absorbs the noisy, near-threshold flicker visible in every live demo run.</span></div></div>
+</section>
+
+<section id="s6">
+  <h2><span class="n">06</span>Measured results</h2>
+  <p class="lede">298 held-out test sessions, session-stratified split, threshold calibrated on a
+    disjoint 140-session split. Reproduce with <code>make eval</code>.</p>
+
+  <div class="tablewrap"><table>
+    <caption>Headline — window and session level</caption>
+    <thead><tr><th>Model</th><th class="num">Window AUC</th><th class="num">Precision</th>
+      <th class="num">Recall</th><th class="num">Session detection</th></tr></thead>
+    <tbody>
+      <tr class="lead"><td><strong>IUDBMS (Stage 1 + Stage 2)</strong></td><td class="num">0.9762</td>
+        <td class="num">0.999</td><td class="num">0.749</td><td class="num"><strong>89.2%</strong></td></tr>
+      <tr><td>Stage 1 only (no temporal model)</td><td class="num">0.8847</td>
+        <td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">15.8%</td></tr>
+      <tr><td>Identity whitelist (USBGuard-style)</td><td class="num">&mdash;</td>
+        <td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">0.0%</td></tr>
+    </tbody></table></div>
+  <p class="caption col" style="font-size:.85rem;color:var(--slate);margin-top:10px">0.0% benign
+    session false positives across 178 benign test sessions; median detection latency 4.3s.</p>
+
+  <div class="tablewrap"><table>
+    <caption>By attack class</caption>
+    <thead><tr><th>Class</th><th class="num">n</th><th class="num">IUDBMS</th>
+      <th class="num">Stage 1 only</th><th class="num">Latency</th></tr></thead>
+    <tbody>
+      <tr><td class="name">class_exfil</td><td class="num">24</td><td class="num">100.0%</td><td class="num">20.8%</td><td class="num">4.2s</td></tr>
+      <tr><td class="name">hid_injection</td><td class="num">21</td><td class="num">100.0%</td><td class="num">0.0%</td><td class="num">4.4s</td></tr>
+      <tr><td class="name">identity_switch</td><td class="num">20</td><td class="num">100.0%</td><td class="num">70.0%</td><td class="num">3.5s</td></tr>
+      <tr><td class="name">staged_delay</td><td class="num">20</td><td class="num">100.0%</td><td class="num">0.0%</td><td class="num">4.3s</td></tr>
+      <tr><td class="name">mimicry</td><td class="num">15</td><td class="num">93.3%</td><td class="num">0.0%</td><td class="num">24.4s</td></tr>
+      <tr class="crit"><td class="name">mimicry_adaptive</td><td class="num">20</td><td class="num pt">40.0%</td><td class="num">0.0%</td><td class="num">51.2s</td></tr>
+      <tr class="total"><td>Overall</td><td class="num">120</td><td class="num">89.2%</td><td class="num">15.8%</td><td class="num">4.3s</td></tr>
+    </tbody></table></div>
+
+  <h3>Model-family comparison (<code>make zoo</code>, scored on a selection split — decision-grade, test never touched)</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Candidate</th><th class="num">AUC</th><th class="num">Detection</th></tr></thead>
+    <tbody>
+      <tr class="lead"><td>Isolation Forest (incumbent, Stage 1)</td><td class="num">0.8694</td><td class="num">&mdash;</td></tr>
+      <tr><td>Elliptic Envelope</td><td class="num">0.8291</td><td class="num">&mdash;</td></tr>
+      <tr><td>Local Outlier Factor</td><td class="num">0.7872</td><td class="num">&mdash;</td></tr>
+      <tr><td>One-Class SVM (rbf)</td><td class="num">0.4388</td><td class="num">degenerate</td></tr>
+      <tr class="lead"><td>LSTM (incumbent, Stage 2)</td><td class="num">0.9798</td><td class="num">88.0%</td></tr>
+      <tr><td>GRU</td><td class="num">0.9790</td><td class="num">88.0%</td></tr>
+      <tr><td>1-D CNN (no recurrence)</td><td class="num">0.9753</td><td class="num">88.0%</td></tr>
+      <tr><td>HistGradientBoosting (flat sequence)</td><td class="num">0.9770</td><td class="num">86.0%</td></tr>
+      <tr><td>Single-window supervised model (no sequence at all)</td><td class="num">0.9564</td><td class="num">80.0%</td></tr>
+    </tbody></table></div>
+</section>
+
+<section id="s7">
+  <h2><span class="n">07</span>The audit trail — sixteen defects found and fixed</h2>
+  <p class="lede">The project's working method: build, adversarially attack it, report what breaks
+    including the embarrassing parts, fix it, state plainly what remains unfixed. Every finding
+    below changed a reported number.</p>
+
+  <div class="finding"><span class="tag">Capture layer</span>
+    <h4>The parser silently dropped four real usbmon line forms</h4>
+    <p>Control setup packets, every submission line, uncaptured payloads, and multi-part iso status
+      words all vanished with no counter. Also read the polling <em>interval</em> as the transfer
+      <em>length</em>. Both fixed and fixture-tested against real kernel documentation.</p></div>
+
+  <div class="finding"><span class="tag">Corpus fidelity</span>
+    <h4>A duration leak survived being fixed once</h4>
+    <p>Aggregate durations matched (63.7s benign vs 63.9s malicious) — looked clean. Per profile,
+      <code>staged_delay</code> drew from a different range entirely. The audit now runs per
+      profile, and a test re-introduces the bug to prove the audit still catches it.</p></div>
+
+  <div class="finding"><span class="tag">Stage 1</span>
+    <h4>Three features exactly constant across benign traffic exploded a standardised score to ~10⁶</h4>
+    <p>Found by the dashboard rendering alert evidence as <code>late_iface_flag 4472091.23</code>.
+      Fixed with a variance floor and clip. Collapsed Stage-1-only detection from 44.2% to 11.7% at
+      the time — that old number was substantially an artefact of the bug, not real ranking ability.</p></div>
+
+  <div class="finding"><span class="tag">Feature engineering</span>
+    <h4>A cross-window feature was detecting the loop, not the attack</h4>
+    <p>The original <code>mimicry</code> profile cycled a 27-key script ~3 times. Any repeated loop
+      exhausts its own payload transitions — that's what <code>payload_seq_novelty</code> actually
+      measured. A realistic single-shot payload (typed once, silent after) reduced detection from
+      100% to 5%, then a proper finite-payload fix (with post-payload silence as real signal)
+      recovered it to 40% — the honest number for the hardest case in the corpus.</p></div>
+
+  <div class="finding"><span class="tag">Hyperparameter tuning</span>
+    <h4>A sweep recommended a change that lost five points on test</h4>
+    <p>A longer sequence horizon won the selection split by one session (2%) — noise, not signal.
+      Applied anyway, it scored five points worse on test. The tuner now computes the noise floor
+      and requires a challenger to clear it before recommending a change.</p></div>
+
+  <div class="finding"><span class="tag">Evaluation integrity</span>
+    <h4>A leakage-detection test kept passing because it had lost the power to fail</h4>
+    <p>Adding a sixth attack profile shrank per-profile sample size; the statistical critical value
+      grew past the effect size it was meant to catch. The audit now reports <strong>UNDERPOWERED</strong>
+      rather than a false "ok" when a check could not have failed.</p></div>
+
+  <div class="finding"><span class="tag">Missing ablation</span>
+    <h4>N2 had never been isolated — until this document's §2</h4>
+    <p>Three of four novelty pillars had ablations; the per-device baseline didn't. Built one; it
+      showed the pillar contributes nothing measurable (§2).</p></div>
+
+  <div class="finding"><span class="tag">Infrastructure</span>
+    <h4>The corpus cache could silently serve results for code that no longer existed</h4>
+    <p>It checked the contract version but not the simulator or feature-extractor source. Now
+      fingerprinted against both; it has already fired for real once this session.</p></div>
+
+  <div class="finding"><span class="tag">Live monitoring</span>
+    <h4>Nothing was actually calling the live capture path</h4>
+    <p><code>UsbmonSource.live()</code> existed and was referenced only in its own docstring. A full
+      <code>LiveMonitor</code> loop — device discovery, kernel-timestamp windowing, idle-detach —
+      now exists and is verified end-to-end against a recorded replay; real debugfs still needs the
+      Linux VM.</p></div>
+</section>
+
+<section id="s8">
+  <h2><span class="n">08</span>What runs, right now</h2>
+  <div class="cmdlist col">
+    <div><code>make eval</code><span class="d">regenerate every number in this document (~115s)</span></div>
+    <div><code>make report</code><span class="d">regenerate the results report from the last eval run</span></div>
+    <div><code>make zoo</code><span class="d">model-family comparison, decision-grade (~60s)</span></div>
+    <div><code>make demo</code><span class="d">live replay — staged_delay, caught cleanly, real time</span></div>
+    <div><code>make demo-hard</code><span class="d">live replay — mimicry_adaptive, the honest miss</span></div>
+    <div><code>make monitor-replay</code><span class="d">the real LiveMonitor loop, any OS, no kernel needed</span></div>
+    <div><code>make monitor</code><span class="d">the same loop reading real debugfs — Linux + root only</span></div>
+    <div><code>make dashboard</code><span class="d">operator UI on :8000, backed by the real SQLite store</span></div>
+  </div>
+</section>
+
+<section id="s9">
+  <h2><span class="n">09</span>Honest limitations</h2>
+  <div class="col"><ul>
+    <li><strong>Zero real hardware.</strong> Every session is synthetic. The paper's Objective 6
+      (Pi Pico / Digispark evaluation) remains unmet.</li>
+    <li><strong>N1 and N2 are unsupported by our own ablations</strong> (§2) — built as specified,
+      measured to contribute nothing on this corpus.</li>
+    <li><strong>N3's kernel-level enforcement was never built.</strong> Correct rule generation,
+      dry-run only, gated behind a constant that is still <code>False</code>.</li>
+    <li><strong>Recurrence is not uniquely justified.</strong> GRU, a CNN, and gradient boosting all
+      tie the LSTM on the identical sequence input (§6). "Temporal modelling" is supported;
+      "LSTM specifically" is one of several equally-good choices.</li>
+    <li><strong><code>mimicry_adaptive</code> at 40% detection rests on a proven bound, not a
+      tuning gap</strong> — an unbounded version of the same attack is statistically the benign
+      keyboard process; zero of 28 features separate it. The principled next defence is cross-device
+      correlation, outside the current single-device architecture.</li>
+    <li><strong>No raw URB archive.</strong> The plan's own intent to keep raw traces alongside
+      features was never implemented.</li>
+    <li><strong>eBPF is unstarted</strong> and may remain documented future work, per the plan's own
+      risk register.</li>
+  </ul></div>
+</section>
+
+<footer>
+  Cross-referenced against <code>docs/IUDBMS_Project_Report.pdf</code> (Review 1 submission) and
+  generated from <code>out/metrics.json</code>, <code>out/model_zoo.json</code> and the project's
+  own test suite (310 tests, 21 commits). Full algorithm formulas: the companion
+  <code>iudbms_algorithms.html</code>. Full results narrative: <code>iudbms_review.html</code>.
+</footer>
+
+</div>

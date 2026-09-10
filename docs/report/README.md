@@ -5,7 +5,8 @@ open them in any browser, email them, or attach them to a submission.
 
 | File | What it is |
 |---|---|
-| `iudbms_review.html` | Progress report: what is built, measured results, the eight findings |
+| `iudbms_handbook.html` | **Start here.** Complete reference: problem, literature, the four novelty claims from `IUDBMS_Project_Report.pdf` checked against our own ablations, architecture as designed vs. built, data, algorithm, results, full audit trail |
+| `iudbms_review.html` | Progress report: what is built, measured results, the findings |
 | `iudbms_algorithms.html` | Technical reference: all 23 algorithms, formulas, parameters, rationale |
 
 ## Sharing them
@@ -19,6 +20,13 @@ Fonts load from Google Fonts when online and fall back to system serif/sans/mono
 offline, so the files stay readable with no network.
 
 ## Keeping them current
+
+`iudbms_handbook.html` is **hand-written**, cross-referenced against
+`../IUDBMS_Project_Report.pdf` (the Review 1 submission) and the numbers in
+`out/metrics.json` / `out/model_zoo.json` at the time it was written. Re-check
+it manually after any change that moves the headline numbers or the N1/N2/N3/N4
+scorecard in Section 3 — that scorecard is the document's most load-bearing
+claim and the one most likely to go stale silently.
 
 `iudbms_review.html` is **generated**, not hand-edited:
 
