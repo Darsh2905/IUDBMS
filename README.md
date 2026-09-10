@@ -51,7 +51,8 @@ make eval                                 # regenerate every reported number (~7
 python3 -m eval.leakage_audit             # plan §5 mandatory leakage audit
 python3 -m eval.run_eval --persist        # also populate out/iudbms.db
 make dashboard                            # operator dashboard on :8000
-make demo                                 # live replay: watch the loop close
+make demo                                 # replay: watch the loop close (any OS)
+sudo python3 scripts/live_monitor.py      # LIVE capture (Linux + root only)
 make demo-hard                            # the same, on the mimicry adversary
 make baseline                             # re-run the Sprint-0 prototype for comparison
 ```

@@ -587,6 +587,35 @@ the *previous* adversary. This happened during development. The cache now stores
 a hash of `capture/simulator.py` plus `features/extractor.py` and refuses to
 load against different code.
 
+### Live monitoring — wired 10 Sep, never yet run on real traffic
+
+Until now **nothing called `UsbmonSource.live()`.** It existed and was
+referenced only in its own docstring; `live_replay.py` read a recorded file or
+a simulated session. The streaming detector was correct and had no live feed,
+so "live monitoring" was aspirational.
+
+`iudbms.live.LiveMonitor` closes it: a reader thread drains an `EventSource`
+into a queue while the main loop wakes on window boundaries, discovers devices
+via `SysfsScanner` as they enumerate, scores each device's window when it
+closes, and detaches a device after a long silence so the next device on the
+same bus address cannot inherit its payload history.
+
+**Windows are cut on the kernel's timestamps, not on arrival time.** The reader
+thread has scheduling jitter and the queue adds latency, so bucketing by
+dequeue order would smear traffic across windows and make the same capture
+score differently under load. Events arriving after their window has closed are
+counted (`events_late`) rather than folded into a later window, which would
+distort that window's rate.
+
+`scripts/live_monitor.py` is the only entry point that touches live traffic;
+`make monitor`. It refuses to run off Linux with a pointer to the replay script.
+
+**Still untested against real traffic** — the monitor is exercised by nine unit
+tests against a fake source, which covers windowing, discovery, deferral,
+detach/re-attach and error propagation, but not debugfs itself. That needs the
+VM, and it is now the same 30 minutes that the capture always was: run
+`make monitor` there and it monitors for real.
+
 ### eBPF go/no-go — **PENDING**
 
 Plan §2 sets the decision at end of W6: proceed only if the usbmon path is

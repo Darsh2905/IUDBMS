@@ -1,5 +1,5 @@
 # IUDBMS — development entry points.
-.PHONY: help install test test-fast lint eval zoo report demo demo-hard dashboard baseline clean
+.PHONY: help install test test-fast lint eval zoo report monitor demo demo-hard dashboard baseline clean
 
 help:
 	@grep -E '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -24,6 +24,9 @@ zoo:  ## compare model families on the selection split (~60 s)
 
 report:  ## regenerate docs/report/ from the last eval (charts + numbers)
 	python3 -m eval.build_report
+
+monitor:  ## LIVE capture on Linux (needs root + usbmon); not runnable on macOS
+	sudo python3 scripts/live_monitor.py --bus 0
 
 demo:  ## live replay: watch the loop close in real time (needs `make eval` first)
 	python3 scripts/live_replay.py --profile staged_delay --speed 6
