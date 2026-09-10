@@ -58,62 +58,57 @@ make baseline                             # re-run the Sprint-0 prototype for co
 
 ## Measured results
 
-Regenerate with `make eval` (seeded, ~110 s). Corpus: 1000 synthetic sessions,
-11,333,822 usbmon lines, 62,070 windows. Split by session, stratified
+Regenerate with `make eval` (seeded, ~115 s). Corpus: 1000 synthetic sessions,
+11,367,542 usbmon lines, 62,791 windows. Split by session, stratified
 by profile: fit=562 / val=140 / test=298. Deployed model uses
-28 of 29 features.
+28 of 29 features, K=10 window horizon.
 
 | model | window ROC-AUC | precision | recall | session detection |
 |---|---|---|---|---|
-| IUDBMS (Stage 1 + Stage 2) | 0.9753 | 0.997 | 0.747 | **84.2%** |
-| Stage 1 only (no temporal model) | 0.8922 | 0.986 | 0.162 | 18.3% |
+| IUDBMS (Stage 1 + Stage 2) | 0.9762 | 0.999 | 0.749 | **89.2%** |
+| Stage 1 only (no temporal model) | 0.8847 | 0.985 | 0.145 | 15.8% |
 | Identity whitelist (USBGuard-style) | — | — | — | 0.0% |
 
 0.0% benign session false positives across 178
-benign test sessions; median latency 3.7 s.
+benign test sessions; median latency 4.3 s.
 
 | attack | n | IUDBMS | Stage-1 only | median latency |
 |---|---|---|---|---|
-| `class_exfil` | 24 | 100% | 21% | 3.4 s |
-| `hid_injection` | 21 | 100% | 0% | 3.6 s |
-| `identity_switch` | 20 | 100% | 85% | 3.5 s |
-| `mimicry` | 15 | 100% | 0% | 27.9 s |
-| `mimicry_adaptive` | 20 | 5% | 0% | 74.7 s |
-| `staged_delay` | 20 | 100% | 0% | 3.7 s |
+| `class_exfil` | 24 | 100% | 21% | 4.2 s |
+| `hid_injection` | 21 | 100% | 0% | 4.4 s |
+| `identity_switch` | 20 | 100% | 70% | 3.5 s |
+| `mimicry` | 15 | 93% | 0% | 24.4 s |
+| `mimicry_adaptive` | 20 | 40% | 0% | 51.2 s |
+| `staged_delay` | 20 | 100% | 0% | 4.3 s |
 
-### The bound: a single-shot human-paced injection is undetectable
+### The two mimicry variants, and why they differ
 
-`mimicry_adaptive` is the strongest adversary in the corpus and **we detect
-5% of it.** It clones a keyboard descriptor, draws its keystroke
-timing from the same distribution as a human operator, and — the part that
-matters — **types its payload once instead of cycling a script.** That is what a
-real BadUSB does: it types `powershell -enc <base64>` and stops.
+Both clone a keyboard descriptor and draw keystroke timing from the same
+distribution as a human operator. They differ in one respect:
 
-Our original `mimicry` cycled a 27-key script three times per session, and a
-cycling script necessarily exhausts its own payload transitions. That is what
-`payload_seq_novelty` detects. Against a payload typed once, a per-feature
-Kolmogorov–Smirnov scan finds **zero of the 28 deployed features separate it
-from benign typing** (the only separable feature is `log_time_since_enum`, which
-we removed as a label leak). The 5% is noise, not detection.
+- **`mimicry`** cycles a short script, so its payload transitions exhaust
+  themselves. `payload_seq_novelty` catches this — **93%**.
+- **`mimicry_adaptive`** types a finite payload **once** and the device then
+  falls silent, which is what a real BadUSB does. No transition repeats, so that
+  feature has nothing to bite on. Detection is **40%** at
+  51 s, resting entirely on the sustained silence after the payload.
 
-**This is a bound on what single-device HID behaviour can reveal, not a tuning
-failure.** The principled next defence is cross-device correlation — a human
-typing produces concurrent mouse activity, a BadUSB typing alone does not — and
-that sits outside the current single-device architecture.
-
-One caveat in the other direction: our adaptive adversary draws fresh keycodes
-indefinitely, so it is the *limiting case*. A real payload has finite content and
-may be marginally easier.
+The limiting case — a payload of unbounded length drawing fresh keycodes forever
+— is *statistically the benign keyboard process*, and a per-feature
+Kolmogorov–Smirnov scan finds zero of the 28 deployed features separate it. That
+is a bound on what single-device HID behaviour can reveal. The principled next
+defence is cross-device correlation: a human typing produces concurrent mouse
+activity, a BadUSB typing alone does not.
 
 Single-modality ablation (novelty pillar N1):
 
 | modality | features | window AUC | session detection |
 |---|---|---|---|
-| timing | 9 | 0.9665 | 70.8% |
-| payload | 8 | 0.9755 | 85.0% |
-| protocol | 6 | 0.9509 | 70.8% |
-| identity | 6 | 0.8940 | 39.2% |
-| **deployed (fused)** | **28** | **0.9753** | **84.2%** |
+| timing | 9 | 0.9662 | 77.5% |
+| payload | 8 | 0.9752 | 90.8% |
+| protocol | 6 | 0.9458 | 77.5% |
+| identity | 6 | 0.8884 | 39.2% |
+| **deployed (fused)** | **28** | **0.9762** | **89.2%** |
 
 ## Honest caveats
 

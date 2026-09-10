@@ -88,6 +88,15 @@ HUMAN_IAT_CAP = 1.2                   # seconds
 HUMAN_BURST_KEYS = (3, 9)             # keys per word-burst
 HUMAN_PAUSE_RANGE = (0.4, 3.0)        # seconds of think-pause between bursts
 
+#: Length of a single-shot injected payload, in keystrokes.
+#:
+#: An attacker who throttles to human speed pays for every character, so a
+#: mimicry payload is short by necessity -- a dropper one-liner
+#: (``powershell -w hidden -c "iwr …|iex"``) rather than a long base64 blob.
+#: At the human inter-arrival distribution these take roughly 20-50 s, which
+#: leaves the rest of the session silent. That silence is the signal.
+PAYLOAD_KEYS = (60, 220)
+
 
 @dataclass
 class SimulatedSession:
@@ -351,36 +360,51 @@ class Simulator:
         return t
 
     def _adaptive_typing(self, t, dur, bus, dev, lines, ep=1):
-        """The strongest adversary in the corpus, and the most realistic.
+        """The strongest *realistic* adversary: a finite payload, typed once.
 
         Identical to ``_mimicry_typing`` in timing -- same log-normal
-        inter-arrivals, same burst lengths, same think-pauses -- but it types
-        its payload **once** rather than cycling a short script.
+        inter-arrivals, burst lengths and think-pauses -- but it types its
+        payload **once** rather than cycling a short script, and it types a
+        **finite** number of keystrokes. That is what a real BadUSB does: it
+        types ``powershell -enc <base64> <Enter>``, and then the device has
+        nothing left to send.
 
-        That is what a real BadUSB does. It types
-        ``powershell -enc <base64> <Enter>`` and stops; it does not replay the
-        same twenty-seven keystrokes three times over. Our original mimicry
-        cycled, and a cycling script necessarily exhausts its own payload
-        transitions -- which is what ``payload_seq_novelty`` (contract 2.0.0)
-        detects. This profile exists to answer whether that feature detects the
-        attack or merely the loop.
+        Two properties follow, and they are the whole point of this profile:
 
-        Keystrokes are drawn fresh, so no payload transition repeats and the
-        feature has nothing to bite on. Every other feature already matched
-        benign typing by construction. If this is undetectable, that is a
-        genuine bound on what HID behaviour alone can reveal, not a tuning
-        failure -- and it should be reported as one.
+        * **No payload transition repeats**, so ``payload_seq_novelty``
+          (contract 2.0.0) has nothing to bite on. Our original ``mimicry``
+          cycled a 27-key script about three times per session, and a cycling
+          script necessarily exhausts its own transitions -- so that feature was
+          detecting the *loop*, not the attack.
+        * **The device then falls silent for the rest of the session.** A human
+          pauses for seconds; a finished payload stops for good. That transition
+          is the only signal left, it is real, and it is visible over a window
+          sequence rather than inside any single window.
+
+        The limiting case -- a payload of unbounded length drawing fresh
+        keycodes forever -- is *statistically the benign keyboard process* and no
+        feature can separate it. That is a bound on what single-device HID
+        behaviour can reveal, and it is documented rather than simulated,
+        because a corpus profile that is indistinguishable from benign by
+        construction teaches a model nothing.
         """
+        n_keys = self.rng.randint(*PAYLOAD_KEYS)
+        typed = 0
         end = t + dur
-        while t < end:
+        while t < end and typed < n_keys:
             for _ in range(self.rng.randint(*HUMAN_BURST_KEYS)):
+                if typed >= n_keys:
+                    break
                 t += min(float(self.np_rng.lognormal(*HUMAN_IAT_LOGNORM)), HUMAN_IAT_CAP)
                 if t >= end:
                     break
-                # a fresh keycode every time: a payload typed once, never replayed
+                # a fresh keycode every time: typed once, never replayed
                 self._urb(lines, t, INTR, "in", bus, dev, ep,
                           _hid_report(self.rng), interval=10)
+                typed += 1
             t += self.rng.uniform(*HUMAN_PAUSE_RANGE)
+        # deliberately returns without filling the rest of the session: the
+        # device is done, and the silence that follows is the signal.
         return t
 
     def _covert_bulk_out(self, t, dur, bus, dev, lines, ep=2):
