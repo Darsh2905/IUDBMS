@@ -1,16 +1,18 @@
-  loaded cached corpus: 1000 sessions (62,986 windows)
+  loaded cached corpus: 1000 sessions (62,791 windows)
   test held back      : 298 sessions (NOT touched here)
-  inner train/cal/sel : 449 / 126 / 127
-  selection set has   : 51 attack sessions
+  inner train/cal/sel : 449 / 127 / 126
+  selection set has   : 50 attack sessions
 
  seq_len  hidden   tgtFPR      AUC   recall   detect      FP  mimicry     lat
-      10      32   0.9952    0.906   100.0%    0.0%   100.0%    4.7s
-      10      32   0.9952    0.911   100.0%    0.0%   100.0%    4.3s
-      10      32   0.9952    0.918   100.0%    0.0%   100.0%    4.1s
-      10      32   0.9952    0.935   100.0%    1.3%   100.0%    3.8s
+      10      32  0.0100%   0.9786    0.727    84.0%    0.0%   100.0%    5.5s
+      10      64  0.0100%   0.9792    0.730    84.0%    0.0%   100.0%    5.2s
+      20      32  0.0100%   0.9784    0.759    86.0%    2.6%   100.0%    4.7s
+      20      64  0.0100%   0.9699    0.593    78.0%    0.0%   100.0%    8.7s
+      30      32  0.0100%   0.9774    0.740    86.0%    0.0%   100.0%    4.9s
+      30      64  0.0100%   0.9736    0.712    86.0%    0.0%   100.0%    5.7s
 
-  best on the selection split: seq_len=10 hidden=32 target_fpr=0.0100%  detect=100.0%  FP=0.0%  AUC=0.9952
+  best on the selection split: seq_len=30 hidden=32 target_fpr=0.0100%  detect=86.0%  FP=0.0%  AUC=0.9774
   This is NOT applied automatically. Set it in eval/run_eval.py and run
   that once against the held-out test split.
 
-  wrote out/tuning.json    (58s)
+  wrote out/tuning.json    (142s)

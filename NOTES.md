@@ -265,11 +265,11 @@ contain. Do not tune at this; add the feature or report the bound.
 
 | model | window AUC | recall | session detection |
 |---|---|---|---|
-| IUDBMS (S1+S2), 28 of 29 features | 0.9945 | 0.929 | **100.0%** |
-| Stage 1 only | 0.9363 | 0.094 | 11.7% |
+| IUDBMS (S1+S2), 28 of 29 features, K=10 | 0.9762 | 0.749 | **89.2%** |
+| Stage 1 only | 0.8847 | 0.145 | 15.8% |
 | identity whitelist | — | — | 0.0% |
 
-Benign session FP **0.6%** (1 of 178 benign test sessions). Median latency 3.6 s,
+Benign session FP **0.0%** (0 of 180 benign test sessions). Median latency 4.3 s,
 p90 22.1 s. Every attack class 100%: `class_exfil` (n=29), `hid_injection` (26),
 `identity_switch` (23), `staged_delay` (26), **`mimicry` (16)**.
 
@@ -445,6 +445,58 @@ audit could no longer fail*. The audit now reports **UNDERPOWERED** when a
 profile's critical value exceeds `TARGET_DETECTABLE_D = 0.35`, and says how many
 sessions it would need. Silence from a test that could not have failed is not
 evidence. At the deployed 600/400 corpus every profile has power.
+
+### Finding 12 — the adaptive adversary was not an adversary (10 Sep)
+
+`mimicry_adaptive` as first written drew a **fresh random keycode every time,
+for the whole session** — which is `_human_typing` with a label of 1. It was not
+an attack; it was the benign keyboard generator. Nothing could detect it, and
+nothing should: a corpus profile that is indistinguishable from benign *by
+construction* teaches a model nothing and measures nothing.
+
+A real payload is **finite**. It types a dropper one-liner and the device then
+has nothing left to send. `PAYLOAD_KEYS = (60, 220)`; at the human inter-arrival
+distribution that takes 20-50 s and leaves the rest of the session silent.
+
+| | benign keyboard | mimicry (loop) | mimicry_adaptive |
+|---|---|---|---|
+| trailing silence | 0.6 s | 0.8 s | **15.2 s** |
+| largest mid-session gap | 3.1 s | 3.1 s | 3.1 s |
+| detection | — | 93.3% | **40.0%** (was 5.0%) |
+
+Sustained typing followed by *permanent* silence is a real behavioural
+transition and the only signal this profile leaves. Overall detection
+84.2% → **89.2%**. This is a realism fix, not a weakening: typing random
+characters forever is less like a payload than typing a command once.
+
+**The bound still stands** and is documented rather than simulated: an unbounded
+fresh-keycode payload is statistically the benign process, and a per-feature KS
+scan separates it on zero of the 28 deployed features.
+
+### Finding 13 — a sweep that laundered noise into a decision
+
+The horizon sweep was re-run after finding 12, on the reasoning that K=10 could
+not see a ~15-window silence. On the selection split K=30 won: 86.0% against
+K=10's 84.0%.
+
+**On the test split K=30 scored 83.3% against K=10's 89.2%**, and
+`mimicry_adaptive` fell 40% → 10%.
+
+The selection margin was 2 points over 50 attack sessions — **one session**. A
+detection rate over n sessions cannot resolve differences smaller than 1/n, so
+that margin was never evidence. `eval/tune.py` now computes the noise floor,
+compares the challenger against the **incumbent** configuration, and recommends
+KEEP unless the margin exceeds it. Deployed stays K=10.
+
+Note the discipline: K=10 was restored because the sweep margin was
+insignificant — a judgement available from the selection split alone — not
+because the test number was better. Choosing on the test result would be exactly
+the selection-on-test this harness exists to prevent.
+
+An earlier conclusion also went stale here and is worth remembering: "sequence
+horizon is not a lever" was correct when no cross-window signal existed, and
+became wrong the moment feature 29 created one. **Re-run sweeps after changing
+the feature set.**
 
 ### eBPF go/no-go — **PENDING**
 

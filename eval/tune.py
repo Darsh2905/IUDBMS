@@ -67,6 +67,10 @@ def main() -> int:
     ap.add_argument("--target-fpr", type=float, nargs="+",
                     default=[0.0001, 0.0005, 0.001, 0.005])
     ap.add_argument("--cache", type=Path, default=OUT / "corpus_cache.npz")
+    ap.add_argument("--incumbent", type=int, nargs=2, metavar=("SEQ_LEN", "HIDDEN"),
+                    default=[10, 32],
+                    help="the currently deployed configuration; a challenger must "
+                         "beat it by more than the noise floor to be recommended")
     args = ap.parse_args()
 
     t0 = time.time()
@@ -91,7 +95,7 @@ def main() -> int:
 
     grid = list(itertools.product(args.seq_len, args.hidden, args.target_fpr))
     print(f"{'seq_len':>8s} {'hidden':>7s} {'tgtFPR':>8s} {'AUC':>8s} {'recall':>8s} "
-          f"{'detect':>8s} {'FP':>7s} {'mimicry':>8s} {'lat':>7s}", flush=True)
+          f"{'detect':>8s} {'FP':>7s} {'adaptive':>9s} {'lat':>7s}", flush=True)
     rows = []
     for seq_len, hidden, tfpr in grid:
         r = run_configuration(
@@ -103,7 +107,7 @@ def main() -> int:
         # Here they carry inner_fit / inner_cal / inner_sel, so the defaults
         # already calibrate on inner_cal and score on inner_sel -- three
         # disjoint splits, none of them the real test set.
-        mim = r.per_profile.get("mimicry", {})
+        mim = r.per_profile.get("mimicry_adaptive", r.per_profile.get("mimicry", {}))
         lat = r.session["median_latency"]
         rows.append({"seq_len": seq_len, "hidden": hidden, "target_fpr": tfpr,
                      "auc": r.window["auc"], "recall": r.window["recall"],
@@ -114,7 +118,7 @@ def main() -> int:
         print(f"{seq_len:8d} {hidden:7d} {tfpr:8.4%} {r.window['auc']:8.4f} "
               f"{r.window['recall']:8.3f} {r.session['attack_detect']:8.1%} "
               f"{r.session['benign_fp']:7.1%} "
-              f"{(mim.get('detect_rate') or 0):8.1%} "
+              f"{(mim.get('detect_rate') or 0):9.1%} "
               f"{(f'{lat:.1f}s' if lat else '-'):>7s}", flush=True)
 
     # Detection first, then the FEWEST false positives, then AUC. Without the
@@ -128,7 +132,8 @@ def main() -> int:
     print("  that once against the held-out test split.", flush=True)
 
     (OUT / "tuning.json").write_text(json.dumps(
-        {"grid": rows, "best": best, "epochs": args.epochs,
+        {"grid": rows, "best": best, "recommended": recommended,
+         "noise_floor": noise, "epochs": args.epochs,
          "corpus": len(corpus.sessions),
          "splits": {"inner_fit": len(i_fit), "inner_cal": len(i_cal),
                     "inner_sel": len(i_sel), "test_held_back": len(test)}},
