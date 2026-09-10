@@ -1,0 +1,39 @@
+INFO:     Started server process [932]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:53775 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53796 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53823 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53823 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53827 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53823 - "GET /devices HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53828 - "GET /alerts?limit=5000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53826 - "GET /stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53823 - "GET /alerts?device_id=A0000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53828 - "GET /actions?device_id=A0000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53827 - "GET /devices/A0000/timeline HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53841 - "GET /alerts?device_id=A0001 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53842 - "GET /actions?device_id=A0001 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53840 - "GET /devices/A0001/timeline HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53842 - "GET /alerts?device_id=A0002 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53840 - "GET /actions?device_id=A0002 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53841 - "GET /devices/A0002/timeline HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53855 - "GET /alerts?device_id=A0101 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53856 - "GET /actions?device_id=A0101 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53854 - "GET /devices/A0101/timeline HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53856 - "GET /alerts?device_id=A0000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53854 - "GET /actions?device_id=A0000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53855 - "GET /devices/A0000/timeline HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54179 - "GET /alerts?device_id=A0012 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54178 - "GET /devices/A0012/timeline HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54180 - "GET /actions?device_id=A0012 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54178 - "GET /alerts?device_id=A0019 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54180 - "GET /actions?device_id=A0019 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54179 - "GET /devices/A0019/timeline HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54179 - "GET /actions?device_id=A0012 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54180 - "GET /alerts?device_id=A0012 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54178 - "GET /devices/A0012/timeline HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55005 - "GET /alerts?device_id=A0005 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55004 - "GET /devices/A0005/timeline HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55006 - "GET /actions?device_id=A0005 HTTP/1.1" 200 OK
