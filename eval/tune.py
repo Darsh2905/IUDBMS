@@ -128,8 +128,36 @@ def main() -> int:
     print(f"\n  best on the selection split: seq_len={best['seq_len']} "
           f"hidden={best['hidden']} target_fpr={best['target_fpr']:.4%}  "
           f"detect={best['detect']:.1%}  FP={best['fp']:.1%}  AUC={best['auc']:.4f}", flush=True)
-    print("  This is NOT applied automatically. Set it in eval/run_eval.py and run")
-    print("  that once against the held-out test split.", flush=True)
+
+    # A detection rate over n attack sessions cannot resolve differences smaller
+    # than one session. Recommending a change on a sub-noise margin is how a
+    # sweep launders randomness into a decision -- it happened here once
+    # already: a longer sequence horizon won this same selection split by one
+    # session, was applied, and then lost five points on the real test split.
+    noise = 1.0 / max(n_sel_attack, 1)
+    inc = next((r for r in rows
+                if r["seq_len"] == args.incumbent[0] and r["hidden"] == args.incumbent[1]),
+               None)
+    print(f"\n  noise floor on this selection split: one session = {noise:.1%} detection",
+          flush=True)
+    if inc is None:
+        print("  incumbent not in the grid; nothing to compare against.", flush=True)
+        recommended = best
+    elif best["detect"] - inc["detect"] > noise:
+        recommended = best
+        print(f"  challenger beats the incumbent by "
+              f"{best['detect'] - inc['detect']:.1%} (> noise) -- CHANGE recommended.",
+              flush=True)
+    else:
+        recommended = inc
+        print(f"  challenger beats the incumbent by only "
+              f"{best['detect'] - inc['detect']:.1%} (<= noise).", flush=True)
+        print(f"  KEEP the incumbent seq_len={inc['seq_len']} hidden={inc['hidden']}. "
+              f"Changing a deployed parameter needs evidence, and one session is not "
+              f"evidence.", flush=True)
+    print("\n  Nothing is applied automatically. Set the recommendation in "
+          "eval/run_eval.py", flush=True)
+    print("  and run that once against the held-out test split.", flush=True)
 
     (OUT / "tuning.json").write_text(json.dumps(
         {"grid": rows, "best": best, "recommended": recommended,
