@@ -1,0 +1,420 @@
+<title>IUDBMS Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,600&display=swap">
+
+<style>
+  :root {
+    --paper:#f5f6f8; --surface:#fff; --surface-2:#eef0f4;
+    --ink:#12171d; --ink-2:#3c4653; --slate:#5f6b79;
+    --rule:#d9dee5; --rule-soft:#e7ebf0;
+    --signal:#b45309; --signal-dim:#f5ede0;
+    --ok:#0f766e; --ok-dim:#e2f1ef;
+    --crit:#9f1239; --crit-dim:#fbe8ed;
+    --measure:70ch; --wide:1120px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:#0d1116; --surface:#141a21; --surface-2:#1b232c;
+      --ink:#e8ecf1; --ink-2:#b3bdc9; --slate:#8593a3;
+      --rule:#27313c; --rule-soft:#1e262f;
+      --signal:#e8a13c; --signal-dim:#2e2410;
+      --ok:#4fd1c5; --ok-dim:#102d2b;
+      --crit:#f4708f; --crit-dim:#331019;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:#0d1116; --surface:#141a21; --surface-2:#1b232c;
+    --ink:#e8ecf1; --ink-2:#b3bdc9; --slate:#8593a3;
+    --rule:#27313c; --rule-soft:#1e262f;
+    --signal:#e8a13c; --signal-dim:#2e2410;
+    --ok:#4fd1c5; --ok-dim:#102d2b;
+    --crit:#f4708f; --crit-dim:#331019;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper); color: var(--ink);
+    font-family: "IBM Plex Serif", Georgia, serif;
+    font-size: 16px; line-height: 1.62; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: var(--wide); margin: 0 auto; padding: 0 24px 90px; }
+  .col { max-width: var(--measure); }
+  h1, h2, h3, th, .eyebrow, .metak { font-family: "IBM Plex Sans", system-ui, sans-serif; }
+  code, td.mono, .metav { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+
+  header.masthead { border-bottom: 2px solid var(--ink); padding: 50px 0 20px; margin-bottom: 12px; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--signal); margin: 0 0 12px; }
+  h1 { font-size: clamp(2rem, 4.4vw, 2.8rem); font-weight: 700; letter-spacing: -.02em; line-height: 1.06; margin: 0 0 14px; text-wrap: balance; }
+  .standfirst { font-size: 1.1rem; color: var(--ink-2); margin: 0; max-width: 62ch; }
+  .runmeta { display: flex; flex-wrap: wrap; gap: 0 28px; margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--rule-soft); }
+  .runmeta div { display: flex; flex-direction: column; gap: 2px; }
+  .metak { font-size: 10px; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; color: var(--slate); }
+  .metav { font-size: 13.5px; }
+
+  section { margin-top: 46px; }
+  h2 { font-size: 1.32rem; font-weight: 600; letter-spacing: -.012em; margin: 0 0 6px; }
+  h2 .n { font-family: "IBM Plex Mono", monospace; font-size: .7em; color: var(--signal); font-weight: 500; margin-right: .6em; }
+  .lede { color: var(--slate); margin: 0 0 18px; font-size: .95rem; max-width: var(--measure); }
+  p { margin: 0 0 13px; max-width: var(--measure); }
+
+  figure { margin: 22px 0 0; background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 22px 24px 16px; }
+  figure svg { display: block; width: 100%; max-width: 100%; height: auto; color: var(--ink); }
+  figcaption { font-size: .87rem; color: var(--slate); margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--rule-soft); max-width: 80ch; }
+  figcaption b { color: var(--ink); font-weight: 600; }
+
+  .key { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 14px; font-size: 12.5px; color: var(--slate); }
+  .key span { display: inline-flex; align-items: center; gap: 7px; }
+  .key i { width: 22px; height: 0; border-top: 2px solid currentColor; display: inline-block; font-style: normal; }
+  .key i.sig { border-color: var(--signal); }
+  .key i.crit { border-top-style: dashed; border-color: var(--crit); }
+
+  .tablewrap { overflow-x: auto; margin: 20px 0 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  th { text-align: left; font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--slate); font-weight: 600; padding: 0 13px 8px 0; border-bottom: 1px solid var(--ink); white-space: nowrap; }
+  td { padding: 8px 13px 8px 0; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+  td.mono { font-size: 12.5px; }
+  .chip { display: inline-block; font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 2px 8px; border-radius: 3px; white-space: nowrap; font-family: "IBM Plex Sans", sans-serif; }
+  .chip.built { background: var(--ok-dim); color: var(--ok); }
+  .chip.part { background: var(--signal-dim); color: var(--signal); }
+  .chip.no { background: var(--crit-dim); color: var(--crit); }
+
+  footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--rule); font-size: .84rem; color: var(--slate); max-width: var(--measure); }
+  @media (max-width: 640px) { .wrap { padding: 0 16px 70px; } figure { padding: 16px 14px 12px; } }
+  @media print {
+    :root { --paper:#fff; --surface:#fff; --surface-2:#f4f4f4; --ink:#000; --ink-2:#222; --slate:#555; --rule:#999; --rule-soft:#ccc; --signal:#8a3f07; --crit:#8a0f31; --ok:#0b5c56; }
+    body { font-size: 10.5pt; } .wrap { max-width: none; padding: 0; }
+    figure, table { break-inside: avoid; } h1, h2 { break-after: avoid; }
+  }
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <p class="eyebrow">IUDBMS &middot; system architecture</p>
+  <h1>How one second of USB traffic becomes a revocation</h1>
+  <p class="standfirst">Two figures. The first traces a device's activity from the kernel hook where it
+    is observed, through every transformation, to the enforcement action it can trigger. The second
+    zooms into the decision mechanism itself — the part that prose describes clumsily and a picture
+    settles in one look.</p>
+  <div class="runmeta">
+    <div><span class="metak">Deployed features</span><span class="metav">28 of 29</span></div>
+    <div><span class="metak">Window</span><span class="metav">1.0 s tumbling</span></div>
+    <div><span class="metak">LSTM horizon</span><span class="metav">10 windows</span></div>
+    <div><span class="metak">Threshold</span><span class="metav">0.9916</span></div>
+    <div><span class="metak">Gate</span><span class="metav">4-of-6</span></div>
+  </div>
+</header>
+
+<section>
+  <h2><span class="n">01</span>The full pipeline</h2>
+  <p class="lede">Every arrow is labelled with what actually moves along it, and how much of it.
+    The compression is the point: eleven million lines of kernel text become sixty-three thousand
+    rows of numbers, and everything downstream sees only the numbers.</p>
+
+  <figure>
+    <svg viewBox="0 0 940 1076" role="img"
+         aria-label="IUDBMS pipeline: kernel usbmon capture feeds a parser and feature extractor, producing one 29-number row per device per second; Stage 1 scores that row alone and its score becomes the 29th column of a 10-row sliding buffer read by the Stage 2 LSTM; the LSTM's single output drives a threshold, a 4-of-6 gate, and a two-step escalation ladder whose final sysfs write is blocked in dry-run.">
+      <defs>
+        <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,1 L9,5 L0,9 z" fill="currentColor"/>
+        </marker>
+        <marker id="ar-sig" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,1 L9,5 L0,9 z" fill="#b45309"/>
+        </marker>
+        <marker id="ar-crit" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,1 L9,5 L0,9 z" fill="#9f1239"/>
+        </marker>
+      </defs>
+
+      <!-- ===== KERNEL ===== -->
+      <rect x="150" y="34" width="500" height="152" rx="7" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.55"/>
+      <text x="166" y="55" font-size="10.5" font-weight="600" letter-spacing="1.6" fill="currentColor" opacity="0.6">KERNEL SPACE</text>
+      <text x="400" y="82" text-anchor="middle" font-size="12.5" fill="currentColor">USB device activity reaches the host controller</text>
+      <text x="400" y="101" text-anchor="middle" font-size="11.5" font-family="IBM Plex Mono, monospace" fill="currentColor" opacity="0.7">usb_submit_urb · __usb_hcd_giveback_urb</text>
+
+      <rect x="172" y="116" width="216" height="54" rx="5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <text x="280" y="137" text-anchor="middle" font-size="12.5" font-weight="600" fill="currentColor">usbmon (debugfs)</text>
+      <text x="280" y="155" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.65">deployed capture path</text>
+
+      <rect x="412" y="116" width="216" height="54" rx="5" fill="none" stroke="#9f1239" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <text x="520" y="137" text-anchor="middle" font-size="12.5" font-weight="600" fill="#9f1239">eBPF probe</text>
+      <text x="520" y="155" text-anchor="middle" font-size="11" fill="#9f1239" opacity="0.8">designed, not built</text>
+
+      <!-- kernel -> parser -->
+      <line x1="280" y1="170" x2="280" y2="236" stroke="currentColor" stroke-width="1.6" marker-end="url(#ar)"/>
+      <text x="294" y="196" font-size="11.5" fill="currentColor" opacity="0.75">plain text lines</text>
+      <text x="294" y="213" font-size="11" fill="currentColor" opacity="0.55">11,367,542 across 1,000 sessions</text>
+
+      <!-- ===== USERSPACE ===== -->
+      <text x="166" y="262" font-size="10.5" font-weight="600" letter-spacing="1.6" fill="currentColor" opacity="0.6">USERSPACE</text>
+
+      <rect x="150" y="272" width="500" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <text x="400" y="294" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor">L1 · parser</text>
+      <text x="400" y="312" text-anchor="middle" font-size="11.5" fill="currentColor" opacity="0.7">text line → typed URBEvent</text>
+
+      <line x1="400" y1="324" x2="400" y2="368" stroke="currentColor" stroke-width="1.6" marker-end="url(#ar)"/>
+      <text x="414" y="350" font-size="11.5" fill="currentColor" opacity="0.75">events, bucketed by kernel timestamp</text>
+
+      <rect x="150" y="368" width="500" height="62" rx="6" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <text x="400" y="391" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor">L2 · feature extractor</text>
+      <text x="400" y="410" text-anchor="middle" font-size="11.5" fill="currentColor" opacity="0.7">1.0 s tumbling window · stateful per device · raw events discarded here</text>
+
+      <line x1="400" y1="430" x2="400" y2="478" stroke="currentColor" stroke-width="1.6" marker-end="url(#ar)"/>
+      <text x="414" y="452" font-size="11.5" fill="currentColor" opacity="0.75">ONE row · 28 numbers · per device per second</text>
+      <text x="414" y="469" font-size="11" fill="currentColor" opacity="0.55">62,791 rows total</text>
+
+      <!-- STAGE 1 -->
+      <rect x="150" y="478" width="500" height="100" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+      <text x="168" y="500" font-size="12.5" font-weight="600" fill="currentColor">STAGE 1</text>
+      <text x="246" y="500" font-size="11" fill="currentColor" opacity="0.6">memoryless — sees this one row, nothing before it</text>
+      <rect x="168" y="512" width="222" height="48" rx="4" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.8"/>
+      <text x="279" y="531" text-anchor="middle" font-size="11.5" fill="currentColor">Isolation Forest</text>
+      <text x="279" y="548" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.65">vs. population of same class · w 0.55</text>
+      <rect x="410" y="512" width="222" height="48" rx="4" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.8"/>
+      <text x="521" y="531" text-anchor="middle" font-size="11.5" fill="currentColor">EWMA baseline</text>
+      <text x="521" y="548" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.65">vs. this device's own history · w 0.45</text>
+
+      <!-- relay arrow (the distinctive mechanism) -->
+      <line x1="400" y1="578" x2="400" y2="628" stroke="#b45309" stroke-width="2.2" marker-end="url(#ar-sig)"/>
+      <text x="414" y="598" font-size="11.5" font-weight="600" fill="#b45309">one score, appended as the 29th column</text>
+      <text x="414" y="615" font-size="11" fill="#b45309" opacity="0.8">— not a second vote; it becomes input</text>
+
+      <!-- BUFFER -->
+      <rect x="150" y="628" width="500" height="86" rx="6" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <text x="168" y="650" font-size="12.5" font-weight="600" fill="currentColor">sliding buffer</text>
+      <text x="272" y="650" font-size="11" fill="currentColor" opacity="0.6">last 10 rows · oldest drops off as each new one arrives</text>
+      <g>
+        <rect x="196" y="662" width="30" height="34" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.45"/>
+        <rect x="232" y="662" width="30" height="34" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.5"/>
+        <rect x="268" y="662" width="30" height="34" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.55"/>
+        <rect x="304" y="662" width="30" height="34" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+        <rect x="340" y="662" width="30" height="34" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.65"/>
+        <rect x="376" y="662" width="30" height="34" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.7"/>
+        <rect x="412" y="662" width="30" height="34" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.78"/>
+        <rect x="448" y="662" width="30" height="34" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.86"/>
+        <rect x="484" y="662" width="30" height="34" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.2"/>
+        <rect x="520" y="662" width="30" height="34" rx="2.5" fill="#b45309" fill-opacity="0.16" stroke="#b45309" stroke-width="1.8"/>
+      </g>
+      <text x="176" y="684" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.5">out</text>
+      <text x="566" y="678" font-size="10.5" font-weight="600" fill="#b45309">newest</text>
+      <text x="566" y="692" font-size="10.5" fill="#b45309" opacity="0.75">29 cols</text>
+
+      <line x1="400" y1="714" x2="400" y2="758" stroke="currentColor" stroke-width="1.6" marker-end="url(#ar)"/>
+      <text x="414" y="740" font-size="11.5" fill="currentColor" opacity="0.75">all 10 rows together, in order</text>
+
+      <!-- STAGE 2 -->
+      <rect x="150" y="758" width="500" height="58" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+      <text x="168" y="781" font-size="12.5" font-weight="600" fill="currentColor">STAGE 2 · LSTM</text>
+      <text x="292" y="781" font-size="11" fill="currentColor" opacity="0.6">temporal — reads the sequence, sees transitions</text>
+      <text x="168" y="801" font-size="11" fill="currentColor" opacity="0.7">10 × 29 → P(malicious) for the newest second</text>
+
+      <line x1="400" y1="816" x2="400" y2="860" stroke="currentColor" stroke-width="1.6" marker-end="url(#ar)"/>
+      <text x="414" y="842" font-size="11.5" fill="currentColor" opacity="0.75">one number, 0–1</text>
+
+      <!-- POLICY -->
+      <rect x="150" y="860" width="500" height="104" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+      <text x="168" y="882" font-size="12.5" font-weight="600" fill="currentColor">L4 · policy engine</text>
+      <text x="168" y="903" font-size="11.5" fill="currentColor" opacity="0.75">≥ 0.9916 → hit, else miss</text>
+      <text x="168" y="922" font-size="11.5" fill="currentColor" opacity="0.75">4 hits among the trailing 6 → escalate</text>
+      <text x="168" y="947" font-size="11.5" font-weight="600" fill="currentColor">THROTTLE</text>
+      <line x1="252" y1="943" x2="308" y2="943" stroke="currentColor" stroke-width="1.5" marker-end="url(#ar)"/>
+      <text x="280" y="936" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65">8 hits</text>
+      <text x="316" y="947" font-size="11.5" font-weight="600" fill="currentColor">DEAUTHORIZE</text>
+
+      <!-- blocked enforcement -->
+      <line x1="400" y1="964" x2="400" y2="1004" stroke="#9f1239" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#ar-crit)"/>
+      <rect x="150" y="1004" width="500" height="50" rx="6" fill="none" stroke="#9f1239" stroke-width="1.6" stroke-dasharray="5 4"/>
+      <text x="400" y="1025" text-anchor="middle" font-size="12" font-family="IBM Plex Mono, monospace" fill="#9f1239">echo 0 &gt; /sys/bus/usb/devices/&lt;dev&gt;/authorized</text>
+      <text x="400" y="1043" text-anchor="middle" font-size="11" fill="#9f1239" opacity="0.85">generated but never executed — ENFORCEMENT_REVIEWED = False</text>
+
+      <!-- persistence branch -->
+      <line x1="650" y1="898" x2="712" y2="898" stroke="currentColor" stroke-width="1.5" marker-end="url(#ar)" opacity="0.8"/>
+      <text x="681" y="890" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">after the run</text>
+      <rect x="712" y="872" width="196" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.4" opacity="0.85"/>
+      <text x="810" y="893" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">SQLite</text>
+      <text x="810" y="911" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.65">features, scores, rules</text>
+      <line x1="810" y1="924" x2="810" y2="958" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar)" opacity="0.8"/>
+      <rect x="712" y="958" width="196" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.4" opacity="0.85"/>
+      <text x="810" y="979" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">FastAPI + dashboard</text>
+      <text x="810" y="997" text-anchor="middle" font-size="10.5" fill="currentColor" opacity="0.65">operator view</text>
+    </svg>
+
+    <div class="key">
+      <span><i></i> data flow</span>
+      <span><i class="sig"></i> the relay — Stage 1's output becomes Stage 2's input</span>
+      <span><i class="crit"></i> designed but not built / not executed</span>
+    </div>
+
+    <figcaption><b>The three things this picture settles.</b> First, the compression: raw kernel text
+      exists only between the parser and the feature extractor, and is discarded the moment a row is
+      produced — which is why no URB is ever stored anywhere downstream. Second, the relay: Stage 1
+      does not vote alongside Stage 2, it feeds it — its score is literally the 29th column of every
+      row the LSTM reads, and only the LSTM's output reaches the threshold. Third, the memory
+      boundary: Stage 1 touches exactly one row, the buffer holds ten, and that difference is the
+      entire reason a staged attack is detectable at all.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2><span class="n">02</span>The decision mechanism, in real numbers</h2>
+  <p class="lede">Session <code>A0232</code> from the test split — profile <code>staged_delay</code>,
+    replayed through the deployed policy engine. The attack begins at t&nbsp;=&nbsp;42.19&nbsp;s.</p>
+
+  <figure>
+    <svg viewBox="0 0 940 296" role="img"
+         aria-label="Timeline of test session A0232 from t=38 to t=53 seconds. Scores stay near 0.5 until the attack starts at 42.19 seconds, then exceed the 0.9916 threshold every second. The fourth hit within the trailing six windows fires THROTTLE at t=45, and the eighth qualifying window fires DEAUTHORIZE at t=52.">
+      <text x="24" y="66" font-size="10.5" font-weight="600" letter-spacing="1.1" fill="currentColor" opacity="0.6">STAGE 2</text>
+      <text x="24" y="124" font-size="10.5" font-weight="600" letter-spacing="1.1" fill="currentColor" opacity="0.6">HIT / MISS</text>
+      <text x="24" y="170" font-size="10.5" font-weight="600" letter-spacing="1.1" fill="currentColor" opacity="0.6">IN LAST 6</text>
+      <text x="24" y="204" font-size="10.5" font-weight="600" letter-spacing="1.1" fill="currentColor" opacity="0.6">QUALIFYING</text>
+
+      <line x1="150" y1="76" x2="906" y2="76" stroke="currentColor" stroke-width="1.3" stroke-dasharray="5 4" opacity="0.65"/>
+      <text x="150" y="70" font-size="10.5" fill="currentColor" opacity="0.7">threshold 0.9916</text>
+
+      <g font-size="10.5" font-family="IBM Plex Mono, monospace">
+        <text x="170" y="96" text-anchor="middle" fill="currentColor" opacity="0.6">0.67</text>
+        <text x="217" y="96" text-anchor="middle" fill="currentColor" opacity="0.6">0.55</text>
+        <text x="264" y="96" text-anchor="middle" fill="currentColor" opacity="0.6">0.54</text>
+        <text x="311" y="96" text-anchor="middle" fill="currentColor" opacity="0.6">0.45</text>
+        <text x="358" y="62" text-anchor="middle" fill="#b45309">0.99</text>
+        <text x="405" y="62" text-anchor="middle" fill="#b45309">1.00</text>
+        <text x="452" y="62" text-anchor="middle" fill="#b45309">1.00</text>
+        <text x="499" y="62" text-anchor="middle" fill="#b45309">1.00</text>
+        <text x="546" y="62" text-anchor="middle" fill="#b45309">1.00</text>
+        <text x="593" y="62" text-anchor="middle" fill="#b45309">1.00</text>
+        <text x="640" y="62" text-anchor="middle" fill="#b45309">1.00</text>
+        <text x="687" y="62" text-anchor="middle" fill="#b45309">1.00</text>
+        <text x="734" y="62" text-anchor="middle" fill="#b45309">1.00</text>
+        <text x="781" y="62" text-anchor="middle" fill="#b45309">1.00</text>
+        <text x="828" y="62" text-anchor="middle" fill="#b45309">1.00</text>
+        <text x="875" y="62" text-anchor="middle" fill="#b45309">1.00</text>
+      </g>
+      <g>
+        <circle cx="170" cy="120" r="7" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5"/>
+        <circle cx="217" cy="120" r="7" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5"/>
+        <circle cx="264" cy="120" r="7" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5"/>
+        <circle cx="311" cy="120" r="7" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5"/>
+        <circle cx="358" cy="120" r="7" fill="#b45309"/>
+        <circle cx="405" cy="120" r="7" fill="#b45309"/>
+        <circle cx="452" cy="120" r="7" fill="#b45309"/>
+        <circle cx="499" cy="120" r="7" fill="#b45309"/>
+        <circle cx="546" cy="120" r="7" fill="#b45309"/>
+        <circle cx="593" cy="120" r="7" fill="#b45309"/>
+        <circle cx="640" cy="120" r="7" fill="#b45309"/>
+        <circle cx="687" cy="120" r="7" fill="#b45309"/>
+        <circle cx="734" cy="120" r="7" fill="#b45309"/>
+        <circle cx="781" cy="120" r="7" fill="#b45309"/>
+        <circle cx="828" cy="120" r="7" fill="#b45309"/>
+        <circle cx="875" cy="120" r="7" fill="#b45309"/>
+      </g>
+      <g font-size="11" font-family="IBM Plex Mono, monospace">
+        <text x="170" y="166" text-anchor="middle" fill="currentColor" opacity="0.5">0</text>
+        <text x="217" y="166" text-anchor="middle" fill="currentColor" opacity="0.5">0</text>
+        <text x="264" y="166" text-anchor="middle" fill="currentColor" opacity="0.5">0</text>
+        <text x="311" y="166" text-anchor="middle" fill="currentColor" opacity="0.5">0</text>
+        <text x="358" y="166" text-anchor="middle" fill="currentColor" opacity="0.75">1</text>
+        <text x="405" y="166" text-anchor="middle" fill="currentColor" opacity="0.75">2</text>
+        <text x="452" y="166" text-anchor="middle" fill="currentColor" opacity="0.75">3</text>
+        <text x="499" y="166" text-anchor="middle" fill="#b45309" font-weight="600">4</text>
+        <text x="546" y="166" text-anchor="middle" fill="#b45309" font-weight="600">5</text>
+        <text x="593" y="166" text-anchor="middle" fill="#b45309" font-weight="600">6</text>
+        <text x="640" y="166" text-anchor="middle" fill="#b45309" font-weight="600">6</text>
+        <text x="687" y="166" text-anchor="middle" fill="#b45309" font-weight="600">6</text>
+        <text x="734" y="166" text-anchor="middle" fill="#b45309" font-weight="600">6</text>
+        <text x="781" y="166" text-anchor="middle" fill="#b45309" font-weight="600">6</text>
+        <text x="828" y="166" text-anchor="middle" fill="#b45309" font-weight="600">6</text>
+        <text x="875" y="166" text-anchor="middle" fill="#b45309" font-weight="600">6</text>
+      </g>
+      <g font-size="11" font-family="IBM Plex Mono, monospace">
+        <text x="170" y="200" text-anchor="middle" fill="currentColor" opacity="0.4" font-weight="400">0</text>
+        <text x="217" y="200" text-anchor="middle" fill="currentColor" opacity="0.4" font-weight="400">0</text>
+        <text x="264" y="200" text-anchor="middle" fill="currentColor" opacity="0.4" font-weight="400">0</text>
+        <text x="311" y="200" text-anchor="middle" fill="currentColor" opacity="0.4" font-weight="400">0</text>
+        <text x="358" y="200" text-anchor="middle" fill="currentColor" opacity="0.4" font-weight="400">0</text>
+        <text x="405" y="200" text-anchor="middle" fill="currentColor" opacity="0.4" font-weight="400">0</text>
+        <text x="452" y="200" text-anchor="middle" fill="currentColor" opacity="0.4" font-weight="400">0</text>
+        <text x="499" y="200" text-anchor="middle" fill="#b45309" opacity="1" font-weight="600">1</text>
+        <text x="546" y="200" text-anchor="middle" fill="#b45309" opacity="1" font-weight="400">2</text>
+        <text x="593" y="200" text-anchor="middle" fill="#b45309" opacity="1" font-weight="400">3</text>
+        <text x="640" y="200" text-anchor="middle" fill="#b45309" opacity="1" font-weight="400">4</text>
+        <text x="687" y="200" text-anchor="middle" fill="#b45309" opacity="1" font-weight="400">5</text>
+        <text x="734" y="200" text-anchor="middle" fill="#b45309" opacity="1" font-weight="400">6</text>
+        <text x="781" y="200" text-anchor="middle" fill="#b45309" opacity="1" font-weight="400">7</text>
+        <text x="828" y="200" text-anchor="middle" fill="#9f1239" opacity="1" font-weight="600">8</text>
+        <text x="875" y="200" text-anchor="middle" fill="#9f1239" opacity="1" font-weight="400">9</text>
+      </g>
+
+      <line x1="150" y1="218" x2="906" y2="218" stroke="currentColor" stroke-width="1.2" opacity="0.45"/>
+      <g font-size="10.5" font-family="IBM Plex Mono, monospace" fill="currentColor" opacity="0.65">
+        <text x="170" y="236" text-anchor="middle">38</text>
+        <text x="217" y="236" text-anchor="middle">39</text>
+        <text x="264" y="236" text-anchor="middle">40</text>
+        <text x="311" y="236" text-anchor="middle">41</text>
+        <text x="358" y="236" text-anchor="middle">42</text>
+        <text x="405" y="236" text-anchor="middle">43</text>
+        <text x="452" y="236" text-anchor="middle">44</text>
+        <text x="499" y="236" text-anchor="middle">45</text>
+        <text x="546" y="236" text-anchor="middle">46</text>
+        <text x="593" y="236" text-anchor="middle">47</text>
+        <text x="640" y="236" text-anchor="middle">48</text>
+        <text x="687" y="236" text-anchor="middle">49</text>
+        <text x="734" y="236" text-anchor="middle">50</text>
+        <text x="781" y="236" text-anchor="middle">51</text>
+        <text x="828" y="236" text-anchor="middle">52</text>
+        <text x="875" y="236" text-anchor="middle">53</text>
+      </g>
+      <text x="906" y="254" text-anchor="end" font-size="10.5" fill="currentColor" opacity="0.6">seconds since enumeration</text>
+
+      <line x1="334" y1="44" x2="334" y2="218" stroke="currentColor" stroke-width="1.4" stroke-dasharray="3 3" opacity="0.6"/>
+      <text x="326" y="286" text-anchor="end" font-size="11" fill="currentColor" opacity="0.75">attack begins · t = 42.19</text>
+
+      <line x1="499" y1="134" x2="499" y2="274" stroke="#b45309" stroke-width="1.8"/>
+      <text x="508" y="270" font-size="11.5" font-weight="600" fill="#b45309">THROTTLE</text>
+      <text x="508" y="286" font-size="10.5" fill="#b45309" opacity="0.85">4th hit in the trailing 6 · alert at 46.0 s</text>
+
+      <line x1="828" y1="134" x2="828" y2="274" stroke="#9f1239" stroke-width="1.8"/>
+      <text x="819" y="270" text-anchor="end" font-size="11.5" font-weight="600" fill="#9f1239">DEAUTHORIZE</text>
+      <text x="819" y="286" text-anchor="end" font-size="10.5" fill="#9f1239" opacity="0.85">8th qualifying window · alert at 53.0 s</text>
+    </svg>
+
+    <figcaption><b>Why two counters, not one.</b> The middle row is the sliding 4-of-6 test — it is
+      what decides whether a second <em>qualifies</em> at all. The bottom row counts only qualifying
+      seconds, and it is what drives the ladder: the first one throttles, the eighth revokes. So a
+      device that spikes once and settles never advances past zero on the bottom row, while a
+      genuinely persistent one climbs it at one step per second. Here THROTTLE lands 3.8&nbsp;s after
+      onset and DEAUTHORIZE 10.8&nbsp;s after — alerts are stamped at window end, which is why the
+      gate fires on the window starting at t&nbsp;=&nbsp;45 and the recorded alert time is 46.0.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2><span class="n">03</span>Component inventory</h2>
+  <p class="lede">Every block above, mapped to the file that implements it.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Layer</th><th>Component</th><th>Source</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>L0</td><td>usbmon debugfs reader</td><td class="mono">capture/usbmon.py</td><td><span class="chip part">fixtures</span></td></tr>
+      <tr><td>L0</td><td>eBPF probe</td><td class="mono">—</td><td><span class="chip no">not built</span></td></tr>
+      <tr><td>L0</td><td>Descriptor scanner</td><td class="mono">capture/sysfs.py</td><td><span class="chip built">built</span></td></tr>
+      <tr><td>L0</td><td>Traffic simulator</td><td class="mono">capture/simulator.py</td><td><span class="chip built">built</span></td></tr>
+      <tr><td>L2</td><td>Feature extractor (29)</td><td class="mono">features/extractor.py</td><td><span class="chip built">built</span></td></tr>
+      <tr><td>L3</td><td>Stage 1 — forest + baseline</td><td class="mono">stage1/model.py</td><td><span class="chip built">built</span></td></tr>
+      <tr><td>L3</td><td>Stage 2 — LSTM</td><td class="mono">stage2/lstm.py</td><td><span class="chip built">built</span></td></tr>
+      <tr><td>L4</td><td>Policy engine + ladder</td><td class="mono">policy/engine.py</td><td><span class="chip part">dry-run</span></td></tr>
+      <tr><td>L4</td><td>Kernel enforcement</td><td class="mono">—</td><td><span class="chip no">not built</span></td></tr>
+      <tr><td>—</td><td>Streaming detector</td><td class="mono">live/detector.py</td><td><span class="chip built">built</span></td></tr>
+      <tr><td>—</td><td>Live monitor loop</td><td class="mono">live/monitor.py</td><td><span class="chip part">replay-verified</span></td></tr>
+      <tr><td>L5</td><td>SQLite store</td><td class="mono">storage/store.py</td><td><span class="chip built">built</span></td></tr>
+      <tr><td>L5</td><td>Control API</td><td class="mono">api/app.py</td><td><span class="chip built">built</span></td></tr>
+      <tr><td>L5</td><td>Operator dashboard</td><td class="mono">dashboard/index.html</td><td><span class="chip built">built</span></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<footer>
+  Constants shown are the deployed ones, reproducible with <code>make eval</code> at seed 7. Figure 2 is
+  test session <code>A0232</code> replayed through <code>policy/engine.py</code>, not an illustration.
+  Architectural ancestor: LBM, Tian et&nbsp;al., IEEE Symposium on Security and Privacy 2019.
+</footer>
+
+</div>
