@@ -255,7 +255,15 @@
     <div><span class="h">Evaluation</span>
       <a href="#a21">21 · Threshold calibration</a>
       <a href="#a22">22 · Session splitting</a>
-      <a href="#a23">23 · Kolmogorov–Smirnov</a></div>
+      <a href="#a23">23 · Kolmogorov–Smirnov</a>
+      <a href="#a31">24 · Noise-floor selection</a>
+      <a href="#a32">25 · Corpus fingerprinting</a></div>
+    <div><span class="h">Alternatives tested</span>
+      <a href="#a24">26 · LOF, One-Class SVM, Elliptic Envelope</a>
+      <a href="#a27">27 · GRU</a>
+      <a href="#a28">28 · Dilated 1-D CNN</a>
+      <a href="#a29">29 · Gradient boosting on a flat sequence</a>
+      <a href="#a30">30 · Single-window supervised control</a></div>
   </div>
 </header>
 
@@ -615,6 +623,20 @@ explanation := the names of those 3 features</div>
       at three times that percentile prevents a single extreme window from
       saturating the fused score, and the near-equal weights reflect that neither
       question is more important than the other.</p>
+    <div class="why">
+      <span class="tag">The weights are a parameter, not a constant</span>
+      <p>0.55/0.45 is <code>Stage1.DEFAULT_WEIGHTS</code>, not a hard-coded
+        split — <code>weights=(1.0, 0.0)</code> renormalises to forest-only on
+        the identical score scale, which is exactly what novelty pillar N2's
+        ablation uses to isolate the device-baseline term's contribution
+        without changing anything else about how a score is computed.
+        Measured result: removing it changes session detection by less than
+        one session either way, and its AUC contribution is negative at both
+        the fused and Stage-1-only level — N2 is not supported by this
+        corpus. The temptation to sweep this weight until it looks
+        supported was deliberately not acted on: that would be fitting the
+        conclusion, not measuring it.</p>
+    </div>
   </div>
 
   <div class="algo" id="a16">
@@ -819,10 +841,226 @@ flag when D &gt; D_crit, per profile — on duration, window count, and VID:PID<
   </div>
 </section>
 
+<section class="layer">
+  <div class="band">
+    <span class="lid">Eval</span>
+    <h2>Model-family comparison — does each chosen algorithm earn its place?</h2>
+    <span class="where">eval/model_zoo.py · make zoo</span>
+  </div>
+  <p class="intro">Every algorithm above this point was chosen without ever
+    being tested against an alternative. This section is that test: eight
+    candidate models, scored by the identical machinery as the deployed
+    system, on a <strong>selection split</strong> so the comparison can drive
+    a real decision — <code>--on test</code> exists only for exploratory use,
+    because choosing a model from a test-scored table is selecting on test.
+    Fairness note: Stage 1 candidates train on benign windows only and never
+    see an attack label; every Stage 2 candidate is supervised. Comparing
+    across that line measures the cost of the labelling constraint, not which
+    family is "better" in general.</p>
+
+  <div class="algo" id="a24">
+    <h3><span class="n">26a</span>Local Outlier Factor, One-Class SVM, Elliptic Envelope</h3>
+    <p class="purpose">Three more ways to ask "is this window unusual?" without attack labels.</p>
+    <div class="formula">LOF(x)   := local density of x  vs.  local density of its k=20 nearest neighbours
+                 <span class="c">← an outlier sits in a sparser neighbourhood than its neighbours' neighbourhoods</span>
+
+OCSVM(x) := signed distance from a learned boundary enclosing "normal" in a
+            kernel-transformed space (RBF kernel, ν=0.02 controls the boundary's slack)
+
+EllipticEnvelope(x) := Mahalanobis distance from a robust estimate of the
+                       benign distribution's centre and covariance
+                       (assumes normal features are roughly Gaussian)</div>
+    <div class="params"><table><tbody>
+      <tr><td class="paramk">LOF</td><td class="d">n_neighbors=20, novelty=True</td>
+          <td class="paramk">OCSVM</td><td class="d">kernel=rbf, ν=0.02, γ=scale</td>
+          <td class="paramk">EllipticEnvelope</td><td class="d">contamination=0.02, support_fraction=0.9</td></tr>
+    </tbody></table></div>
+    <p>Three genuinely different anomaly-detection principles: LOF asks about
+      relative local density, One-Class SVM learns an explicit boundary,
+      Elliptic Envelope assumes the benign class is (roughly) one Gaussian
+      blob and measures distance from its centre. None of the three
+      construct an ensemble of random splits the way Isolation Forest does.</p>
+    <div class="tablewrap">
+      <table class="data">
+        <thead><tr><th>Candidate</th><th class="num">Window AUC</th><th>Verdict</th></tr></thead>
+        <tbody>
+          <tr><td class="name">Isolation Forest (incumbent)</td><td class="num">0.8694</td><td>—</td></tr>
+          <tr><td class="name">Elliptic Envelope</td><td class="num">0.8291</td><td>close, but no better</td></tr>
+          <tr><td class="name">Local Outlier Factor</td><td class="num">0.7872</td><td>weaker</td></tr>
+          <tr><td class="name">One-Class SVM (rbf)</td><td class="num">0.4388</td><td><strong>degenerate — alerts on everything</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="why">
+      <span class="tag">Why One-Class SVM collapsed</span>
+      <p>An RBF kernel needs its bandwidth tuned to the data's actual scale;
+        left at scikit-learn's default heuristic on 28-dimensional
+        standardised features, the learned boundary ended up so loose that
+        almost every window — benign or not — fell outside it. This is a
+        known failure mode of the algorithm on unscaled or oddly-shaped
+        feature spaces, not a defect in the comparison; it is reported rather
+        than tuned away, because the incumbent needed no such rescue.</p>
+    </div>
+  </div>
+
+  <div class="algo" id="a27">
+    <h3><span class="n">26b</span>GRU — the LSTM's simpler cousin</h3>
+    <p class="purpose">Test whether the LSTM's extra gate (four gates vs. three) is buying anything.</p>
+    <div class="formula">z&#8348; = σ(W&#7522;·[x&#8348;, h&#8348;₋₁])         <span class="c">update gate</span>
+r&#8348; = σ(W&#7527;·[x&#8348;, h&#8348;₋₁])         <span class="c">reset gate</span>
+h&#771;&#8348; = tanh(W&#7511;·[x&#8348;, r&#8348;⊙h&#8348;₋₁])
+h&#8348; = (1−z&#8348;)⊙h&#8348;₋₁ + z&#8348;⊙h&#771;&#8348;      <span class="c">← no separate cell state; h IS the memory</span></div>
+    <p>A GRU merges the LSTM's forget and input gates into one update gate and
+      drops the separate cell state entirely — fewer parameters, same basic
+      idea of learning what to keep and what to overwrite at each step. Same
+      input (28 features + Stage-1 score, sequence length 10), same training
+      regime, same class-weighted loss.</p>
+    <div class="why">
+      <span class="tag">Result</span>
+      <p>AUC 0.9790 vs. the LSTM's 0.9798, detection tied at 88.0%. Within the
+        selection split's noise floor. The extra gate is not earning its
+        parameter budget on this task.</p>
+    </div>
+  </div>
+
+  <div class="algo" id="a28">
+    <h3><span class="n">26c</span>Dilated 1-D convolution — a temporal model with no recurrence at all</h3>
+    <p class="purpose">If recurrence itself (not just "reading a sequence") is what matters, a convolution should do noticeably worse.</p>
+    <div class="formula">layer 1: Conv1d(kernel=3, dilation=1)  → ReLU     <span class="c">← sees 3 adjacent windows</span>
+layer 2: Conv1d(kernel=3, dilation=2)  → ReLU     <span class="c">← sees 7 windows, with gaps</span>
+         AdaptiveMaxPool1d(1)                     <span class="c">← collapse the time axis to one vector</span>
+         Linear → P(malicious)</div>
+    <p>Dilation widens a convolution's effective reach across time without
+      adding layers — the second layer's receptive field covers the whole
+      10-window sequence despite a kernel width of only 3. Unlike an LSTM, a
+      convolution has no notion of "step 1 happens before step 2 and I carry
+      a memory forward" — it looks at fixed local neighbourhoods in parallel
+      and pools the result. It is temporal (it uses the whole window) without
+      being recurrent (no state is carried step-by-step).</p>
+    <div class="why">
+      <span class="tag">Result</span>
+      <p>AUC 0.9753, detection tied with the LSTM at 88.0% — but roughly 5–7×
+        slower to train (37.8s vs. 6.8s) because of the extra convolution
+        arithmetic. Confirms the earlier finding precisely: sequence context
+        is what matters; recurrence specifically is not required to extract
+        it.</p>
+    </div>
+  </div>
+
+  <div class="algo" id="a29">
+    <h3><span class="n">26d</span>Gradient-boosted trees over a flattened sequence</h3>
+    <p class="purpose">The cheapest possible way to hand a model the same 10-window information.</p>
+    <div class="formula">flatten: [10 windows × 29 features]  →  one 290-number row per example
+fit: histogram-based gradient boosting, 200 rounds, class_weight=balanced</div>
+    <p>No architectural notion of order at all — the 290 numbers are just 290
+      columns to a tree ensemble, which is free to learn "column 261 (the
+      most recent window's cv_iat) matters more than column 1" if the data
+      supports it, but has no built-in bias toward treating nearby columns as
+      temporally related the way a CNN or RNN does.</p>
+    <div class="why">
+      <span class="tag">Result</span>
+      <p>AUC 0.9770, detection 86.0% — one selection-split session behind the
+        LSTM, at roughly a quarter of the training time (1.7s vs. 6.8s). Losing
+        the explicit sequence structure costs a small amount, but far less
+        than expected: most of the value in "reading 10 seconds" survives
+        even when the model is never told those 290 numbers form an ordered
+        story.</p>
+    </div>
+  </div>
+
+  <div class="algo" id="a30">
+    <h3><span class="n">26e</span>The architecture control — one window, no sequence, no pipeline</h3>
+    <p class="purpose">Isolate the value of temporal context itself, stripped of everything else.</p>
+    <div class="formula">input: the 28 raw features of ONE window only  (no Stage-1 score, no history)
+fit: HistGradientBoosting or RandomForest, supervised, 200 estimators</div>
+    <p>This is the sharpest test in the whole comparison — remove Stage 1
+      entirely and remove the 10-window sequence entirely, leaving a single
+      supervised classifier that sees exactly one second and nothing else,
+      the same information Isolation Forest sees but with attack labels this
+      time.</p>
+    <div class="tablewrap">
+      <table class="data">
+        <thead><tr><th>Configuration</th><th class="num">Window AUC</th><th class="num">Session detection</th></tr></thead>
+        <tbody>
+          <tr><td class="name">HistGradientBoosting, 1 window</td><td class="num">0.9564</td><td class="num">80.0%</td></tr>
+          <tr><td class="name">RandomForest, 1 window</td><td class="num">0.9537</td><td class="num">76.0%</td></tr>
+          <tr class="total"><td>Full pipeline (Stage 1 + 10-window Stage 2)</td><td class="num">0.9798</td><td class="num">88.0%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="why">
+      <span class="tag">What this actually isolates</span>
+      <p>Two numbers worth separating. First: a <em>supervised</em> single-window
+        model (80.0%) massively outperforms the <em>unsupervised</em>
+        single-window Stage 1 (0.0% detection at the deployed threshold on
+        the same corpus) — that gap is the price of the constraint that
+        Stage 1 may never see an attack label. Second: adding back temporal
+        context (the full pipeline, 88.0%) gains a further 8 points over the
+        best single-window supervised model — that gap is what sequence
+        modelling contributes once the labelling handicap is already paid
+        for. Novelty pillar N3 is a claim about this second gap, and it
+        survives.</p>
+    </div>
+  </div>
+
+  <div class="algo" id="a31">
+    <h3><span class="n">24</span>Noise-floor-aware model selection</h3>
+    <p class="purpose">Stop a sweep from recommending a change on a margin too small to mean anything.</p>
+    <div class="formula">noise := 1 / (attack sessions in the selection split)     <span class="c">← smallest resolvable difference</span>
+
+challenger wins  iff  detect(challenger) − detect(incumbent)  &gt;  noise
+otherwise: KEEP the incumbent, regardless of which one ranks higher on the grid</div>
+    <p>A detection rate computed over <em>n</em> sessions is a count divided
+      by <em>n</em> — it physically cannot represent a difference smaller than
+      one session, <code>1/n</code>. A sweep that reports "the winner" from a
+      ranked grid, without checking whether the winning margin clears that
+      floor, is reporting noise as if it were a finding.</p>
+    <div class="why caveat">
+      <span class="tag">This guard exists because it was violated once, for real</span>
+      <p>A longer sequence horizon (K=30) won a 50-attack-session selection
+        split by exactly one session — a 2.0% margin, precisely at the noise
+        floor. Applied and run against the real held-out test split, it
+        scored <strong>five points worse</strong> than the incumbent (K=10),
+        and one attack class's detection fell from 40% to 10%. The fix
+        compares every challenger against the deployed configuration
+        specifically (<code>--incumbent</code>) rather than only ranking the
+        grid, and requires the margin to exceed <code>1/n</code> before
+        recommending a change. Nothing is ever applied automatically —
+        the sweep prints a recommendation; deploying it is a separate,
+        deliberate step.</p>
+    </div>
+  </div>
+
+  <div class="algo" id="a32">
+    <h3><span class="n">25</span>Corpus / simulator fingerprinting</h3>
+    <p class="purpose">Stop a cached dataset from silently outliving the code that generated it.</p>
+    <div class="formula">fingerprint := SHA-256( bytes(capture/simulator.py) ++ bytes(features/extractor.py) )[:16]
+
+on load: reject the cache  iff  stored_fingerprint ≠ current_fingerprint</div>
+    <p>A cached corpus (<code>corpus_cache.npz</code>) exists purely to avoid
+      re-generating twelve million lines of usbmon text on every run — but a
+      cache is only valid for the code that produced it. Hashing the exact
+      source files that determine a window vector's content means any edit to
+      either one invalidates every existing cache automatically, with no
+      separate versioning scheme to remember to bump.</p>
+    <div class="why caveat">
+      <span class="tag">This is not a hypothetical failure mode</span>
+      <p>Checking only the data-contract version (a coarser, hand-incremented
+        number) was the original approach, and it let a corpus generated by
+        one version of the attack simulator get silently scored as if it
+        still represented the current adversary — precisely while this
+        project's own mimicry attack was being made more realistic. The
+        fingerprint check has already fired for real once since being added,
+        forcing a rebuild rather than a silently stale evaluation.</p>
+    </div>
+  </div>
+</section>
+
 <footer>
   Every formula above is implemented in the repository and exercised by the test
   suite; parameter values are the deployed ones, reproducible with
-  <code>make eval</code> at seed 7. The isolation forest is
+  <code>make eval</code> at seed 7, and the model comparison with
+  <code>make zoo</code>. The isolation forest is
   Liu, Ting &amp; Zhou (ICDM 2008); the architectural ancestor for kernel-level
   USB mediation is LBM, Tian et&nbsp;al., IEEE Symposium on Security and Privacy 2019.
 </footer>
