@@ -1,6 +1,6 @@
 # Report documents
 
-Two self-contained HTML files. No server, no build step, no account needed —
+Four self-contained HTML files. No server, no build step, no account needed —
 open them in any browser, email them, or attach them to a submission.
 
 | File | What it is |
@@ -8,6 +8,7 @@ open them in any browser, email them, or attach them to a submission.
 | `iudbms_handbook.html` | **Start here.** Complete reference: problem, literature, the four novelty claims from `IUDBMS_Project_Report.pdf` checked against our own ablations, architecture as designed vs. built, data, algorithm, results, full audit trail |
 | `iudbms_review.html` | Progress report: what is built, measured results, the findings |
 | `iudbms_algorithms.html` | Technical reference: all 23 algorithms, formulas, parameters, rationale |
+| `iudbms_architecture.html` | **Review deliverable.** Two diagrams: the full kernel-to-enforcement pipeline, and the 4-of-6 gate replayed on test session `A0232` |
 
 ## Sharing them
 
@@ -38,6 +39,11 @@ drift from the results. Edit `eval/build_report.py`, never the HTML.
 
 `iudbms_algorithms.html` is still a hand-written reference — it documents method
 rather than measurements, so it only needs revisiting when an algorithm changes.
+
+`iudbms_architecture.html` is hand-drawn inline SVG. Figure 1 carries the
+deployed constants (threshold, gate, window count) and figure 2 is a replay of
+`out/figure_data.json`'s `timelines[0]` through `policy/engine.py` — re-check
+both if the threshold, `GATE_K`/`GATE_N`, `SEQ_LEN`, or the corpus size change.
 
 ## About the charts
 
