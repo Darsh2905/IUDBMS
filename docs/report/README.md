@@ -1,6 +1,6 @@
 # Report documents
 
-Four self-contained HTML files. No server, no build step, no account needed —
+Three self-contained HTML files. No server, no build step, no account needed —
 open them in any browser, email them, or attach them to a submission.
 
 | File | What it is |
@@ -8,7 +8,16 @@ open them in any browser, email them, or attach them to a submission.
 | `iudbms_handbook.html` | **Start here.** Complete reference: problem, literature, the four novelty claims from `IUDBMS_Project_Report.pdf` checked against our own ablations, architecture as designed vs. built, data, algorithm, results, full audit trail |
 | `iudbms_review.html` | Progress report: what is built, measured results, the findings |
 | `iudbms_algorithms.html` | Technical reference: all 23 algorithms, formulas, parameters, rationale |
-| `iudbms_architecture.html` | **Review deliverable.** Two diagrams: the full kernel-to-enforcement pipeline, and the 4-of-6 gate replayed on test session `A0232` |
+
+## Diagrams
+
+| File | What it shows |
+|---|---|
+| `architecture.png` / `.pdf` | **Review deliverable.** The full pipeline, kernel hook to enforcement — every arrow labelled with what moves along it |
+| `gate_timeline.png` / `.pdf` | The k-of-n gate escalating on a real test session, not an illustration |
+
+Regenerate both with `make diagrams` (needs `make eval` first). PDF is vector —
+use it for print and for slides; the PNG is 220 dpi.
 
 ## Sharing them
 
@@ -40,10 +49,11 @@ drift from the results. Edit `eval/build_report.py`, never the HTML.
 `iudbms_algorithms.html` is still a hand-written reference — it documents method
 rather than measurements, so it only needs revisiting when an algorithm changes.
 
-`iudbms_architecture.html` is hand-drawn inline SVG. Figure 1 carries the
-deployed constants (threshold, gate, window count) and figure 2 is a replay of
-`out/figure_data.json`'s `timelines[0]` through `policy/engine.py` — re-check
-both if the threshold, `GATE_K`/`GATE_N`, `SEQ_LEN`, or the corpus size change.
+The two diagrams are drawn by `eval/render_architecture.py` and never
+hand-edited. Both read their constants from `iudbms.contract` and
+`out/figure_data.json`, and `gate_timeline` is a real test session stepped
+through `PolicyEngine` — so changing the threshold, `GATE_K`/`GATE_N`,
+`SEQ_LEN` or the corpus redraws them instead of leaving them quietly stale.
 
 ## About the charts
 

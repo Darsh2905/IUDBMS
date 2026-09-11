@@ -17,13 +17,18 @@ lint:  ## ruff check (no-op if ruff is absent)
 	@command -v ruff >/dev/null && ruff check src tests eval || echo "ruff not installed; skipping"
 
 eval:  ## regenerate every reported table/figure (seeded)
-	python3 -m eval.run_all
+	python3 -m eval.run_eval --cache out/corpus_cache.npz --target-fpr 0.0001 --persist
 
 zoo:  ## compare model families on the selection split (~60 s)
 	python3 -m eval.model_zoo --on selection
 
 report:  ## regenerate docs/report/ from the last eval (charts + numbers)
 	python3 -m eval.build_report
+
+diagrams:  ## architecture + gate diagrams as PNG/PDF (needs `make eval` first)
+	python3 -m eval.render_architecture
+	cp out/architecture.png out/architecture.pdf \
+	   out/gate_timeline.png out/gate_timeline.pdf docs/report/
 
 monitor-replay:  ## the monitor loop driven from a recorded capture (any OS)
 	python3 scripts/live_monitor.py --replay tests/fixtures/usbmon/demo_capture.txt \
