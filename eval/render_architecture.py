@@ -47,11 +47,14 @@ def box(ax, x0, y0, x1, y1, *, ec=INK, lw=1.1, ls="solid", fc=FILL, z=2):
         linewidth=lw, edgecolor=ec, facecolor=fc, linestyle=ls, zorder=z))
 
 
+FONT = "DejaVu Sans"
+
+
 def txt(ax, x, y, s, *, size=7, ha="center", va="center",
         color=INK, weight="normal", mono=False, z=4):
     ax.text(x, y, s, fontsize=size, ha=ha, va=va, color=color,
             fontweight=weight, zorder=z,
-            family="DejaVu Sans Mono" if mono else "DejaVu Sans")
+            family="DejaVu Sans Mono" if mono else FONT)
 
 
 def arrow(ax, xy_from, xy_to, *, color=INK, lw=1.2, ls="solid", z=3):
@@ -308,9 +311,110 @@ def gate_timeline(d: dict, path: Path) -> Path:
     return path
 
 
+# --------------------------------------------------------------------------
+# figure 1 for the IEEE paper -- drawn at print size (7.16 in, two columns)
+# --------------------------------------------------------------------------
+def architecture_paper(d: dict, path: Path) -> Path:
+    """Same pipeline as ``architecture`` but laid out for a two-column IEEE page.
+
+    The slide version is 14 in wide; shrunk to 7.16 in its 7 pt text would print
+    at ~3.5 pt. This one is drawn at final size, with text at 6-7 pt.
+    """
+    global FONT
+    h = d["headline"]
+    FONT = "Arial"
+    try:
+        fig, ax = plt.subplots(figsize=(7.16, 3.15))
+        ax.set_xlim(0, 100); ax.set_ylim(0, 44.0); ax.axis("off")
+
+        W, G = 20.5, 5.9
+        xs = [0.2 + i * (W + G) for i in range(4)]
+        T, B = 7.2, 6.5
+        R1, R2 = (26.4, 43.4), (0.6, 17.6)
+
+        def blk(x, rows, title, lines, *, lw=1.0):
+            y0, y1 = rows
+            box(ax, x, y0, x + W, y1, lw=lw)
+            txt(ax, x + W / 2, y1 - 2.6, title, size=T, weight="bold")
+            for i, ln in enumerate(lines):
+                txt(ax, x + W / 2, y1 - 6.4 - i * 3.0, ln, size=B)
+
+        # ---- row 1: capture -> parse -> extract -> stage 1 ------------------
+        x = xs[0]
+        box(ax, x, *R1[:1], x + W, R1[1], lw=1.0) if False else box(ax, x, R1[0], x + W, R1[1], lw=1.0)
+        txt(ax, x + W / 2, R1[1] - 2.4, "L0  Kernel capture", size=T, weight="bold")
+        box(ax, x + 1.2, 33.4, x + W - 1.2, 38.2, lw=0.9, ec=MUTE)
+        txt(ax, x + W / 2, 35.8, "usbmon (deployed)", size=B)
+        box(ax, x + 1.2, 27.6, x + W - 1.2, 32.4, lw=0.9, ec=CRIT, ls=(0, (3, 2)))
+        txt(ax, x + W / 2, 30.0, "eBPF (designed only)", size=B, color=CRIT)
+
+        blk(xs[1], R1, "L1  Parser",
+            ["text line to typed", "URBEvent (completions", "and errors only)"])
+        blk(xs[2], R1, "L2  Feature extractor",
+            ["1 s tumbling window,", "stateful per device:",
+             f"{len(FEATURE_SCHEMA) - 1} features per second"])
+        blk(xs[3], R1, "Stage 1",
+            ["Isolation Forest (0.55)", "+ EWMA baseline (0.45)", "gives anomaly score s1"], lw=1.3)
+
+        ym = 34.9
+        for a_, b_ in zip(xs[:3], xs[1:]):
+            arrow(ax, (a_ + W, ym), (b_, ym), lw=1.0)
+
+        # ---- the relay: Stage 1's score becomes Stage 2's input ---------------
+        xr = xs[3] + W / 2
+        arrow(ax, (xr, R1[0]), (xr, R2[1]), color=SIG, lw=1.9)
+        txt(ax, xr - 1.6, 23.4, "s1 is appended as the 29th column of the row",
+            size=6.8, ha="right", color=SIG, weight="bold")
+        txt(ax, xr - 1.6, 20.6, "(an input to Stage 2, not a second vote)",
+            size=6.3, ha="right", color=SIG)
+
+        # ---- row 2, right to left: buffer -> stage 2 -> policy -> outputs -----
+        x = xs[3]
+        box(ax, x, R2[0], x + W, R2[1], lw=1.0)
+        txt(ax, x + W / 2, R2[1] - 2.5, "Sliding buffer", size=T, weight="bold")
+        txt(ax, x + W / 2, R2[1] - 5.8, "last 10 rows = 10 s   (10 x 29)", size=B)
+        n, cw, cg = 10, 1.55, 0.32
+        x0 = x + (W - (n * cw + (n - 1) * cg)) / 2
+        for i in range(n):
+            newest = i == n - 1
+            box(ax, x0 + i * (cw + cg), 2.0, x0 + i * (cw + cg) + cw, 7.4,
+                ec=SIG if newest else INK, lw=1.4 if newest else 0.7,
+                fc="#f3e2c8" if newest else FILL)
+        txt(ax, x + W / 2, 9.9, "newest row highlighted", size=5.8, color=MUTE)
+
+        blk(xs[2], R2, "Stage 2  (LSTM)",
+            ["reads all 10 rows in order", "outputs P(malicious)", "for the newest second"], lw=1.3)
+        blk(xs[1], R2, "L4  Policy engine",
+            [f"P >= {h['threshold']:.4f}: a hit", "4 hits in last 6: THROTTLE",
+             "8 qualifying: DEAUTHORIZE"])
+
+        x = xs[0]
+        box(ax, x, 9.8, x + W, R2[1], lw=1.0)
+        txt(ax, x + W / 2, R2[1] - 2.5, "Operator path", size=T, weight="bold")
+        txt(ax, x + W / 2, R2[1] - 6.0, "SQLite, FastAPI, dashboard", size=B)
+        box(ax, x, R2[0], x + W, 8.2, ec=CRIT, ls=(0, (3, 2)), lw=1.0)
+        txt(ax, x + W / 2, 5.7, "Kernel enforcement", size=B + 0.3, weight="bold", color=CRIT)
+        txt(ax, x + W / 2, 2.9, "generated, dry-run only", size=B - 0.2, color=CRIT)
+
+        ym2 = 9.1
+        arrow(ax, (xs[3], ym2), (xs[2] + W, ym2), lw=1.0)
+        arrow(ax, (xs[2], ym2), (xs[1] + W, ym2), lw=1.0)
+        arrow(ax, (xs[1], 13.6), (xs[0] + W, 13.6), lw=1.0)
+        arrow(ax, (xs[1], 4.4), (xs[0] + W, 4.4), lw=1.0, color=CRIT, ls=(0, (3, 2)))
+
+        fig.subplots_adjust(left=0.004, right=0.996, top=0.996, bottom=0.004)
+        fig.savefig(path, dpi=300)
+        fig.savefig(path.with_suffix(".pdf"))
+        plt.close(fig)
+    finally:
+        FONT = "DejaVu Sans"
+    return path
+
+
 def main() -> int:
     d = json.loads((OUT / "figure_data.json").read_text())
     for p in (architecture(d, OUT / "architecture.png"),
+              architecture_paper(d, OUT / "architecture_ieee.png"),
               gate_timeline(d, OUT / "gate_timeline.png")):
         print(f"  wrote {p.relative_to(OUT.parent)}  and  "
               f"{p.with_suffix('.pdf').relative_to(OUT.parent)}")
