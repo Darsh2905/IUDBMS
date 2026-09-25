@@ -27,7 +27,7 @@ report:  ## regenerate docs/report/ from the last eval (charts + numbers)
 
 diagrams:  ## architecture + gate diagrams as PNG/PDF (needs `make eval` first)
 	python3 -m eval.render_architecture
-	cp out/architecture.png out/architecture.pdf \
+	cp out/architecture.png out/architecture.pdf out/architecture_ieee.png out/architecture_ieee.pdf \
 	   out/gate_timeline.png out/gate_timeline.pdf docs/report/
 
 monitor-replay:  ## the monitor loop driven from a recorded capture (any OS)
