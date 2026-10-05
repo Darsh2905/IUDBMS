@@ -2,7 +2,7 @@
 L2 — multi-modal feature extraction (novelty pillar N1).
 
 Turns a 1.0 s window of URB events plus a descriptor snapshot into the frozen
-28-dimensional vector. Four modalities that prior work uses in isolation are
+30-dimensional vector (contract 3.0.0). Modalities that prior work uses in isolation are
 fused here:
 
     identity/descriptor  what the device claims to be, and when it changed

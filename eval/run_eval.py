@@ -72,7 +72,7 @@ def main() -> int:
     t_start = time.time()
     OUT.mkdir(exist_ok=True)
 
-    banner("[1/5] CORPUS  simulate -> usbmon text -> parse -> 28-dim windows")
+    banner(f"[1/5] CORPUS  simulate -> usbmon text -> parse -> {N_FEATURES}-dim windows")
     if args.cache and args.cache.exists():
         corpus = load_corpus(args.cache)
         n_b = sum(1 for s in corpus.sessions if s.label == 0)

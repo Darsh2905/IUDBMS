@@ -706,6 +706,64 @@ interleaving parameters cannot be defended from first principles the way "a
 payload must type specific commands" can. This is the point at which the
 question needs real traffic, and it is named as such rather than half-built.
 
+### Finding 21 — N1 gets a fair test at last; fusion helps non-uniformly (05 Oct)
+
+Every prior N1 measurement was confounded: each profile in `ATTACK_PROFILES`
+deviates on several modalities at once, so any one modality catches all of them
+and fusion cannot show a gain. `AXIS_PROFILES` fixes that with four single-axis
+families plus `axis_diffuse`, which deviates weakly on timing and payload
+together. `make fusion-ablation`. Axis purity is **measured** by per-feature KS
+rather than assumed, and printed before the detection table.
+
+Two conditions, pre-registered before the first run.
+
+**(a) Does fusion lose what a specialist sees? No — PASS.**
+
+| axis | fused | best specialist |
+|---|---|---|
+| timing | 100% | 100% (timing) |
+| payload | 100% | 100% (payload) |
+| protocol | 100% | 100% (payload) |
+| identity | **100%** | **3.7%** |
+
+The identity row is the strongest single argument for fusion in the project.
+With `log_time_since_enum` correctly excluded (finding 17) the identity modality
+has 5 near-constant features, cannot calibrate a threshold, and goes degenerate
+at 100% benign FP. Only the fused model detects a descriptor-only attack.
+
+**(b) Does fusion beat every specialist on the diffuse attack? No — FAIL.**
+Strength swept, three seeds per point, every point reported:
+
+| strength | fused | best specialist | margin | verdict |
+|---|---|---|---|---|
+| 0.05 | 24.7% ±10.6 | 35.8% ±7.6 | **−11.1% ±3.0** | fusion LOSES |
+| 0.10 | 33.3% ±6.0 | 30.9% ±6.3 | +2.5% ±1.7 | tie |
+| 0.20 | 32.1% ±14.3 | 49.4% ±13.6 | −17.3% ±27.4 | tie |
+| 0.33 | 80.2% ±6.3 | 60.5% ±6.3 | **+19.8% ±3.5** | fusion WINS |
+| 0.50 | 100% | 100% | +0.0% | saturated, invalid |
+
+**Fusion's benefit is not uniform, and that is the finding.** At moderate
+strength the complementary evidence is worth 19.8 points. At the subtlest
+strength the 28-feature model is *beaten by a 9-feature subset of itself* by
+11.1 points, consistently across seeds — with a weak signal the extra dimensions
+cost more variance than they contribute. By the pre-registered criterion (win
+somewhere, never lose) **N1 is not supported**, and the criterion stands as
+written.
+
+The nuance is worth more than the verdict: report the curve, not the binary.
+Fusion is the only configuration that covers all four axes, and it is the wrong
+choice against a maximally subtle single-channel adversary.
+
+Two methodological notes, both earned the hard way:
+* An unseeded version of this sweep flipped between SUPPORTED and NOT SUPPORTED
+  depending on which strengths were sampled. A margin smaller than its own
+  seed spread is now refused outright.
+* An earlier run reported SUPPORTED while the fused configuration sat at 7.4%
+  benign FP against the specialists' 0.0% — it detected more because it alarmed
+  more. The benign pool was too small to place a 1e-4 quantile. Every
+  configuration is now gated on benign FP before its detection counts, fused
+  included.
+
 ### Live monitoring — wired 10 Sep, never yet run on real traffic
 
 Until now **nothing called `UsbmonSource.live()`.** It existed and was
