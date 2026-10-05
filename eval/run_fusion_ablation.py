@@ -98,7 +98,7 @@ from iudbms.features.extractor import WindowFeatureExtractor, window_events
 
 from .corpus import Corpus, SessionData, stratified_split
 from .leakage_audit import ks_statistic
-from .pipeline import run_configuration
+from .pipeline import deployed_features, run_configuration
 
 OUT = Path(__file__).resolve().parent.parent / "out"
 
@@ -244,15 +244,15 @@ def main() -> int:
     t0 = time.time()
     OUT.mkdir(exist_ok=True)
 
-    deployed = np.array([i for i in range(N_FEATURES)
-                         if FEATURE_NAMES[i] != "log_time_since_enum"])
+    base = build_axis_corpus(args.per_profile, seed=args.seed,
+                             benign_multiple=args.benign_multiple)
+    base_fit, _bv, _bt = stratified_split(base.sessions, seed=args.seed)
+    deployed = deployed_features(base_fit)
     dep = set(int(i) for i in deployed)
     configs = [("fused", deployed)] + [
         (m, np.array([i for i in modality_indices(m) if i in dep])) for m in MODALITIES]
 
     # ---- purity, measured once on the strongest corpus --------------------
-    base = build_axis_corpus(args.per_profile, seed=args.seed,
-                             benign_multiple=args.benign_multiple)
     purity = purity_scan(base, deployed)
 
     # ---- the sweep, replicated across seeds --------------------------------

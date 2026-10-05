@@ -32,6 +32,33 @@ TARGET_FPR = 0.001      # per-window; session FP compounds over ~60 windows
 GATE_K, GATE_N = 4, 6   # k-of-n persistence gate
 
 
+def deployed_features(fit: list[SessionData], *, verbose: bool = True) -> np.ndarray:
+    """The feature columns a deployed model is allowed to use.
+
+    Two exclusions, both of which have burned this project:
+
+    * ``log_time_since_enum`` -- a systematic label leak. Post-onset windows are
+      later in a session by construction, so it separates every attack class
+      without encoding behaviour (CLAUDE.md finding 8).
+    * any column with **zero variance on the training split**. It carries no
+      information by definition, and constant columns caused finding 10's
+      exploding standardisation scale. Contract 3.0.0 adds a standing case:
+      ``concurrent_device_rate`` is identically zero on a single-device corpus,
+      because there is no other device to observe.
+
+    Centralised because four eval scripts need the same rule and three of them
+    had already drifted from it -- the single-modality ablation was still
+    passing the leaking feature to the identity configuration.
+    """
+    idx = [i for i in range(N_FEATURES) if FEATURE_NAMES[i] != "log_time_since_enum"]
+    Xtr = np.vstack([s.X for s in fit])
+    dead = [i for i in idx if float(Xtr[:, i].std()) == 0.0]
+    if dead and verbose:
+        print(f"  constant on train, dropped: "
+              f"{', '.join(FEATURE_NAMES[i] for i in dead)}")
+    return np.array([i for i in idx if i not in set(dead)])
+
+
 @dataclass
 class Result:
     name: str

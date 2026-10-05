@@ -59,7 +59,7 @@ from iudbms.contract import FEATURE_NAMES, N_FEATURES
 from iudbms.features.extractor import WindowFeatureExtractor, window_events
 
 from .corpus import Corpus, SessionData, stratified_split
-from .pipeline import run_configuration
+from .pipeline import deployed_features, run_configuration
 
 OUT = Path(__file__).resolve().parent.parent / "out"
 
@@ -110,8 +110,7 @@ def main() -> int:
 
     t0 = time.time()
     OUT.mkdir(exist_ok=True)
-    deployed = np.array([i for i in range(N_FEATURES)
-                         if FEATURE_NAMES[i] != "log_time_since_enum"])
+    deployed = None   # set per corpus, from its own training split
 
     out = {}
     print(f"{'corpus':16s} {'kbd rate sd':>12s} {'configuration':22s} "
@@ -121,6 +120,7 @@ def main() -> int:
         c = build(args.n_benign, args.n_attack, args.seed, variation=variation)
         spread = heterogeneity(c)
         fit, val, test = stratified_split(c.sessions, seed=args.seed)
+        deployed = deployed_features(fit, verbose=False)
         n_atk = sum(1 for s in test if s.label == 1)
         noise = 1.0 / max(n_atk, 1)
 

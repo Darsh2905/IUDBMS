@@ -19,6 +19,15 @@ lint:  ## ruff check (no-op if ruff is absent)
 eval:  ## regenerate every reported table/figure (seeded)
 	python3 -m eval.run_eval --cache out/corpus_cache.npz --target-fpr 0.0001 --persist
 
+fusion-ablation:  ## pillar N1: fused vs single-modality on single-axis attacks
+	python3 -m eval.run_fusion_ablation
+
+baseline-ablation:  ## pillar N2: per-device baseline, with and without device variation
+	python3 -m eval.run_baseline_ablation
+
+cross-device:  ## does host context clear the single-shot mimicry bound?
+	python3 -m eval.run_cross_device
+
 zoo:  ## compare model families on the selection split (~60 s)
 	python3 -m eval.model_zoo --on selection
 

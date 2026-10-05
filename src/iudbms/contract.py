@@ -71,7 +71,7 @@ __all__ = [
 #: 2.0.0 — appended feature 29, payload_seq_novelty. MAJOR: the vector changed
 #:         width, so every checkpoint trained against 1.x is invalid and
 #:         LSTMDetector.load refuses them. Feature ORDER is still append-only.
-CONTRACT_VERSION = "2.0.0"
+CONTRACT_VERSION = "3.0.0"
 
 
 class ContractError(ValueError):
@@ -85,7 +85,7 @@ class ContractError(ValueError):
 EventKind = Literal["S", "C", "E"]           # submission, completion, error
 TransferType = Literal["control", "iso", "intr", "bulk"]
 Direction = Literal["in", "out"]
-Modality = Literal["timing", "payload", "protocol", "identity"]
+Modality = Literal["timing", "payload", "protocol", "identity", "host"]
 
 #: usbmon's transfer-type letter -> canonical name (Documentation/usb/usbmon.rst)
 USBMON_TTYPE: dict[str, TransferType] = {
@@ -375,12 +375,20 @@ FEATURE_SCHEMA: tuple[tuple[str, Modality], ...] = (
     ("class_behaviour_mismatch", "identity"),
     ("late_iface_flag",          "identity"),
     ("log_time_since_enum",      "identity"),
+    # --- host, appended in contract 3.0.0 ---
+    # Out of modality order on purpose: the schema is APPEND-ONLY (the comment
+    # above is not advisory -- a digest of this tuple is asserted by
+    # tests/test_contract.py and the order is baked into checkpoints and the
+    # SQLite windows.features JSON). Grouping it beside the other modalities
+    # would shift every identity index by one.
+    ("concurrent_device_rate",   "host"),
 )
 
 FEATURE_NAMES: tuple[str, ...] = tuple(n for n, _ in FEATURE_SCHEMA)
 N_FEATURES: int = len(FEATURE_SCHEMA)
 FEATURE_DTYPE = np.float32
-MODALITIES: tuple[Modality, ...] = ("timing", "payload", "protocol", "identity")
+MODALITIES: tuple[Modality, ...] = ("timing", "payload", "protocol", "identity",
+                                    "host")
 
 _NAME_TO_INDEX = {n: i for i, n in enumerate(FEATURE_NAMES)}
 _MODALITY_TO_INDICES: dict[str, tuple[int, ...]] = {

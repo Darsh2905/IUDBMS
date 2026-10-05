@@ -1,0 +1,231 @@
+{
+  "n_hosts": 500,
+  "seeds": [
+    7,
+    17,
+    27
+  ],
+  "guards": [
+    {
+      "seed": 7,
+      "guard": {
+        "benign_with_companion": 0.6086956521739131,
+        "attack_with_companion": 0.6241299303944315,
+        "n_benign_hosts": 69,
+        "n_attack_hosts": 431
+      },
+      "ok": true
+    },
+    {
+      "seed": 17,
+      "guard": {
+        "benign_with_companion": 0.6388888888888888,
+        "attack_with_companion": 0.6144859813084113,
+        "n_benign_hosts": 72,
+        "n_attack_hosts": 428
+      },
+      "ok": true
+    },
+    {
+      "seed": 27,
+      "guard": {
+        "benign_with_companion": 0.5764705882352941,
+        "attack_with_companion": 0.5831325301204819,
+        "n_benign_hosts": 85,
+        "n_attack_hosts": 415
+      },
+      "ok": true
+    }
+  ],
+  "guard_ok": true,
+  "per_profile": {
+    "class_exfil": {
+      "without": 1.0,
+      "with": 1.0,
+      "delta_mean": 0.0,
+      "delta_sd": 0.0,
+      "noise": 0.04225352112676056,
+      "n_test": 23.666666666666668
+    },
+    "hid_injection": {
+      "without": 1.0,
+      "with": 1.0,
+      "delta_mean": 0.0,
+      "delta_sd": 0.0,
+      "noise": 0.049180327868852465,
+      "n_test": 20.333333333333332
+    },
+    "identity_switch": {
+      "without": 1.0,
+      "with": 1.0,
+      "delta_mean": 0.0,
+      "delta_sd": 0.0,
+      "noise": 0.05172413793103449,
+      "n_test": 19.333333333333332
+    },
+    "mimicry": {
+      "without": 0.9323232323232323,
+      "with": 0.9474747474747475,
+      "delta_mean": 0.015151515151515138,
+      "delta_sd": 0.02142747821777415,
+      "noise": 0.049180327868852465,
+      "n_test": 20.333333333333332
+    },
+    "mimicry_adaptive": {
+      "without": 0.27981184846173407,
+      "with": 0.2586130180523773,
+      "delta_mean": -0.021198830409356717,
+      "delta_sd": 0.061828451619270475,
+      "noise": 0.045454545454545456,
+      "n_test": 22.0
+    },
+    "staged_delay": {
+      "without": 1.0,
+      "with": 1.0,
+      "delta_mean": 0.0,
+      "delta_sd": 0.0,
+      "noise": 0.046875,
+      "n_test": 21.333333333333332
+    }
+  },
+  "reps": [
+    {
+      "seed": 7,
+      "guard_ok": true,
+      "rows": {
+        "without": {
+          "n_features": 28,
+          "auc": 0.9743510595444993,
+          "detect": 0.8217054263565892,
+          "benign_fp": 0.0,
+          "per_profile": {
+            "class_exfil": 1.0,
+            "hid_injection": 1.0,
+            "identity_switch": 1.0,
+            "mimicry": 0.8636363636363636,
+            "mimicry_adaptive": 0.16666666666666666,
+            "staged_delay": 1.0
+          }
+        },
+        "with": {
+          "n_features": 29,
+          "auc": 0.9732469161658807,
+          "detect": 0.8372093023255814,
+          "benign_fp": 0.0,
+          "per_profile": {
+            "class_exfil": 1.0,
+            "hid_injection": 1.0,
+            "identity_switch": 1.0,
+            "mimicry": 0.9090909090909091,
+            "mimicry_adaptive": 0.20833333333333334,
+            "staged_delay": 1.0
+          }
+        }
+      },
+      "n_by_profile": {
+        "class_exfil": 23,
+        "hid_injection": 20,
+        "identity_switch": 19,
+        "keyboard": 21,
+        "mimicry": 22,
+        "mimicry_adaptive": 24,
+        "mouse": 93,
+        "staged_delay": 21
+      }
+    },
+    {
+      "seed": 17,
+      "guard_ok": true,
+      "rows": {
+        "without": {
+          "n_features": 28,
+          "auc": 0.9785632326376115,
+          "detect": 0.8984375,
+          "benign_fp": 0.034782608695652174,
+          "per_profile": {
+            "class_exfil": 1.0,
+            "hid_injection": 1.0,
+            "identity_switch": 1.0,
+            "mimicry": 0.9333333333333333,
+            "mimicry_adaptive": 0.3684210526315789,
+            "staged_delay": 1.0
+          }
+        },
+        "with": {
+          "n_features": 29,
+          "auc": 0.979310692822324,
+          "detect": 0.8828125,
+          "benign_fp": 0.017391304347826087,
+          "per_profile": {
+            "class_exfil": 1.0,
+            "hid_injection": 1.0,
+            "identity_switch": 1.0,
+            "mimicry": 0.9333333333333333,
+            "mimicry_adaptive": 0.2631578947368421,
+            "staged_delay": 1.0
+          }
+        }
+      },
+      "n_by_profile": {
+        "class_exfil": 26,
+        "hid_injection": 24,
+        "identity_switch": 22,
+        "keyboard": 22,
+        "mimicry": 15,
+        "mimicry_adaptive": 19,
+        "mouse": 93,
+        "staged_delay": 22
+      }
+    },
+    {
+      "seed": 27,
+      "guard_ok": true,
+      "rows": {
+        "without": {
+          "n_features": 28,
+          "auc": 0.9681564345843278,
+          "detect": 0.8709677419354839,
+          "benign_fp": 0.008849557522123894,
+          "per_profile": {
+            "class_exfil": 1.0,
+            "hid_injection": 1.0,
+            "identity_switch": 1.0,
+            "mimicry": 1.0,
+            "mimicry_adaptive": 0.30434782608695654,
+            "staged_delay": 1.0
+          }
+        },
+        "with": {
+          "n_features": 29,
+          "auc": 0.9680468846169038,
+          "detect": 0.8709677419354839,
+          "benign_fp": 0.008849557522123894,
+          "per_profile": {
+            "class_exfil": 1.0,
+            "hid_injection": 1.0,
+            "identity_switch": 1.0,
+            "mimicry": 1.0,
+            "mimicry_adaptive": 0.30434782608695654,
+            "staged_delay": 1.0
+          }
+        }
+      },
+      "n_by_profile": {
+        "class_exfil": 22,
+        "hid_injection": 17,
+        "identity_switch": 17,
+        "keyboard": 26,
+        "mimicry": 24,
+        "mimicry_adaptive": 23,
+        "mouse": 87,
+        "staged_delay": 21
+      }
+    }
+  ],
+  "mimicry_adaptive_delta": -0.021198830409356717,
+  "mimicry_adaptive_delta_sd": 0.061828451619270475,
+  "overall_delta_mean": -4.03746770025748e-05,
+  "overall_delta_sd": 0.012708342466247215,
+  "noise_floor": 0.045454545454545456,
+  "helps": false
+}

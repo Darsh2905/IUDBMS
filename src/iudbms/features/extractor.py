@@ -57,7 +57,34 @@ from ..contract import (
     URBEvent,
 )
 
-__all__ = ["WindowFeatureExtractor", "EXPECTED_TTYPE", "window_events", "COUNTED_KINDS"]
+__all__ = ["WindowFeatureExtractor", "EXPECTED_TTYPE", "window_events",
+           "COUNTED_KINDS", "HostContext"]
+
+
+class HostContext:
+    """Activity of the OTHER devices attached to the same host.
+
+    Pillar N4's bound (CLAUDE.md finding 11) is that within a single device's
+    URB stream a single-shot injection is statistically the benign typing
+    process: a per-feature KS scan separates ``mimicry_adaptive`` on zero of the
+    28 deployed features. The named next defence is cross-device correlation --
+    a human typing is usually also moving a mouse; a BadUSB typing alone is not.
+
+    This carries that one piece of host-level state. It is deliberately a
+    separate object rather than extra arguments, because a live deployment has
+    exactly one of these per host and shares it across every device's extractor,
+    while a single-device capture has none at all (and the feature is then 0.0,
+    which is also what a genuinely lone device sees).
+    """
+
+    __slots__ = ("_rate",)
+
+    def __init__(self, rate_by_window: dict[tuple[str, int], float] | None = None):
+        #: (device_key, window_index) -> events/sec on every OTHER device
+        self._rate = rate_by_window or {}
+
+    def other_rate(self, device_key: str, t0: float, window: float) -> float:
+        return self._rate.get((device_key, int(round(t0 / window))), 0.0)
 
 #: Only these event kinds contribute to traffic-derived features. See module docstring.
 COUNTED_KINDS = frozenset({"C", "E"})
@@ -165,9 +192,20 @@ class WindowFeatureExtractor(FeatureExtractor):
         events: Sequence[URBEvent],
         t0: float,
         descriptor: DeviceDescriptor,
+        host: "HostContext | None" = None,
     ) -> np.ndarray:
         f: dict[str, float] = dict.fromkeys(FEATURE_NAMES, 0.0)
         t_end = t0 + self.WINDOW
+
+        # ---------------- host modality (contract 3.0.0) ----------------
+        # log1p because the quantity is a rate spanning orders of magnitude
+        # (a mouse emits ~100/s, a keyboard ~2/s) and the models standardise
+        # linearly. Absent context is 0.0, which is also what a genuinely lone
+        # device observes -- the two are indistinguishable by design, and that
+        # is the honest limit of the feature.
+        if host is not None:
+            f["concurrent_device_rate"] = math.log1p(
+                host.other_rate(descriptor.device_key, t0, self.WINDOW))
 
         # ---------------- identity modality ----------------
         # Available even with zero traffic, which is the point: a device that

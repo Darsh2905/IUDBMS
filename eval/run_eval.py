@@ -31,11 +31,13 @@ from pathlib import Path
 import numpy as np
 
 from iudbms.contract import (  # noqa: F401
-    CONTRACT_VERSION, MODALITIES, N_FEATURES, feature_index, modality_indices,
+    CONTRACT_VERSION, FEATURE_NAMES, MODALITIES, N_FEATURES, feature_index,
+    modality_indices,
 )
 
 from .corpus import build_corpus, load_corpus, stratified_split
-from .pipeline import GATE_K, GATE_N, TARGET_FPR, identity_whitelist_baseline, run_configuration
+from .pipeline import (GATE_K, GATE_N, TARGET_FPR, deployed_features,
+                       identity_whitelist_baseline, run_configuration)
 
 OUT = Path(__file__).resolve().parent.parent / "out"
 
@@ -94,8 +96,7 @@ def main() -> int:
     # traffic (KS D = 0.03-0.41) without encoding any behaviour. A real
     # attacker chooses onset adversarially; our corpus does not. Including it
     # is reported below as an ablation rather than shipped.
-    deployed = np.array([i for i in range(N_FEATURES)
-                         if i != feature_index("log_time_since_enum")])
+    deployed = deployed_features(fit)
     print(f"  deployed features: {len(deployed)} of {N_FEATURES} "
           f"(log_time_since_enum excluded -- see ablation below)")
     print(f"  sequence horizon: {args.seq_len} windows   hidden units: {args.hidden}")
