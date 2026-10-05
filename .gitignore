@@ -29,3 +29,9 @@ dashboard/dist/
 
 # OS
 .DS_Store
+
+# Regenerable, 2.6 MB, and tied to both CONTRACT_VERSION and the simulator
+# fingerprint -- load_corpus refuses a mismatched one anyway (finding 16). A
+# tracked copy is a stale binary waiting to be loaded, which is how `make eval`
+# came to report numbers from a corpus a third of the intended size.
+out/corpus_cache.npz

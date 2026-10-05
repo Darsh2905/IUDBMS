@@ -777,6 +777,28 @@ Two methodological notes, both earned the hard way:
   configuration is now gated on benign FP before its detection counts, fused
   included.
 
+### Finding 22 — `make eval` did not reproduce the headline (05 Oct)
+
+CLAUDE.md documents `make eval` as the command that regenerates every reported
+number. It did not. `run_eval` defaulted to `--n-benign 210 --n-attack 140`
+(350 sessions) while the deployed corpus is 600/400 (1000 sessions), and it
+**read** `out/corpus_cache.npz` without ever **writing** it — the cache was
+produced by `eval/tune.py` alone. So the documented command reproduced the
+headline only while a cache built by a different script happened to be sitting
+on disk, and silently reported numbers from a corpus a third of the size once it
+was not. Found by deleting the cache.
+
+Three fixes: defaults are now 600/400 so the script and the documentation agree;
+`run_eval` writes the cache it was given; and the cache is gitignored, because a
+tracked 2.6 MB binary tied to both `CONTRACT_VERSION` and the simulator
+fingerprint is a stale artefact waiting to be loaded.
+
+Worth noting what did *not* go wrong: rebuilding the corpus from scratch under
+contract 3.0.0 reproduced the headline to four decimals — 89.2% detection, 0.0%
+benign FP, AUC 0.9762, identical per-class rates. That is the check that the
+axis profiles, device personas and host-session machinery left the default
+generator paths untouched.
+
 ### Live monitoring — wired 10 Sep, never yet run on real traffic
 
 Until now **nothing called `UsbmonSource.live()`.** It existed and was

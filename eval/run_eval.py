@@ -35,7 +35,7 @@ from iudbms.contract import (  # noqa: F401
     modality_indices,
 )
 
-from .corpus import build_corpus, load_corpus, stratified_split
+from .corpus import build_corpus, load_corpus, save_corpus, stratified_split
 from .pipeline import (GATE_K, GATE_N, TARGET_FPR, deployed_features,
                        identity_whitelist_baseline, run_configuration)
 
@@ -64,7 +64,7 @@ def main() -> int:
                     help="per-window FPR the threshold is calibrated to; "
                          "select it with eval.tune, never off the test curve")
     ap.add_argument("--cache", type=Path, default=None,
-                    help="reuse a corpus built by eval.tune (out/corpus_cache.npz)")
+                    help="corpus cache; loaded if present, written if not")
     ap.add_argument("--quick", action="store_true", help="small corpus, few epochs")
     ap.add_argument("--no-figures", action="store_true")
     ap.add_argument("--persist", action="store_true",
@@ -87,6 +87,13 @@ def main() -> int:
         print(f"  URB events      : {corpus.n_events:,}")
     else:
         corpus = build_corpus(args.n_benign, args.n_attack, seed=args.seed)
+        if args.cache:
+            # Write it back. This script only ever READ the cache; it was
+            # written by eval.tune alone, so `make eval` reproduced the headline
+            # only while a cache built elsewhere happened to be present, and
+            # rebuilt a different corpus once it was not.
+            save_corpus(corpus, args.cache)
+            print(f"  cached to {args.cache.name}")
     fit, val, test = stratified_split(corpus.sessions, seed=args.seed)
     print(f"  windows (1.0 s) : {corpus.n_windows:,}   features/window: {N_FEATURES}")
     print(f"  split (sessions): fit={len(fit)}  val={len(val)}  test={len(test)}")
