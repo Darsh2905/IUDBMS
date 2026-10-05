@@ -34,5 +34,5 @@
   "seq_len": 10,
   "k": 4,
   "n": 6,
-  "contract_version": "2.0.0"
+  "contract_version": "3.0.0"
 }

@@ -1,7 +1,7 @@
 """
 Full evaluation: every table in plan §6 and §8.3, reproducible from one command.
 
-    python3 -m eval.run_eval [--n-benign 210] [--n-attack 140] [--seed 7]
+    python3 -m eval.run_eval [--n-benign 600] [--n-attack 400] [--seed 7]
 
 Produces out/metrics.json plus figures. Every number in a report or slide must
 come from here — nothing is transcribed by hand.
@@ -48,8 +48,13 @@ def banner(msg: str) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--n-benign", type=int, default=210)
-    ap.add_argument("--n-attack", type=int, default=140)
+    # The deployed corpus is 600/400 = 1000 sessions. These were 210/140, so
+    # `make eval` -- documented as the command that reproduces the headline --
+    # only did so while out/corpus_cache.npz happened to exist; delete the cache
+    # and it silently rebuilt a corpus a third of the size and reported numbers
+    # from it. Defaults and documentation now agree.
+    ap.add_argument("--n-benign", type=int, default=600)
+    ap.add_argument("--n-attack", type=int, default=400)
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--epochs", type=int, default=14)
     ap.add_argument("--seq-len", type=int, default=10,
@@ -143,7 +148,15 @@ def main() -> int:
     modality = {}
     dep = set(int(i) for i in deployed)
     for m in MODALITIES:
-        idx = np.array([i for i in modality_indices(m) if i in dep])
+        keep = [i for i in modality_indices(m) if i in dep]
+        if not keep:
+            # Contract 3.0.0's `host` modality has exactly one feature, and it
+            # is identically zero on a single-device corpus, so it is dropped as
+            # a dead column before we get here. A modality with no deployed
+            # features is not an ablation, it is an empty model.
+            print(f"  {m:9s} (no deployed features on this corpus -- skipped)")
+            continue
+        idx = np.array(keep, dtype=int)
         r = run_configuration(fit, val, test, name=f"{m} only", feature_idx=idx,
                               seed=args.seed, epochs=args.epochs,
                               seq_len=args.seq_len, hidden=args.hidden, verbose=False)

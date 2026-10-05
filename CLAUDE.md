@@ -600,6 +600,19 @@ Caught sideways: a new diagnostic profile whose identity features are
 modality at 27%, which is structurally impossible. With the leak excluded it
 correctly drops to 0%.
 
+The correction to the reported table is material:
+
+| identity modality | features | AUC | detect | benign FP |
+|---|---|---|---|---|
+| as reported | 6 (incl. leak) | 0.8884 | 39.2% | — |
+| corrected | 5 | 0.8472 | 100.0% | **42.1%** |
+
+With the leak gone the identity modality is **degenerate**: it flags 42% of
+benign sessions, so its 100% detection is alarming rather than detecting. Its
+previously reported 39.2% was substantially the leak doing the work. Timing,
+payload and protocol are unchanged to four decimals, which is the check that the
+fix was surgical.
+
 Fixed by centralising the rule in `pipeline.deployed_features()`, which also
 drops **zero-variance columns on the training split**. Three eval scripts had
 drifted from the same rule; one place now owns it. The guard matters beyond

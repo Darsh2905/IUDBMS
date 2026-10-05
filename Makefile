@@ -34,6 +34,9 @@ zoo:  ## compare model families on the selection split (~60 s)
 report:  ## regenerate docs/report/ from the last eval (charts + numbers)
 	python3 -m eval.build_report
 
+paper:  ## rebuild the IEEE .docx; every Results number comes from out/*.json
+	python3 scripts/build_paper.py
+
 diagrams:  ## architecture + gate diagrams as PNG/PDF (needs `make eval` first)
 	python3 -m eval.render_architecture
 	cp out/architecture.png out/architecture.pdf out/architecture_ieee.png out/architecture_ieee.pdf \
