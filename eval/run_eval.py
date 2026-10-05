@@ -134,9 +134,15 @@ def main() -> int:
     print("  weaker Stage 1, so a full-system comparison understates the baseline's role.")
 
     print("\n-- single-modality (isolates pillar N1: multi-modal fusion) --")
+    # Intersect with `deployed`. modality_indices("identity") still contains
+    # log_time_since_enum, which finding 8 removed from the deployed model as a
+    # systematic label leak -- so scoring the identity modality on its raw
+    # indices measured the leak, not the modality. Every other configuration in
+    # this script already excluded it; this one silently did not.
     modality = {}
+    dep = set(int(i) for i in deployed)
     for m in MODALITIES:
-        idx = np.array(modality_indices(m))
+        idx = np.array([i for i in modality_indices(m) if i in dep])
         r = run_configuration(fit, val, test, name=f"{m} only", feature_idx=idx,
                               seed=args.seed, epochs=args.epochs,
                               seq_len=args.seq_len, hidden=args.hidden, verbose=False)

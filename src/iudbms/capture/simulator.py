@@ -35,6 +35,7 @@ Fidelity fixes vs the Sprint-0 simulator (CLAUDE.md §4 defects 3 and 4)
 
 from __future__ import annotations
 
+import math
 import random
 from dataclasses import dataclass, field
 from typing import Iterator
@@ -56,13 +57,43 @@ from .usbmon import UsbmonParser
 
 __all__ = [
     "Simulator", "SimulatedSession", "SimulatedSource",
-    "BENIGN_PROFILES", "ATTACK_PROFILES", "ALL_PROFILES",
+    "BENIGN_PROFILES", "ATTACK_PROFILES", "AXIS_PROFILES", "ALL_PROFILES",
+    "human_keys_per_second",
 ]
 
 BENIGN_PROFILES = ("keyboard", "mouse", "mass_storage", "webcam", "audio")
 ATTACK_PROFILES = ("hid_injection", "identity_switch", "staged_delay",
                    "class_exfil", "mimicry", "mimicry_adaptive")
-ALL_PROFILES = BENIGN_PROFILES + ATTACK_PROFILES
+
+#: Diagnostic profiles that deviate from a benign keyboard on **one modality at
+#: a time**. They are instruments for the pillar-N1 fusion ablation, not
+#: realistic adversaries, and they are deliberately kept OUT of the headline
+#: corpus so reported detection stays comparable across revisions.
+#:
+#: Why they exist: every profile in ``ATTACK_PROFILES`` deviates on several
+#: modalities at once, so a single-modality model catches all of them and
+#: fusion looks pointless (CLAUDE.md, "N1 is still not supported"). That is a
+#: property of the corpus, not a finding about fusion. A fair test needs
+#: families that differ on one axis at a time.
+#:
+#: Purity is **measured, not assumed** — ``eval/run_fusion_ablation.py`` runs a
+#: per-feature KS scan and reports which features each axis actually moves.
+AXIS_PROFILES = ("axis_timing", "axis_payload", "axis_protocol", "axis_identity",
+                 "axis_diffuse")
+
+#: Fraction of a single-axis profile's deviation that ``axis_diffuse`` applies
+#: on each of three axes at once.
+#:
+#: **Fixed before the first run and not tuned against the outcome.** This is the
+#: one number in the fusion experiment that could be used to manufacture a
+#: result -- turn it down until no single modality can see the attack, and
+#: fusion "wins" by construction. One third is a round fraction chosen a priori;
+#: if it turns out no single modality detects axis_diffuse at all, the honest
+#: reading is that the attack is too weak to be a fair test, not that fusion
+#: triumphed. ``run_fusion_ablation.py`` checks for exactly that degenerate case.
+DIFFUSE_STRENGTH = 1.0 / 3.0
+
+ALL_PROFILES = BENIGN_PROFILES + ATTACK_PROFILES + AXIS_PROFILES
 
 CTRL, ISO, INTR, BULK = "C", "Z", "I", "B"
 
@@ -96,6 +127,54 @@ HUMAN_PAUSE_RANGE = (0.4, 3.0)        # seconds of think-pause between bursts
 #: At the human inter-arrival distribution these take roughly 20-50 s, which
 #: leaves the rest of the session silent. That silence is the signal.
 PAYLOAD_KEYS = (60, 220)
+
+
+#: Spread of per-device behavioural variation, as multiplicative bounds on the
+#: population timing constants. A real population of keyboards is not one
+#: process: people type at different speeds, in different burst lengths, with
+#: different think-pauses, and the same model of keyboard polls at whatever rate
+#: its firmware chose. The simulator drew every device from one parameter set,
+#: which is the stated reason pillar N2 looked inert (CLAUDE.md finding 14): if
+#: a class-conditioned forest already models every device of a class exactly,
+#: a per-device baseline has nothing left to add.
+PERSONA_IAT_SCALE = (0.6, 1.7)      # multiplies the log-normal median
+PERSONA_SIGMA_SCALE = (0.8, 1.3)    # multiplies its shape parameter
+PERSONA_PAUSE_SCALE = (0.7, 1.5)    # multiplies think-pause bounds
+
+
+@dataclass(frozen=True)
+class DevicePersona:
+    """One device's own behavioural parameters, drawn once per session.
+
+    **Attack profiles draw a persona too, from the same prior.** If only benign
+    devices varied, "behaves like the population mean" would itself become a
+    tell, and the mimicry profiles — whose whole purpose is to be timing-
+    indistinguishable — would become trivially separable for a reason that has
+    nothing to do with their behaviour. A mimicry attack imitates *a* human,
+    not the average of all humans.
+    """
+    iat_scale: float = 1.0
+    sigma_scale: float = 1.0
+    pause_scale: float = 1.0
+    burst_shift: int = 0
+
+    @property
+    def lognormal(self) -> tuple[float, float]:
+        mu, sigma = HUMAN_IAT_LOGNORM
+        return (mu + math.log(self.iat_scale), sigma * self.sigma_scale)
+
+    @property
+    def burst(self) -> tuple[int, int]:
+        lo, hi = HUMAN_BURST_KEYS
+        return (max(1, lo + self.burst_shift), max(2, hi + self.burst_shift))
+
+    @property
+    def pause(self) -> tuple[float, float]:
+        lo, hi = HUMAN_PAUSE_RANGE
+        return (lo * self.pause_scale, hi * self.pause_scale)
+
+
+NEUTRAL_PERSONA = DevicePersona()
 
 
 @dataclass
@@ -132,6 +211,21 @@ class SimulatedSource:
         yield from self._parser.feed(self._session.lines)
 
 
+def human_keys_per_second() -> float:
+    """Mean keystroke rate implied by the human timing constants.
+
+    Derived rather than hardcoded so ``axis_timing`` tracks any change to
+    ``HUMAN_*``: that profile has to match this rate exactly, because its whole
+    purpose is to deviate on IAT *shape* while leaving ``n_events``/``ev_rate``
+    — and therefore every byte-rate feature — where benign traffic puts them.
+    """
+    mean_iat = min(math.exp(HUMAN_IAT_LOGNORM[0] + HUMAN_IAT_LOGNORM[1] ** 2 / 2),
+                   HUMAN_IAT_CAP)
+    mean_burst = sum(HUMAN_BURST_KEYS) / 2
+    mean_pause = sum(HUMAN_PAUSE_RANGE) / 2
+    return mean_burst / (mean_burst * mean_iat + mean_pause)
+
+
 def _hid_report(rng: random.Random, code: int | None = None) -> bytes:
     """8-byte boot-protocol keyboard report."""
     mod = rng.choice([0, 0, 0, 2, 32])
@@ -144,12 +238,31 @@ def _mouse_report(rng: random.Random) -> bytes:
 
 
 class Simulator:
-    def __init__(self, seed: int = 0):
+    def __init__(self, seed: int = 0, *, diffuse_strength: float = DIFFUSE_STRENGTH,
+                 device_variation: bool = False):
         self.rng = random.Random(seed)
         self.np_rng = np.random.default_rng(seed)
+        self.diffuse_strength = diffuse_strength
+        #: When False every device of a class behaves identically, which is the
+        #: corpus pillar N2 was measured on and found inert. See
+        #: eval/run_baseline_ablation.py.
+        self.device_variation = device_variation
+        self._persona = NEUTRAL_PERSONA
         self._tag = 0xFFFF880100000000
         self._devnum = 2
         self._frame = 2048
+
+    def _sample_persona(self) -> DevicePersona:
+        """Draw one device's parameters. Benign and malicious draw alike."""
+        if not self.device_variation:
+            return NEUTRAL_PERSONA
+        u = self.rng.uniform
+        return DevicePersona(
+            iat_scale=u(*PERSONA_IAT_SCALE),
+            sigma_scale=u(*PERSONA_SIGMA_SCALE),
+            pause_scale=u(*PERSONA_PAUSE_SCALE),
+            burst_shift=self.rng.choice((-2, -1, 0, 0, 1, 2)),
+        )
 
     def _next_tag(self) -> int:
         self._tag += 0x40
@@ -254,16 +367,21 @@ class Simulator:
     # ------------------------------------------------------------------
 
     def _human_typing(self, t, dur, bus, dev, lines, ep=1):
-        """Human keystrokes: log-normal IATs, word bursts, think-pauses."""
+        """Human keystrokes: log-normal IATs, word bursts, think-pauses.
+
+        Parameters come from this device's persona, so two keyboards in the
+        same corpus type at different speeds when device_variation is on.
+        """
+        pz = self._persona
         end = t + dur
         while t < end:
-            for _ in range(self.rng.randint(*HUMAN_BURST_KEYS)):
-                t += min(float(self.np_rng.lognormal(*HUMAN_IAT_LOGNORM)), HUMAN_IAT_CAP)
+            for _ in range(self.rng.randint(*pz.burst)):
+                t += min(float(self.np_rng.lognormal(*pz.lognormal)), HUMAN_IAT_CAP)
                 if t >= end:
                     break
                 self._urb(lines, t, INTR, "in", bus, dev, ep,
                           _hid_report(self.rng), interval=10)
-            t += self.rng.uniform(*HUMAN_PAUSE_RANGE)
+            t += self.rng.uniform(*pz.pause)
         return t
 
     def _mouse_motion(self, t, dur, bus, dev, lines, ep=1):
@@ -345,18 +463,19 @@ class Simulator:
         human's uniform(0.4, 3.0), which left a blatant timing signature and
         made a timing-only model detect it at 100%. That defeated the entire
         point of the profile and inflated the case for multi-modal fusion."""
+        pz = self._persona
         end = t + dur
         script = [self.rng.randint(4, 40) for _ in range(self.rng.randint(24, 48))]
         i = 0
         while t < end:
-            for _ in range(self.rng.randint(*HUMAN_BURST_KEYS)):
-                t += min(float(self.np_rng.lognormal(*HUMAN_IAT_LOGNORM)), HUMAN_IAT_CAP)
+            for _ in range(self.rng.randint(*pz.burst)):
+                t += min(float(self.np_rng.lognormal(*pz.lognormal)), HUMAN_IAT_CAP)
                 if t >= end:
                     break
                 self._urb(lines, t, INTR, "in", bus, dev, ep,
                           _hid_report(self.rng, script[i % len(script)]), interval=10)
                 i += 1
-            t += self.rng.uniform(*HUMAN_PAUSE_RANGE)
+            t += self.rng.uniform(*pz.pause)
         return t
 
     def _adaptive_typing(self, t, dur, bus, dev, lines, ep=1):
@@ -388,23 +507,156 @@ class Simulator:
         because a corpus profile that is indistinguishable from benign by
         construction teaches a model nothing.
         """
+        pz = self._persona
         n_keys = self.rng.randint(*PAYLOAD_KEYS)
         typed = 0
         end = t + dur
         while t < end and typed < n_keys:
-            for _ in range(self.rng.randint(*HUMAN_BURST_KEYS)):
+            for _ in range(self.rng.randint(*pz.burst)):
                 if typed >= n_keys:
                     break
-                t += min(float(self.np_rng.lognormal(*HUMAN_IAT_LOGNORM)), HUMAN_IAT_CAP)
+                t += min(float(self.np_rng.lognormal(*pz.lognormal)), HUMAN_IAT_CAP)
                 if t >= end:
                     break
                 # a fresh keycode every time: typed once, never replayed
                 self._urb(lines, t, INTR, "in", bus, dev, ep,
                           _hid_report(self.rng), interval=10)
                 typed += 1
-            t += self.rng.uniform(*HUMAN_PAUSE_RANGE)
+            t += self.rng.uniform(*pz.pause)
         # deliberately returns without filling the rest of the session: the
         # device is done, and the silence that follows is the signal.
+        return t
+
+    # ------------------------------------------------------------------
+    # single-axis diagnostic generators (pillar N1)
+    #
+    # Each deviates from `_human_typing` on ONE modality and holds the other
+    # three at benign values. Realism is explicitly NOT the goal — isolation
+    # is. Measured purity is reported by eval/run_fusion_ablation.py.
+    # ------------------------------------------------------------------
+
+    def _axis_timing(self, t, dur, bus, dev, lines, ep=1):
+        """TIMING only: metronomic keystrokes at the human *average* rate.
+
+        A naive injector with a fixed ``sleep`` between keys. Because the rate
+        matches ``human_keys_per_second()``, ``n_events`` and ``ev_rate`` land
+        on the benign distribution and every byte-rate feature follows them —
+        so the deviation is confined to IAT *shape*: ``std_iat``, ``cv_iat``,
+        ``min_iat``, ``p10_iat``, ``iat_entropy`` and ``burstiness_fano``.
+        Payloads stay fresh random keycodes, traffic stays INTR-in on one
+        endpoint, and the descriptor is an ordinary keyboard.
+        """
+        interval = 1.0 / human_keys_per_second()
+        end = t + dur
+        while t < end:
+            t += interval * float(self.np_rng.normal(1.0, 0.01))
+            if t >= end:
+                break
+            self._urb(lines, t, INTR, "in", bus, dev, ep,
+                      _hid_report(self.rng), interval=10)
+        return t
+
+    def _axis_payload(self, t, dur, bus, dev, lines, ep=1):
+        """PAYLOAD only: human timing, but a short script cycled verbatim.
+
+        Draws inter-arrivals, burst lengths and pauses from the *same* human
+        constants as ``_human_typing``, so no timing feature moves. The script
+        is deliberately short (6-10 keys, against mimicry's 24-48) because this
+        is a diagnostic instrument, not an adversary: the payload tell should
+        be unambiguous so the question under test is whether the payload
+        modality *can* see it, not whether it is hard to see.
+        """
+        pz = self._persona
+        script = [self.rng.randint(4, 40) for _ in range(self.rng.randint(6, 10))]
+        i = 0
+        end = t + dur
+        while t < end:
+            for _ in range(self.rng.randint(*pz.burst)):
+                t += min(float(self.np_rng.lognormal(*pz.lognormal)), HUMAN_IAT_CAP)
+                if t >= end:
+                    break
+                self._urb(lines, t, INTR, "in", bus, dev, ep,
+                          _hid_report(self.rng, script[i % len(script)]), interval=10)
+                i += 1
+            t += self.rng.uniform(*pz.pause)
+        return t
+
+    def _axis_protocol(self, t, dur, bus, dev, lines, ep_in=1, ep_out=2):
+        """PROTOCOL only: human timing and payloads, split across two endpoints.
+
+        A keyboard legitimately has an OUT endpoint (LED reports); an attacker
+        using it as a side channel is realistic. Both endpoints carry INTR, so
+        ``class_behaviour_mismatch`` stays at zero — this is the reason the
+        side channel is INTR-out rather than the more obvious bulk-out, which
+        would also fire that identity feature and contaminate the axis.
+        ``n_endpoints`` and ``frac_in`` move; nothing else should.
+        """
+        pz = self._persona
+        end = t + dur
+        while t < end:
+            for _ in range(self.rng.randint(*pz.burst)):
+                t += min(float(self.np_rng.lognormal(*pz.lognormal)), HUMAN_IAT_CAP)
+                if t >= end:
+                    break
+                outbound = self.rng.random() < 0.30
+                self._urb(lines, t, INTR, "out" if outbound else "in", bus, dev,
+                          ep_out if outbound else ep_in,
+                          _hid_report(self.rng), interval=10)
+            t += self.rng.uniform(*pz.pause)
+        return t
+
+    def _axis_diffuse(self, t, dur, bus, dev, lines, ep_in=1):
+        """TWO AXES, each at ``DIFFUSE_STRENGTH`` — the actual N1 instrument.
+
+        The single-axis profiles cannot test fusion. If an axis is detectable by
+        its own modality — which is what makes it a single-axis profile — then
+        the fused model can at best tie it, never beat it. They test a different
+        and necessary thing: that fusion does not *lose* what a specialist sees.
+
+        Fusion's real claim is that it catches what no specialist can: an
+        adversary that spreads its deviation thinly across several axes so each
+        one individually stays inside the benign distribution. That is this
+        profile, and it is also the realistic shape of a careful attacker.
+
+        Each axis is deviated by ``DIFFUSE_STRENGTH`` of the way from benign to
+        its single-axis counterpart:
+
+          timing    a fraction of keystrokes are metronomically spaced, the
+                    rest drawn from the human log-normal
+          payload   a long script (3x mimicry's), so transition novelty decays
+                    across the session instead of collapsing within it
+        There is deliberately **no protocol deviation**, and that is a finding
+        rather than an omission. Against a keyboard-only benign population every
+        protocol feature is degenerate — ``frac_intr`` and ``frac_in`` are
+        exactly 1, ``frac_bulk``/``frac_iso`` exactly 0, ``n_endpoints`` exactly
+        1, and ``frac_ctrl`` exactly 0 once enumeration ends. A feature with no
+        benign variance cannot hide a small deviation: two attempts
+        (a second endpoint, then extra GET_REPORT control transfers) were each
+        detected by the protocol modality alone at 100% even at
+        ``DIFFUSE_STRENGTH`` 0.05, because any non-zero value is perfectly
+        separable from a constant. Same trap as CLAUDE.md finding 10, one level
+        up. Subtlety is only available in features where benign traffic varies,
+        which for a keyboard means timing and payload.
+        """
+        p = self.diffuse_strength
+        pz = self._persona
+        metronome = 1.0 / human_keys_per_second()
+        script = [self.rng.randint(4, 40) for _ in range(self.rng.randint(90, 150))]
+        i = 0
+        end = t + dur
+        while t < end:
+            for _ in range(self.rng.randint(*pz.burst)):
+                if self.rng.random() < p:
+                    t += metronome * float(self.np_rng.normal(1.0, 0.01))
+                else:
+                    t += min(float(self.np_rng.lognormal(*pz.lognormal)),
+                             HUMAN_IAT_CAP)
+                if t >= end:
+                    break
+                self._urb(lines, t, INTR, "in", bus, dev, ep_in,
+                          _hid_report(self.rng, script[i % len(script)]), interval=10)
+                i += 1
+            t += self.rng.uniform(*pz.pause)
         return t
 
     def _covert_bulk_out(self, t, dur, bus, dev, lines, ep=2):
@@ -448,6 +700,9 @@ class Simulator:
         self._devnum = 2 + (self._devnum - 1) % 120
         lines: list[str] = []
         onset: float | None = None
+        # One persona per session, drawn before the profile branch so benign and
+        # malicious devices are varied by the same prior.
+        self._persona = self._sample_persona()
 
         # ONE duration distribution for every profile. If malicious sessions
         # ran longer than benign ones the models could separate them on session
@@ -563,6 +818,60 @@ class Simulator:
             self._human_typing(t, onset - t, bus, dev, lines)
             self._covert_bulk_out(onset, dur - onset, bus, dev, lines)
 
+        # --- single-axis diagnostics (pillar N1) --------------------------
+        # Onset is immediate: these isolate a modality, and a dwell period
+        # would only add pre-onset benign windows that dilute the measurement.
+        elif profile == "axis_timing":
+            d, label = hid_desc(), 1
+            t = self._enumerate(lines, bus, dev, d.vid, d.pid)
+            t = self._hid_class_setup(lines, t, bus, dev)
+            onset = t
+            self._axis_timing(t, dur - t, bus, dev, lines)
+
+        elif profile == "axis_payload":
+            d, label = hid_desc(), 1
+            t = self._enumerate(lines, bus, dev, d.vid, d.pid)
+            t = self._hid_class_setup(lines, t, bus, dev)
+            onset = t
+            self._axis_payload(t, dur - t, bus, dev, lines)
+
+        elif profile == "axis_protocol":
+            # The OUT endpoint is DECLARED, so using it is not an identity
+            # deviation -- only a protocol one.
+            d = self._descriptor("keyboard", bus, dev, [
+                self._iface(CLASS_HID, 0x01, 0x01,
+                            (Endpoint(0x81, "intr", 10), Endpoint(0x02, "intr", 10))),
+            ])
+            label = 1
+            t = self._enumerate(lines, bus, dev, d.vid, d.pid)
+            t = self._hid_class_setup(lines, t, bus, dev)
+            onset = t
+            self._axis_protocol(t, dur - t, bus, dev, lines)
+
+        elif profile == "axis_identity":
+            # Declares storage it never uses, and otherwise behaves EXACTLY as
+            # a benign keyboard -- same generator, same constants. This is the
+            # honest boundary case: behavioural features should fail here and
+            # identity features should carry it alone.
+            d = self._descriptor("keyboard", bus, dev, [
+                self._iface(CLASS_HID, 0x01, 0x01, self._HID_EPS),
+                self._iface(CLASS_MASS_STORAGE, 0x06, 0x50, self._STORAGE_EPS),
+            ])
+            label = 1
+            t = self._enumerate(lines, bus, dev, d.vid, d.pid, n_ifaces=2)
+            t = self._hid_class_setup(lines, t, bus, dev)
+            onset = t
+            self._human_typing(t, dur - t, bus, dev, lines)
+
+        elif profile == "axis_diffuse":
+            # An ORDINARY keyboard descriptor: the diffuse deviation is in
+            # traffic shape, not in what the device declares.
+            d, label = hid_desc(), 1
+            t = self._enumerate(lines, bus, dev, d.vid, d.pid)
+            t = self._hid_class_setup(lines, t, bus, dev)
+            onset = t
+            self._axis_diffuse(t, dur - t, bus, dev, lines)
+
         else:
             raise ValueError(f"unknown profile {profile!r}; expected one of {ALL_PROFILES}")
 
@@ -570,10 +879,35 @@ class Simulator:
         return SimulatedSession(sid=sid, profile=profile, label=label, descriptor=d,
                                 lines=lines, onset=onset, duration=dur)
 
-    def plan(self, n_benign: int = 210, n_attack: int = 140) -> list[tuple[str, str]]:
+    def plan(self, n_benign: int = 210, n_attack: int = 140, *,
+             benign_profiles: tuple[str, ...] = BENIGN_PROFILES,
+             attack_profiles: tuple[str, ...] = ATTACK_PROFILES,
+             ) -> list[tuple[str, str]]:
         """A (session_id, profile) schedule, so a caller can generate, featurise
-        and discard one session at a time instead of holding every URB in RAM."""
-        items = [(f"S{i:04d}", self.rng.choice(BENIGN_PROFILES)) for i in range(n_benign)]
-        items += [(f"A{j:04d}", self.rng.choice(ATTACK_PROFILES)) for j in range(n_attack)]
+        and discard one session at a time instead of holding every URB in RAM.
+
+        The profile pools are parameters so the N1 fusion ablation can build a
+        corpus from ``AXIS_PROFILES`` without the headline corpus changing.
+        """
+        items = [(f"S{i:04d}", self.rng.choice(benign_profiles)) for i in range(n_benign)]
+        items += [(f"A{j:04d}", self.rng.choice(attack_profiles)) for j in range(n_attack)]
+        self.rng.shuffle(items)
+        return items
+
+    def plan_balanced(self, per_profile: int, *, benign_profiles, attack_profiles,
+                      benign_multiple: int = 1) -> list[tuple[str, str]]:
+        """An exactly-balanced schedule: ``per_profile`` sessions of each.
+
+        ``plan`` samples profiles at random, which leaves per-profile counts
+        uneven — fine at corpus scale, but the fusion ablation reports a
+        detection rate *per axis*, and an axis that happens to draw 11 sessions
+        instead of 20 carries a noise floor almost twice as wide. Balance is
+        what makes the per-axis cells comparable to each other.
+        """
+        items = [(f"S{i:04d}", p) for p in benign_profiles
+                 for i in range(per_profile * benign_multiple)]
+        items = [(f"S{i:04d}", p) for i, (_, p) in enumerate(items)]
+        atk = [p for p in attack_profiles for _ in range(per_profile)]
+        items += [(f"A{j:04d}", p) for j, p in enumerate(atk)]
         self.rng.shuffle(items)
         return items
