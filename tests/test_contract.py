@@ -37,9 +37,10 @@ from iudbms.contract import (
 # --------------------------------------------------------------------------
 
 def test_feature_count_matches_plan():
-    """28 in contract 1.x; 29 from 2.0.0, which appended payload_seq_novelty."""
-    assert N_FEATURES == 29
-    assert len(FEATURE_NAMES) == 29
+    """28 in contract 1.x; 29 from 2.0.0 (payload_seq_novelty); 30 from 3.0.0,
+    which appended concurrent_device_rate — the first host-level feature."""
+    assert N_FEATURES == 30
+    assert len(FEATURE_NAMES) == 30
 
 
 def test_feature_names_unique():
@@ -50,7 +51,7 @@ def test_feature_order_is_frozen():
     """Guard against silent reordering. Update the digest ONLY together with a
     CONTRACT_VERSION bump and a retrain of every checkpoint."""
     digest = hashlib.sha256("\n".join(FEATURE_NAMES).encode()).hexdigest()[:16]
-    assert digest == "89b6e2c73a6d26c7", (
+    assert digest == "602d0ae16ce5132f", (
         f"feature order changed (digest {digest}). If this is deliberate, bump "
         f"CONTRACT_VERSION, retrain Stage 1 + Stage 2, and update this digest."
     )
@@ -58,8 +59,9 @@ def test_feature_order_is_frozen():
 
 def test_modalities_partition_the_vector():
     """Plan §4.2: timing 9, payload 7, protocol 6, identity 6 — plus the
-    payload_seq_novelty appended in contract 2.0.0, making payload 8."""
-    expected = {"timing": 9, "payload": 8, "protocol": 6, "identity": 6}
+    payload_seq_novelty appended in contract 2.0.0, making payload 8, and the
+    host modality appended in 3.0.0."""
+    expected = {"timing": 9, "payload": 8, "protocol": 6, "identity": 6, "host": 1}
     seen: list[int] = []
     for m in MODALITIES:
         idx = modality_indices(m)

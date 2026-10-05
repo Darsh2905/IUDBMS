@@ -587,6 +587,125 @@ the *previous* adversary. This happened during development. The cache now stores
 a hash of `capture/simulator.py` plus `features/extractor.py` and refuses to
 load against different code.
 
+### Finding 17 — the single-modality ablation was scoring a known leak (05 Oct)
+
+`modality_indices("identity")` still contains `log_time_since_enum`. Finding 8
+removed that feature from the **deployed** model as a systematic label leak;
+every other configuration in `run_eval.py` excluded it, and the modality
+ablation silently did not. So the reported identity-modality row — one of the
+three N1 ablations — was measuring the leak rather than the modality.
+
+Caught sideways: a new diagnostic profile whose identity features are
+*byte-identical* to benign keyboards was being detected by the identity
+modality at 27%, which is structurally impossible. With the leak excluded it
+correctly drops to 0%.
+
+Fixed by centralising the rule in `pipeline.deployed_features()`, which also
+drops **zero-variance columns on the training split**. Three eval scripts had
+drifted from the same rule; one place now owns it. The guard matters beyond
+this bug — `frac_ctrl` was a constant-zero column for all of Sprint 0, and
+contract 3.0.0's `concurrent_device_rate` is identically zero on any
+single-device corpus.
+
+### Finding 18 — N2 is refuted, and finding 14's explanation is wrong (05 Oct)
+
+Finding 14 measured the per-device baseline as inert and offered a reason: every
+device of a class draws timing from one shared parameter set, so a
+class-conditioned forest already models them all. It flagged this explicitly as
+"a hypothesis, not a defence", and noted N2 "may earn its keep on real
+captures".
+
+The hypothesis names a property of the **simulator**, so it is testable without
+real captures. `Simulator(device_variation=True)` gives each device a persona
+drawn from a hyperprior (typing speed, burst length, pause tendency). Benign and
+malicious draw from the same prior — if only benign devices varied, "behaves
+like the population mean" would itself become a tell, and the mimicry profiles
+exist precisely to be timing-indistinguishable.
+
+| corpus | kbd rate sd | full | forest-only | baseline contributes |
+|---|---|---|---|---|
+| homogeneous | 0.173 | 89.2% | 90.0% | −0.8% (noise 0.8%) |
+| heterogeneous | 0.485 | 85.8% | 85.0% | +0.8% (noise 0.8%) |
+
+The manipulation worked — between-device spread rose 2.8× — and the baseline is
+inert on **both**. +0.8% is one session of 120, exactly the noise floor. So
+device homogeneity was not the reason, and **N2's negative result is stronger
+than previously reported rather than explained away.** `make baseline-ablation`.
+
+Detection also falls 89.2% → 85.8% under heterogeneity. Realistic device
+variation makes the problem harder; that is the correct direction, and the
+heterogeneous number is the more honest one to quote.
+
+### Finding 19 — subtlety needs benign variance (05 Oct)
+
+Building a *fair* test for N1 needed attack families that deviate on one axis at
+a time (`AXIS_PROFILES`), since every profile in `ATTACK_PROFILES` deviates on
+several at once and so any single modality catches all of them. Three attempts
+to build a **subtle** protocol deviation all failed the same way, and the reason
+generalises:
+
+A deviation can only be made small in a feature where benign traffic has
+variance. Against a keyboard-only population `n_endpoints` is exactly 1,
+`frac_ctrl` exactly 0 after enumeration, `frac_intr`/`frac_in` exactly 1. Any
+non-zero value is perfectly separable from a constant, so a protocol deviation
+is either invisible or caught at 100% — never marginal. Both a second endpoint
+and extra GET_REPORT control transfers were detected by the protocol modality
+alone at 100% even at 5% strength.
+
+Same shape as finding 10, one level up. `axis_diffuse` therefore deviates on
+timing and payload only, which are the two modalities with real benign variance
+for a keyboard — and that restriction is a finding about the feature set, not a
+limitation of the experiment.
+
+### Finding 20 — cross-device correlation does not clear the single-shot bound (05 Oct)
+
+Finding 11 named the defence: "a human typing produces concurrent mouse
+activity, a BadUSB typing alone does not." Contract **3.0.0** appends
+`concurrent_device_rate` (log1p event rate of every other device on the host,
+supplied through `HostContext`), `Simulator.host_session` generates
+multi-device hosts, and `make cross-device` measures it. One corpus, scored
+twice, differing only in that column.
+
+The leakage guard was built first, because this feature is the most obvious
+candidate in the project to become the next `log_time_since_enum`.
+`P_COMPANION` is applied identically to benign and attacked hosts, so both a
+lone benign keyboard and a BadUSB beside a working user occur. Measured at 500
+hosts: companion prevalence gap 1.5%, and KS of the feature across benign vs
+pre-onset attack *keyboard* windows D=0.027 against crit=0.033. Guard holds.
+
+| profile | without | with | delta | noise |
+|---|---|---|---|---|
+| mimicry_adaptive | 28.0% ±8.4 | 25.9% ±3.9 | **−2.1% ±6.2** | 4.5% |
+| mimicry | 93.2% ±5.6 | 94.7% ±3.8 | +1.5% ±2.1 | 4.9% |
+| overall | — | — | −0.0% ±1.3 | — |
+
+**It does nothing.** A single-seed run first showed +4.2% on
+`mimicry_adaptive`, which is one session of 24 — exactly the noise floor, made
+to look like a win by floating-point `>`. Under three seeds it reverses. Same
+lesson as finding 13; the seeded harness now refuses a margin smaller than its
+own spread.
+
+**The diagnosis is specific and matters more than the number.**
+`host_session` generates each device *independently* — the companion mouse is
+drawn without reference to what the keyboard is doing. So in this corpus a
+benign keyboard and its mouse are statistically independent, exactly as a
+BadUSB and a bystander's mouse are. The coupling the feature exists to detect
+is absent on **both** sides, so no feature over these streams could separate
+them. The negative result is therefore about the corpus, not about the idea.
+
+What a real human produces, and this corpus does not, is temporal interleaving:
+one agent alternates between typing and mousing, so the streams are
+anti-correlated at sub-second scale, while two independent agents overlap at the
+chance rate. Testing that needs a *coupled* benign generator and a simultaneity
+feature rather than a rate.
+
+**Why that was not simply built.** Modelling the coupling in the simulator and
+then detecting it is circular — the same objection finding 11's
+`payload_seq_novelty` had to answer, but weaker here, because keyboard/mouse
+interleaving parameters cannot be defended from first principles the way "a
+payload must type specific commands" can. This is the point at which the
+question needs real traffic, and it is named as such rather than half-built.
+
 ### Live monitoring — wired 10 Sep, never yet run on real traffic
 
 Until now **nothing called `UsbmonSource.live()`.** It existed and was

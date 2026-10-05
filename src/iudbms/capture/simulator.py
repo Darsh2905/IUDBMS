@@ -879,6 +879,36 @@ class Simulator:
         return SimulatedSession(sid=sid, profile=profile, label=label, descriptor=d,
                                 lines=lines, onset=onset, duration=dur)
 
+    # ------------------------------------------------------------------
+    # multi-device host sessions (contract 3.0.0, cross-device correlation)
+    # ------------------------------------------------------------------
+
+    #: Probability that a host has a human actively using a mouse alongside the
+    #: keyboard under examination.
+    #:
+    #: **The same value is used whether or not the host's keyboard is malicious,
+    #: and that is the entire leakage guard.** If attacked hosts were lonelier
+    #: than benign ones, "no concurrent activity" would separate them perfectly
+    #: and `concurrent_device_rate` would be the next log_time_since_enum: a
+    #: feature that encodes how the corpus was built rather than how a device
+    #: behaves. Both cases must occur on both sides -- a person typing at a
+    #: machine with no mouse attached is ordinary, and a BadUSB plugged into a
+    #: workstation whose owner is still working is the realistic attack.
+    P_COMPANION = 0.6
+
+    def host_session(self, hid: str, keyboard_profile: str,
+                     duration: float | None = None) -> list[SimulatedSession]:
+        """One host: a keyboard (benign or malicious) and maybe a companion.
+
+        Returns every device's session on a shared timeline, so a caller can
+        join them per window to compute host-level features.
+        """
+        dur = duration if duration is not None else self.rng.uniform(*DURATION_RANGE)
+        out = [self.session(f"{hid}K", keyboard_profile, duration=dur)]
+        if self.rng.random() < self.P_COMPANION:
+            out.append(self.session(f"{hid}M", "mouse", duration=dur))
+        return out
+
     def plan(self, n_benign: int = 210, n_attack: int = 140, *,
              benign_profiles: tuple[str, ...] = BENIGN_PROFILES,
              attack_profiles: tuple[str, ...] = ATTACK_PROFILES,
