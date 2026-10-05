@@ -1,0 +1,47 @@
+{
+  "n_benign": 600,
+  "n_attack": 400,
+  "seed": 7,
+  "target_fpr": 0.0001,
+  "results": {
+    "homogeneous": {
+      "keyboard_rate_sd": 0.1726640698090635,
+      "n_attack_test": 120,
+      "noise_floor": 0.008333333333333333,
+      "margin": -0.008333333333333304,
+      "rows": {
+        "full (forest + baseline)": {
+          "auc": 0.9761532000069374,
+          "detect": 0.8916666666666667,
+          "benign_fp": 0.0
+        },
+        "forest only": {
+          "auc": 0.9754931911264354,
+          "detect": 0.9,
+          "benign_fp": 0.0
+        }
+      },
+      "baseline_helps": false
+    },
+    "heterogeneous": {
+      "keyboard_rate_sd": 0.4854408250285042,
+      "n_attack_test": 120,
+      "noise_floor": 0.008333333333333333,
+      "margin": 0.008333333333333304,
+      "rows": {
+        "full (forest + baseline)": {
+          "auc": 0.9741076933278837,
+          "detect": 0.8583333333333333,
+          "benign_fp": 0.0
+        },
+        "forest only": {
+          "auc": 0.975421303309431,
+          "detect": 0.85,
+          "benign_fp": 0.0
+        }
+      },
+      "baseline_helps": false
+    }
+  },
+  "supported": false
+}
