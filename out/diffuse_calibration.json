@@ -1,0 +1,60 @@
+{
+  "rows": [
+    {
+      "strength": 0.02,
+      "best_single": 0.5,
+      "in_band": true,
+      "per_modality": {
+        "timing": 0.0,
+        "payload": 0.5,
+        "protocol": 0.0
+      }
+    },
+    {
+      "strength": 0.05,
+      "best_single": 0.25,
+      "in_band": true,
+      "per_modality": {
+        "timing": 0.0,
+        "payload": 0.25,
+        "protocol": 0.0
+      }
+    },
+    {
+      "strength": 0.08,
+      "best_single": 0.0,
+      "in_band": false,
+      "per_modality": {
+        "timing": 0.0,
+        "protocol": 0.0
+      }
+    },
+    {
+      "strength": 0.12,
+      "best_single": 0.375,
+      "in_band": true,
+      "per_modality": {
+        "timing": 0.0,
+        "payload": 0.0,
+        "protocol": 0.375
+      }
+    },
+    {
+      "strength": 0.2,
+      "best_single": 0.625,
+      "in_band": true,
+      "per_modality": {
+        "timing": 0.625,
+        "payload": 0.125,
+        "protocol": 0.0
+      }
+    }
+  ],
+  "chosen": 0.2,
+  "band": [
+    0.15,
+    0.75
+  ],
+  "per_profile": 60,
+  "split": "inner-selection (test untouched)"
+}

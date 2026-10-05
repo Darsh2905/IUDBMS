@@ -1,7 +1,7 @@
 {
   "config": {
-    "n_benign": 210,
-    "n_attack": 140,
+    "n_benign": 600,
+    "n_attack": 400,
     "seed": 7,
     "epochs": 14,
     "seq_len": 10,
@@ -14,7 +14,7 @@
     "usbmon_lines": 11367542,
     "urb_events": 11367542,
     "windows": 62791,
-    "features": 29
+    "features": 30
   },
   "split": {
     "fit": 562,
@@ -263,20 +263,20 @@
     },
     "identity": {
       "window": {
-        "auc": 0.8884241542764283,
-        "precision": 0.9916162086632511,
-        "recall": 0.354656005330668,
-        "f1": 0.5224539877300614,
+        "auc": 0.8471506741432873,
+        "precision": 0.501294363256785,
+        "recall": 1.0,
+        "f1": 0.6678162198242296,
         "n_windows": 18672,
         "n_malicious": 6003
       },
       "session": {
-        "attack_detect": 0.39166666666666666,
-        "benign_fp": 0.0,
-        "revoked": 0.36666666666666664,
-        "median_latency": 3.4201905310368597,
-        "p90_latency": 3.8531505547684093,
-        "fp_per_benign_hour": 0.0,
+        "attack_detect": 1.0,
+        "benign_fp": 0.42134831460674155,
+        "revoked": 1.0,
+        "median_latency": -2.229991250215339,
+        "p90_latency": 3.22315810952265,
+        "fp_per_benign_hour": 24.547044478379103,
         "n_attack": 120,
         "n_benign": 178
       }
@@ -285,19 +285,19 @@
   "deployed_features": 28,
   "with_time_feature": {
     "window": {
-      "auc": 0.9769946439414807,
-      "precision": 0.9958981001727115,
-      "recall": 0.7684491087789439,
-      "f1": 0.8675129290079925,
+      "auc": 0.976864108267386,
+      "precision": 0.9929016992901699,
+      "recall": 0.7689488589038814,
+      "f1": 0.8666917010889974,
       "n_windows": 18672,
       "n_malicious": 6003
     },
     "session": {
-      "attack_detect": 0.9083333333333333,
+      "attack_detect": 0.9,
       "benign_fp": 0.011235955056179775,
-      "revoked": 0.875,
-      "median_latency": 3.6946391048329126,
-      "p90_latency": 33.52336865440865,
+      "revoked": 0.8916666666666667,
+      "median_latency": 3.742027231872596,
+      "p90_latency": 28.903963510828373,
       "fp_per_benign_hour": 0.6545878527567761,
       "n_attack": 120,
       "n_benign": 178
@@ -313,7 +313,7 @@
         "n": 24,
         "label": 1,
         "detect_rate": 1.0,
-        "median_latency": 3.4158190976376788
+        "median_latency": 3.597326812638421
       },
       "hid_injection": {
         "n": 21,
@@ -325,7 +325,7 @@
         "n": 20,
         "label": 1,
         "detect_rate": 1.0,
-        "median_latency": 3.4691171017799647
+        "median_latency": 3.505958553879964
       },
       "keyboard": {
         "n": 38,
@@ -343,13 +343,13 @@
         "n": 15,
         "label": 1,
         "detect_rate": 1.0,
-        "median_latency": 23.636023325281002
+        "median_latency": 24.407447221671795
       },
       "mimicry_adaptive": {
         "n": 20,
         "label": 1,
-        "detect_rate": 0.45,
-        "median_latency": 50.856286124956
+        "detect_rate": 0.4,
+        "median_latency": 46.693286836577045
       },
       "mouse": {
         "n": 37,
@@ -361,7 +361,7 @@
         "n": 20,
         "label": 1,
         "detect_rate": 1.0,
-        "median_latency": 3.7356895572760465
+        "median_latency": 3.636684667841923
       },
       "webcam": {
         "n": 33,
@@ -370,8 +370,8 @@
         "median_latency": null
       }
     },
-    "delta_auc": 0.0008414439345433289,
-    "delta_detect": 0.016666666666666607
+    "delta_auc": 0.0007109082604486172,
+    "delta_detect": 0.008333333333333304
   },
   "identity_whitelist": {
     "attack_detect": 0.0,
@@ -544,5 +544,5 @@
       }
     ]
   },
-  "runtime_sec": 121.7
+  "runtime_sec": 206.5
 }
