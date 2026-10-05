@@ -18,12 +18,38 @@ Run the dashboard with `uvicorn iudbms.api.app:app` and open http://localhost:80
 per-device extractor, baseline, sequence window and gate, advanced one window at
 a time. `scripts/live_replay.py` drives it at wall-clock speed
 (`make demo` / `make demo-hard`).
-`make eval` regenerates every reported number in ~65 s. `prototype/` is the Sprint-0 vertical slice: it runs end to end and
+`make eval` regenerates every reported number (~5 min from cold, ~65 s with
+a warm `out/corpus_cache.npz`). `make fusion-ablation`, `make
+baseline-ablation` and `make cross-device` run the three novelty
+experiments; `make paper` rebuilds the IEEE .docx from their outputs. `prototype/` is the Sprint-0 vertical slice: it runs end to end and
 produced the numbers in `out/metrics.json`, but it is being ported module by
 module into `src/iudbms/` and should not be extended in place.
 
 **Nothing in this repo has ever seen real USB traffic.** Every measurement to
-date comes from `prototype/simulator.py`.
+date comes from the simulator. This is the principal limitation and bounds every
+claim below.
+
+### Novelty scorecard (current, 05 Oct)
+
+Each pillar now has an experiment built to falsify it, with its acceptance
+criterion fixed before the first run. Two do not survive.
+
+| pillar | verdict | evidence |
+|---|---|---|
+| N1 multi-modal fusion | **supported only non-uniformly** | `make fusion-ablation`, finding 21 |
+| N2 per-device baseline | **not supported** | `make baseline-ablation`, finding 18 |
+| N3 temporal modelling | **strongly supported** | 15.8% → 89.2%, findings 14-15 |
+| N4 closed-loop enforcement | **dry-run only** | never executed against a kernel |
+
+N1 is the nuanced one: fusion is the *only* configuration that detects
+descriptor-only attacks (100% vs 3.7% for the best specialist, because the
+identity modality alone cannot calibrate), and it gains 19.8 points on a
+moderately diffuse attack — but it is beaten by a 9-feature subset of itself by
+11.1 points when the attack is subtle enough. Report the curve, not a verdict.
+
+N2's negative result is now *stronger* than before, not weaker: finding 14
+attributed the baseline's inertness to device homogeneity in the corpus, and
+removing that homogeneity does not rescue it.
 
 ---
 
@@ -56,7 +82,9 @@ Two departures from plan §11:
 
 ## 3. The frozen contract (`src/iudbms/contract.py`)
 
-`CONTRACT_VERSION` is `1.0.0`. Bump it only alongside a retrain of every
+`CONTRACT_VERSION` is `3.0.0` (1.1.0 added `setup`; 2.0.0 appended
+`payload_seq_novelty`; 3.0.0 appended `concurrent_device_rate`, the first
+host-level feature). Bump it only alongside a retrain of every
 checkpoint. `tests/test_contract.py::test_feature_order_is_frozen` holds a
 SHA-256 digest of the feature names and will fail loudly on any reorder — that
 order is baked into checkpoints, the SQLite `windows.features` JSON and every
@@ -533,8 +561,13 @@ so N2 may earn its keep on real captures — which is a hypothesis, not a defenc
 the component contributes nothing on this corpus, and tuning the weight until it
 appears to would be fitting the conclusion.
 
-**Scorecard: N1 unsupported, N2 unsupported, N3 strongly supported (15.8% →
-89.2%), N4 demonstrated.** Two of four pillars lack evidence. Report that.
+**Scorecard as of 10 Sep: N1 unsupported, N2 unsupported, N3 strongly supported
+(15.8% → 89.2%), N4 demonstrated.** Two of four pillars lack evidence.
+
+**Superseded on 05 Oct.** Both negative verdicts were reached in the absence of
+a purpose-built test rather than by one. Findings 18 and 21 build those tests;
+see §1 for the current scorecard. The headline figures in this section still
+hold — they regenerate to four decimals.
 
 ### Finding 15 — model-family comparison (`make zoo`, 10 Sep)
 
