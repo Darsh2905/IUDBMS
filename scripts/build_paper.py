@@ -486,7 +486,8 @@ body("Individually, the underlying techniques — eBPF capture [3]–[5], "
      "fusing them into one per-device, closed-loop pipeline and pointing that pipeline at "
      "the USB subsystem, which no reviewed eBPF-ML or LSTM-anomaly work addresses and no "
      "reviewed USB-defence work implements. Each element below answers a gap from "
-     "Section III-B, and each is evaluated by a purpose-built ablation in Section VI-C.")
+     "Section III-B, and each is evaluated in Section VI-C. The numbering follows "
+     "§3.3 of the Review 1 submission and is unchanged from it.")
 item("N1)", "<i>Multi-modal feature fusion at the kernel/driver boundary.</i> Fuses event "
             "timing, traffic volume, and descriptor changes into one feature stream "
             "— carrying the eBPF-ML pattern [3], [4] into USB, answering the "
@@ -494,12 +495,12 @@ item("N1)", "<i>Multi-modal feature fusion at the kernel/driver boundary.</i> Fu
 item("N2)", "<i>Per-device adaptive behavioural baselines.</i> Each device is scored "
             "against its own learned norm rather than a global rule set, answering the "
             "identity-bound trust gap left by WMUD [1].")
-item("N3)", "<i>Temporal sequence modelling to catch staged attacks.</i> A userspace LSTM "
-            "analyses rolling event windows to catch slow-escalation attacks single-point "
-            "detectors miss, bringing temporal modelling [6]–[10] to USB.")
-item("N4)", "<i>Closed-loop kernel-level enforcement.</i> Verdicts (rate-limiting, "
+item("N3)", "<i>Closed-loop kernel-level enforcement.</i> Verdicts (rate-limiting, "
             "unbinding) execute without a userspace round-trip, answering SafeUSB’s "
             "[2] activation-latency limitation and the open-enforcement-loop gap.")
+item("N4)", "<i>Temporal sequence modelling to catch staged attacks.</i> A userspace LSTM "
+            "analyses rolling event windows to catch slow-escalation attacks single-point "
+            "detectors miss, bringing temporal modelling [6]–[10] to USB.")
 
 h2("D", "Relationship to the Reference Framework")
 body("The reference framework is a kernel-level eBPF security framework that filters "
@@ -735,20 +736,20 @@ body("<i>N2 (per-device adaptive baseline) — not supported.</i> Removing the "
      "heterogeneity, which is the expected direction: more varied benign behaviour is a "
      "harder discrimination problem.")
 
-body("<i>N3 (temporal sequence modelling) — strongly supported.</i> This is the "
+body("<i>N3 (closed-loop enforcement) — demonstrated in dry-run only.</i> The policy "
+     "engine generates the exact kernel command that would revoke a device together with "
+     "the evidence that justified it, and the escalation ladder is exercised end to end on "
+     "recorded sessions. Execution against the kernel is gated behind a manual safety "
+     "review and has never been performed, so the loop is closed in software but not yet "
+     "against hardware.")
+
+body("<i>N4 (temporal sequence modelling) — strongly supported.</i> This is the "
      "largest effect in the work: the same pipeline without its sequence stage drops from "
      f"{pct(det)} to {pct(s1_det)} session detection. A separate model-family comparison "
      "shows the gain belongs to <i>sequence</i> rather than to recurrence specifically "
      "— a GRU and a dilated 1-D CNN match the LSTM within noise, while a supervised "
      "model given only a single window reaches markedly less. The LSTM is retained because "
      "no challenger clears the noise floor, not because it is better.")
-
-body("<i>N4 (closed-loop enforcement) — demonstrated in dry-run only.</i> The policy "
-     "engine generates the exact kernel command that would revoke a device together with "
-     "the evidence that justified it, and the escalation ladder is exercised end to end on "
-     "recorded sessions. Execution against the kernel is gated behind a manual safety "
-     "review and has never been performed, so the loop is closed in software but not yet "
-     "against hardware.")
 
 h2("D", "Robustness: Host Context")
 if CROSS:
