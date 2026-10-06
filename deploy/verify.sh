@@ -16,8 +16,19 @@ warn() { echo "  warn  $*"; }
 
 [[ ${EUID} -eq 0 ]] || { echo "verify: run with sudo (usbmon nodes are root-only)" >&2; exit 1; }
 [[ -r $ENV ]] || { echo "verify: $ENV missing -- has deploy/install.sh been run?" >&2; exit 1; }
-set -a; . "$ENV"; set +a
-API="http://${IUDBMS_API_HOST:-127.0.0.1}:${IUDBMS_API_PORT:-8000}"
+# The file is systemd EnvironmentFile syntax, not shell: sourcing it as root both
+# executes whatever it contains and breaks on a value with a space
+# (`IUDBMS_MONITOR_ARGS=--bus 0` ran `0` as a command). Read the keys we need.
+envval() {   # envval KEY DEFAULT -- last assignment wins, surrounding quotes stripped
+  local v
+  v=$(grep -E "^[[:space:]]*$1=" "$ENV" | tail -n1 | cut -d= -f2-)
+  v="${v%\"}"; v="${v#\"}"
+  echo "${v:-$2}"
+}
+IUDBMS_MODELS=$(envval IUDBMS_MODELS /var/lib/iudbms/models)
+IUDBMS_API_HOST=$(envval IUDBMS_API_HOST 127.0.0.1)
+IUDBMS_API_PORT=$(envval IUDBMS_API_PORT 8000)
+API="http://${IUDBMS_API_HOST}:${IUDBMS_API_PORT}"
 
 api() {   # api PATH [PY-EXPR over the decoded JSON as 'd']
   /usr/bin/python3 - "$API$1" "${2:-d}" <<'PY'

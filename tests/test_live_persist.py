@@ -159,3 +159,20 @@ def test_cli_refuses_live_capture_off_linux():
     from iudbms.live.cli import main
     with pytest.raises(SystemExit, match="needs Linux"):
         main(["--no-persist"])
+
+
+@pytest.mark.skipif(hasattr(__import__("os"), "geteuid") and __import__("os").geteuid() == 0,
+                    reason="root can read everything")
+def test_cli_reports_unreadable_models_plainly(tmp_path):
+    """The deployed models are root:iudbms 2750, so a normal user hits this. It
+    used to be a raw PermissionError traceback from pathlib."""
+    from iudbms.live.cli import load_models
+    d = tmp_path / "models"
+    d.mkdir()
+    (d / "deploy.json").write_text("{}")
+    d.chmod(0)
+    try:
+        with pytest.raises(SystemExit, match="permission denied"):
+            load_models(d)
+    finally:
+        d.chmod(0o755)

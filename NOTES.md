@@ -989,6 +989,43 @@ anyone installing by hand. **Lesson:** a dependency claim about someone else's
 packaging is a claim about a moving target; I verified neither the wheel's metadata
 nor its size when I wrote it.
 
+### Finding 28 — the live service scored nothing; found only by running it (06 Oct)
+
+The first systemd service on a real kernel passed `verify.sh` on every structural
+check and **scored nothing**: heartbeat `devices=0 late=174 urb_recorded=174` —
+every event late. usbmon timestamps are relative to the *first event the parser
+sees*, but the window clock started when the *monitor* started. If the first URB
+arrives after startup the stream sits permanently behind the clock (both advance
+at one second per second, so it never catches up) and the whole thing is dropped
+as late. A foreground run had worked only because its first URB arrived within a
+fraction of a second. Every simulated or replayed source delivers its first event
+immediately, so nothing could have seen it, and 383 tests passed throughout.
+
+Fixed by anchoring the window clock to the first event's arrival
+(`origin = now - first_event.ts`), so the offset is zero by construction however
+long the bus was idle first. After: `devices=1 late=0`, windows persisted every
+second from live kernel output. The monitor now waits for the first event rather
+than emitting empty windows, so an idle bus produces no windows and no heartbeat.
+
+**What a green `verify.sh` meant:** the install is structurally sound. It did not
+mean the system worked. The check that found this was reading the heartbeat. The
+script now also checks that windows advance; it did warn about exactly this and the
+warning was the real signal.
+
+**Library versions differ and scores do not.** The VM resolved scikit-learn 1.9.1,
+torch 2.14.1, numpy 2.5.3; the models and `requirements-lock.txt` are 1.6.1 /
+2.11.0 / 1.26.4. scikit-learn warns that unpickling across versions is
+unsupported. The same real capture replayed on the Mac and on the VM gives
+**identical Stage-1 and Stage-2 scores to six decimals on all 83 common windows**
+(max |Δ| = 0.000000). So nothing is corrupted here, but it is an unsupported path
+that happens to hold for this model and these inputs, `install.sh` does not use the
+lock file, and a different sklearn could change that. Not fixed; recorded.
+
+Smaller: `verify.sh` *sourced* the env file as shell, so `IUDBMS_MONITOR_ARGS=--bus 0`
+ran `0` as a command (it is systemd syntax, not shell — now read as data, and the
+value is quoted); and an unreadable models directory gave a raw `PermissionError`
+traceback instead of a message.
+
 ### Live monitoring — wired 10 Sep, never yet run on real traffic
 
 Until now **nothing called `UsbmonSource.live()`.** It existed and was
