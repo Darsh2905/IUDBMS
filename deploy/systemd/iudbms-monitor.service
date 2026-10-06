@@ -1,0 +1,57 @@
+# IUDBMS behavioural USB monitor.
+# Installed by deploy/install.sh; configured by /etc/iudbms/iudbms.env.
+[Unit]
+Description=IUDBMS behavioural USB monitor
+Documentation=file:///opt/iudbms/DEPLOYMENT.md
+# usbmon text nodes live in debugfs, which systemd mounts as this unit.
+Wants=sys-kernel-debug.mount
+After=sys-kernel-debug.mount systemd-modules-load.service
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/iudbms/iudbms.env
+Environment=PYTHONUNBUFFERED=1
+# The API's account has no home and ProtectHome hides /root; point
+# anything that reaches for $HOME at the one writable directory.
+Environment=HOME=/var/lib/iudbms
+# Normally loaded at boot by /etc/modules-load.d/iudbms.conf; this covers a
+# host that has not rebooted since install. A leading '-' tolerates failure so
+# the monitor's own error message, not systemd's, explains a missing module.
+ExecStartPre=-/usr/sbin/modprobe usbmon
+ExecStart=/opt/iudbms/venv/bin/iudbms-monitor $IUDBMS_MONITOR_ARGS
+
+# Root, because debugfs usbmon nodes are readable by root only, and because
+# enforcement -- once reviewed -- writes /sys/bus/usb/devices/*/authorized.
+# Group iudbms plus UMask 0007 make the database the monitor creates readable
+# and writable by the API, which runs unprivileged in that group.
+User=root
+Group=iudbms
+UMask=0007
+
+# SIGTERM is handled: the current window is scored and committed, open trace
+# sessions are closed at the end of the last window, then the process exits.
+KillSignal=SIGTERM
+TimeoutStopSec=20
+Restart=on-failure
+RestartSec=5
+
+# Hardening chosen not to conflict with what the monitor must do.
+#   ProtectSystem=strict leaves /dev, /proc and /sys writable (API filesystems),
+#   so debugfs reads and future sysfs writes still work.
+#   NOT set, deliberately:
+#     ProtectKernelTunables  -- makes /sys read-only, which would silently block
+#                               enforcement the day it is enabled
+#     ProtectKernelModules   -- would make the ExecStartPre modprobe fail
+#     PrivateDevices         -- unnecessary for debugfs, and USB-adjacent
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/iudbms
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+
+[Install]
+WantedBy=multi-user.target

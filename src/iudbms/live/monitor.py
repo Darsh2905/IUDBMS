@@ -200,6 +200,11 @@ class LiveMonitor:
                 alive = self._drain(w)
                 yield self._close_window(w)
                 w += 1
+                if self._stop.is_set():
+                    # Honour stop() here rather than waiting for the reader: on
+                    # an idle live bus it is blocked in a debugfs read and would
+                    # not notice until the next URB arrived.
+                    break
                 # Keep scoring while the source is live, or while buckets still
                 # hold future traffic. A live debugfs read never ends, so this
                 # only terminates for finite sources such as a replay file.

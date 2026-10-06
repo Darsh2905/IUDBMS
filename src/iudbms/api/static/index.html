@@ -332,7 +332,7 @@ function Timeline({ windows, threshold }) {
         h("span", { className: "num" }, fmt(hp.stage1))),
       h("div", { className: "row" },
         h("span", { className: "lbl" }, "ground truth"),
-        h("span", null, hp.label ? "attack" : "benign"))) : null);
+        h("span", null, hp.label === 1 ? "attack" : hp.label === 0 ? "benign" : "live (no ground truth)"))) : null);
 }
 
 /* Every chart has a table-view twin — values are never tooltip-only. */

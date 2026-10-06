@@ -22,6 +22,10 @@ out/*.db-shm
 artifacts/
 *.pt
 *.pth
+# ...except the deployed LSTM. The blanket rule above excluded it while the
+# 9.6 MB Stage-1 model beside it was tracked, so every fresh clone had an
+# incomplete model set -- and the monitor then ran Stage 1 alone, silently.
+!out/models/stage2.pt
 
 # Node / dashboard
 node_modules/

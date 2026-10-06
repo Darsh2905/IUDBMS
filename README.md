@@ -31,10 +31,11 @@ Report documents (standalone HTML, print to PDF): [`docs/report/`](docs/report/)
 | 4 | Stage 1 — iForest + per-device EWMA baseline | **done** |
 | 5 | Stage 2 — PyTorch LSTM | **done** |
 | 6 | Policy engine — k-of-n gate, escalation, safety interlocks | **done** |
-| 7 | SQLite storage + FastAPI | **done** |
+| 7 | SQLite storage + FastAPI | **done** — plus the raw URB trace (plan §5), pseudonymised by default |
 | 8 | eBPF capture path | deferred (plan §7 W11 — designated sacrifice) |
-| 9 | React dashboard | **done** (`uvicorn iudbms.api.app:app` → http://localhost:8000) |
+| 9 | React dashboard | **done** (`iudbms-api` → http://127.0.0.1:8000) |
 | 10 | Evaluation harness + ablations | **done** |
+| — | Deployment: systemd services, install/verify/uninstall | **built**; verified off-repo from a wheel on macOS, systemd side pending the Linux VM — [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) |
 
 `prototype/` holds the Sprint-0 vertical slice (NumPy LSTM, synthetic data,
 dry-run enforcement) that milestone work is ported from and measured against.
@@ -46,13 +47,15 @@ project results — see the caveats in plan §10 and the defect list in
 
 ```bash
 make install                              # editable install + dev extras
-make test                                 # 189 tests
-make eval                                 # regenerate every reported number (~70 s)
+make test                                 # 371 tests
+make eval                                 # regenerate every reported number (~5 min cold)
 python3 -m eval.leakage_audit             # plan §5 mandatory leakage audit
 python3 -m eval.run_eval --persist        # also populate out/iudbms.db
-make dashboard                            # operator dashboard on :8000
+make dashboard                            # operator dashboard on :8000 (evaluation DB)
 make demo                                 # replay: watch the loop close (any OS)
-sudo python3 scripts/live_monitor.py      # LIVE capture (Linux + root only)
+make monitor-replay                       # the real monitor on a recorded capture -> out/live.db
+sudo iudbms-monitor                       # LIVE capture (Linux + root only)
+sudo ./deploy/install.sh --enable         # install as systemd services (docs/DEPLOYMENT.md)
 make demo-hard                            # the same, on the mimicry adversary
 make baseline                             # re-run the Sprint-0 prototype for comparison
 ```

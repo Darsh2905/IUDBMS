@@ -6,8 +6,18 @@ endpoint (``POST /devices/{id}/authorize``) deliberately does **not** touch the
 kernel: it records an operator decision. Actual sysfs writes are gated behind
 ``policy.engine.ENFORCEMENT_REVIEWED``, which is False.
 
-    uvicorn iudbms.api.app:app --reload
-    IUDBMS_DB=out/iudbms.db uvicorn iudbms.api.app:app
+    iudbms-api                                   # 127.0.0.1:8000
+    IUDBMS_DB=out/iudbms.db uvicorn iudbms.api.app:app --reload
+
+Configuration, all from the environment so one file configures the deployed
+units in ``deploy/``:
+
+  IUDBMS_DB            the SQLite store (default out/iudbms.db)
+  IUDBMS_MODELS        the deployed model directory, whose deploy.json is the
+                       operating point the monitor runs (default out/models)
+  IUDBMS_CORS_ORIGINS  comma-separated origins allowed cross-origin. Unset by
+                       default: the dashboard is served from this app, so it is
+                       same-origin and needs none.
 """
 
 from __future__ import annotations
@@ -15,6 +25,8 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+
+from importlib.resources import files
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,10 +39,13 @@ from ..storage import Store
 
 __all__ = ["app", "get_db_path"]
 
-_ROOT = Path(__file__).resolve().parents[3]
-DEFAULT_DB = _ROOT / "out" / "iudbms.db"
-DASHBOARD = _ROOT / "dashboard" / "index.html"
-METRICS = _ROOT / "out" / "metrics.json"
+# Package data, not a path relative to this file's position in a checkout.
+# `parents[3]` located the repository root from a source tree and pointed at
+# nothing in particular once installed into site-packages, so the dashboard
+# 404'd in any real deployment.
+DASHBOARD = Path(str(files("iudbms.api").joinpath("static", "index.html")))
+DEFAULT_DB = Path("out") / "iudbms.db"
+DEFAULT_MODELS = Path("out") / "models"
 
 app = FastAPI(
     title="IUDBMS Control API",
@@ -38,30 +53,42 @@ app = FastAPI(
     description="Behavioural trust for USB peripherals. Read-only over the "
                 "window/alert store; enforcement is gated separately.",
 )
-app.add_middleware(
-    CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
-)
+# No cross-origin access unless configured. This was allow_origins=["*"] on an
+# API whose POST /devices/{id}/authorize records operator trust decisions: any
+# web page the operator happened to visit could have called it. The dashboard is
+# served by this app and is same-origin, so it needs no CORS at all.
+_CORS = [o.strip() for o in os.environ.get("IUDBMS_CORS_ORIGINS", "").split(",")
+         if o.strip()]
+if _CORS:
+    app.add_middleware(CORSMiddleware, allow_origins=_CORS,
+                       allow_methods=["GET", "POST"], allow_headers=["Content-Type"])
 
 
 def get_db_path() -> Path:
     return Path(os.environ.get("IUDBMS_DB", DEFAULT_DB))
 
 
-def deployed_policy() -> dict:
-    """The operating point the persisted run actually used.
+def get_models_dir() -> Path:
+    return Path(os.environ.get("IUDBMS_MODELS", DEFAULT_MODELS))
 
-    Read from out/metrics.json rather than recomputed, so the dashboard shows
-    the threshold that produced the stored alerts instead of inferring one.
+
+def deployed_policy() -> dict:
+    """The operating point the monitor actually runs.
+
+    Read from the deployed models' deploy.json -- the same file the monitor
+    loads -- rather than recomputed, so the dashboard shows the threshold that
+    produced the stored alerts instead of inferring one.
     """
     try:
-        m = json.loads(METRICS.read_text())
+        cfg = json.loads((get_models_dir() / "deploy.json").read_text())
     except (OSError, ValueError):
         return {}
     return {
-        "threshold": m.get("full_system", {}).get("threshold"),
-        "target_fpr": m.get("config", {}).get("target_fpr"),
-        "gate": m.get("config", {}).get("gate"),
-        "deployed_features": m.get("deployed_features"),
+        "threshold": cfg.get("threshold"),
+        "target_fpr": cfg.get("target_fpr"),
+        "gate": f"{cfg.get('k')}-of-{cfg.get('n')}",
+        "deployed_features": len(cfg.get("feature_idx", [])),
+        "contract_version": cfg.get("contract_version"),
     }
 
 
@@ -69,7 +96,9 @@ def _store() -> Store:
     path = get_db_path()
     if not path.exists():
         raise HTTPException(
-            503, f"no database at {path}. Run `python3 -m eval.run_eval --persist`.")
+            503, f"no database at {path}. Start the monitor (iudbms-monitor, or the "
+                 f"iudbms-monitor service), or populate it from an evaluation with "
+                 f"`python3 -m eval.run_eval --persist`.")
     return Store(path)
 
 
@@ -89,7 +118,7 @@ class AuthorizeRequest(BaseModel):
 def dashboard():
     """Serve the operator dashboard (plan §4.6 / milestone 9)."""
     if not DASHBOARD.exists():
-        raise HTTPException(404, "dashboard/index.html not found")
+        raise HTTPException(404, f"dashboard not found at {DASHBOARD}")
     return FileResponse(DASHBOARD)
 
 
@@ -173,3 +202,23 @@ def set_policy(update: PolicyUpdate) -> dict:
 def stats() -> dict:
     with _store() as s:
         return s.counts()
+
+
+@app.get("/traces/runs")
+def trace_run_list() -> list[dict]:
+    """Every recording run: when, from what, and in which payload mode."""
+    from ..storage import trace_runs
+    with _store() as s:
+        return trace_runs(s)
+
+
+@app.get("/devices/{device_id}/trace")
+def device_trace(device_id: str, limit: int = Query(500, ge=1, le=5000)) -> dict:
+    """The device's most recent raw URBs, newest first -- the traffic behind its
+    scores. Payloads are as the recording run stored them (``payload_mode`` on
+    every row): pseudonyms by default, never clear text unless configured."""
+    with _store() as s:
+        rows = s.trace(device_id, limit)
+        if not rows and not any(d["device_id"] == device_id for d in s.devices()):
+            raise HTTPException(404, f"unknown device {device_id}")
+        return {"device_id": device_id, "events": rows}
