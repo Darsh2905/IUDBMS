@@ -13,7 +13,8 @@ taken since* the plan was written.
 ## 1. Current state
 
 Milestones 1-7, 9 and 10 are done. Only M8 (eBPF) remains, deferred by plan §7.
-Run the dashboard with `uvicorn iudbms.api.app:app` and open http://localhost:8000.
+Run the dashboard with `iudbms-api` (or `make dashboard`) and open http://127.0.0.1:8000.
+Deploy with `sudo ./deploy/install.sh` -- see `docs/DEPLOYMENT.md` and finding 25.
 `iudbms.live.StreamingDetector` is the long-lived detector a deployment runs:
 per-device extractor, baseline, sequence window and gate, advanced one window at
 a time. `scripts/live_replay.py` drives it at wall-clock speed
@@ -381,7 +382,8 @@ claim is "raises the cost", not "solves".
 
 ### Milestone 9 — dashboard, and the defect it found (09 Sep, fourth pass)
 
-`dashboard/index.html`, served by FastAPI at `/`. **React from cdnjs, no build
+`src/iudbms/api/static/index.html` (was `dashboard/index.html`; moved into the package
+in finding 25), served by FastAPI at `/`. **React from cdnjs, no build
 step, hand-rolled SVG chart instead of Recharts.** Deviation from plan §3, taken
 deliberately: a Vite toolchain and a version-pinned chart library are two ways to
 fail on a projector the night before a review. If the dashboard is ever extended
@@ -839,6 +841,96 @@ contract 3.0.0 reproduced the headline to four decimals — 89.2% detection, 0.0
 benign FP, AUC 0.9762, identical per-class rates. That is the check that the
 axis profiles, device personas and host-session machinery left the default
 generator paths untouched.
+
+### Finding 23 — raw URB trace storage, pseudonymised (06 Oct)
+
+Plan §5: "store raw traces, not just features, so the feature set can be
+revised without re-collecting." The store held only features and scores.
+`storage/traces.py` adds the trace, and its acceptance test is the plan's own
+purpose: a stored session re-featurises **bit for bit** to the vectors the live
+monitor actually scored — asserted against the real `LiveMonitor` across five
+concurrent devices, including mimicry (whose `payload_seq_novelty` needs the
+whole session), bulk storage and a mid-session interface. Verified again from an
+installed wheel: a 57 s capture's stored trace re-featurises to the same 58
+windows the monitor scored, and replaying it through `--replay-db` produces
+identical Stage-1 and Stage-2 scores.
+
+**A USB trace is a keylogger**, so payloads are pseudonymised by default. The
+extractor reads payload bytes only through `e.length`, `if e.data`, and
+equality, so an injective, length-preserving keyed permutation keeps every
+feature exact. It is a Feistel network (keyed table for 1-byte payloads) because
+a truncated HMAC fails both ways: full-length it breaks `len(data) <= length`,
+so stored events would no longer validate; truncated to the payload length it
+collides on 4-byte mouse reports within a long session and silently changes
+`payload_novelty`. The key is drawn per run and never written. **Not anonymity**
+— a consistent per-session mapping is a substitution cipher, so long typing is
+open to frequency analysis; the docstring and DEPLOYMENT.md say so. `none` drops
+payloads, `full` keeps them for consented collection only.
+
+Retention is bounded, oldest first; an escalation pins the URBs from the ten
+windows the model saw, and per-session completeness is tracked rather than
+assumed. `StoreSource` makes a stored run a fifth capture backend.
+
+### Finding 24 — three live-monitor bugs, found by building exact replay (06 Oct)
+
+None was visible to the existing tests, and each was fixed test-first.
+
+1. **Deferred events produced negative inter-arrival times.** A device seen
+   before sysfs lists it has its events held and folded into its first scored
+   window — appended *after* that window's own events, and in reverse window
+   order across repeated deferrals. The extractor diffs timestamps as given:
+   `min_iat` −1.2 s on a six-event input. A real hotplug's enumeration URBs
+   precede its sysfs entry, so this corrupted the first scored window of every
+   new device, which is the window a BadUSB starts typing in. The existing test
+   checked only that the device was eventually attached.
+2. **`run()` never returned for a finite source.** End-of-stream was reported
+   only by the drain that dequeued the sentinel; if later windows still held
+   buffered events then, every following drain called the source live again.
+   So `live_monitor.py --replay` could not exit by itself. Every existing test
+   passed `max_windows`. A 57 s replay now exits after 58 windows.
+3. **`run()` ignored `stop()`.** Stopping relied on the reader thread noticing,
+   and on an idle live bus that thread is blocked in a debugfs read. Ctrl-C, and
+   systemd's SIGTERM, did not stop the monitor; systemd would SIGKILL it.
+
+No reported number changes: the evaluation never runs through `LiveMonitor`.
+
+### Finding 25 — the deployment did not deploy (06 Oct)
+
+Packaging the system for a host turned up five defects, each of which would
+have failed silently or badly on a real install:
+
+* **The live monitor persisted nothing.** It printed to a terminal; the store
+  the dashboard reads was only ever filled by a batch evaluation. `live/persist.py`
+  now writes windows (label NULL — live traffic has no ground truth), alerts and
+  actions on escalation, and trust state.
+* **A fresh clone ran Stage 1 alone, silently.** A blanket `*.pt` gitignore rule
+  excluded the 36 KB `stage2.pt` while the 9.6 MB `stage1.pkl` beside it was
+  tracked, and the monitor loaded Stage 2 only "if it exists" — so every clone
+  ran the configuration measured at 15.8% while presenting itself as the
+  deployed one. The checkpoint is now tracked and the monitor refuses to run
+  without it unless told `--allow-stage1-only`.
+* **`iudbms-capture` pointed at a module that has never existed.** Any install
+  created a command that crashed on launch. Replaced by `iudbms-monitor` and
+  `iudbms-api`, which the systemd units call.
+* **The dashboard 404'd once installed.** It was found via `parents[3]` of
+  `app.py` — the repo root from a checkout, nothing in site-packages. It is
+  package data now.
+* **CORS was `allow_origins=["*"]` on an API with state-changing endpoints.** Any
+  page the operator visited could POST `/devices/{id}/authorize`. The dashboard
+  is same-origin and needs none; cross-origin access is now opt-in, and a test
+  confirms a `text/plain` cross-site POST (which needs no preflight) is refused.
+
+`deploy/` holds two hardened systemd units (monitor as root in group `iudbms`;
+API unprivileged, loopback only), the env file, and install/verify/uninstall
+scripts; `docs/DEPLOYMENT.md` documents them. **Verified** from a wheel installed
+into a clean virtualenv outside the repo: both entry points, persistence, the
+pseudonymised trace, every API endpoint, no CORS grant. **Not verified until the
+VM:** the units themselves, the setgid state directory shared between root and
+`iudbms`, SIGTERM under systemd, and live debugfs capture.
+
+The monitor's dev default database is `out/live.db`, not `out/iudbms.db`:
+`make eval` deletes the latter before rewriting it, and would have wiped live
+data and mixed live devices with evaluation sessions on the dashboard.
 
 ### Live monitoring — wired 10 Sep, never yet run on real traffic
 

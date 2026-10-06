@@ -119,6 +119,7 @@ CREATE TABLE IF NOT EXISTS trace_evictions (
 
 class Store:
     def __init__(self, path: str | Path):
+        self.path = Path(path)
         self.cx = sqlite3.connect(str(path))
         self.cx.row_factory = sqlite3.Row
         self.cx.executescript(SCHEMA)
@@ -143,7 +144,9 @@ class Store:
         self.cx.executemany(
             "INSERT INTO windows (device_id,t_start,stage1,stage2,label,features)"
             " VALUES (?,?,?,?,?,?)",
-            [(device_id, float(a), float(b), float(c), int(d),
+            # A label of None is stored as NULL: live traffic has no ground
+            # truth, and 0 would claim every window was known benign.
+            [(device_id, float(a), float(b), float(c), None if d is None else int(d),
               json.dumps({n: round(float(v), 4) for n, v in zip(names, x)}))
              for a, b, c, d, x in zip(t, s1, s2, y, X)])
 
@@ -215,6 +218,24 @@ class Store:
         for r in self.cx.execute(q, args + (limit,)):
             d = dict(r)
             d["rule"] = json.loads(d["rule"]) if d["rule"] else {}
+            out.append(d)
+        return out
+
+    def trace(self, device_id: str, limit: int = 500) -> list[dict]:
+        """The most recent raw URBs for a device, newest first, for forensics.
+
+        ``data`` is whatever the recording run stored -- a pseudonym, nothing,
+        or (only if explicitly configured) raw bytes -- so the run's payload
+        mode travels with every row.
+        """
+        out = []
+        for r in self.cx.execute(
+                "SELECT u.ts, u.evt, u.ttype, u.dir, u.ep, u.status, u.length,"
+                " u.data, u.data_truncated, u.late, u.pinned, u.run_id,"
+                " r.payload_mode FROM urb_events u JOIN trace_runs r USING (run_id)"
+                " WHERE u.device_id=? ORDER BY u.id DESC LIMIT ?", (device_id, limit)):
+            d = dict(r)
+            d["data"] = bytes(d["data"]).hex() if d["data"] is not None else None
             out.append(d)
         return out
 

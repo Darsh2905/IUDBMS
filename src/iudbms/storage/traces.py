@@ -496,9 +496,21 @@ class StoreSource:
         return self._desc[device_key]
 
     def events(self) -> Iterator[URBEvent]:
+        # A fresh connection, opened in whichever thread iterates. LiveMonitor
+        # drains its source on a reader thread, and an sqlite3 connection may
+        # only be used by the thread that created it.
+        cx = sqlite3.connect(str(self._store.path))
+        cx.row_factory = sqlite3.Row
         q = ("SELECT * FROM urb_events WHERE run_id=?"
              + ("" if self.include_late else " AND late=0") + " ORDER BY id")
-        for r in self._store.cx.execute(q, (self.run_id,)):
+        try:
+            rows = cx.execute(q, (self.run_id,))
+            yield from self._emit(rows)
+        finally:
+            cx.close()
+
+    def _emit(self, rows) -> Iterator[URBEvent]:
+        for r in rows:
             e = _row_to_event(r)
             self.stats.lines_seen += 1
             self.stats.events_emitted += 1

@@ -177,6 +177,43 @@ def test_finite_source_ends_the_run_without_max_windows(detector_factory):
     assert mon.windows_scored < 50
 
 
+def test_stop_ends_the_run_even_while_the_source_is_blocked(detector_factory):
+    """SIGINT/SIGTERM call stop(). run() never checked it -- stopping relied on
+    the reader thread noticing, and on an idle live bus that thread is blocked
+    in a debugfs read until the next URB. So Ctrl-C, or systemd's SIGTERM, did
+    not stop the monitor, and systemd would SIGKILL it mid-write."""
+    import threading
+
+    class Blocked:
+        stats = CaptureStats()
+
+        def events(self):
+            yield ev(0.1)
+            threading.Event().wait()     # an idle bus: never returns
+
+        def descriptor(self, key):
+            raise KeyError(key)
+
+    t = {"v": 0.0}
+
+    def clock():
+        t["v"] += 1.0
+        return t["v"]
+
+    mon = LiveMonitor(detector_factory(), Blocked(), lambda k: DESC, clock=clock)
+    done = threading.Event()
+
+    def consume():
+        for i, _ in enumerate(mon.run()):
+            if i == 2:
+                mon.stop()
+        done.set()
+
+    threading.Thread(target=consume, daemon=True).start()
+    assert done.wait(10), "run() ignored stop() while the source was blocked"
+    assert mon.windows_scored <= 4
+
+
 def test_two_devices_are_tracked_independently(detector_factory):
     src = FakeSource([ev(0.1, dev=3), ev(0.2, dev=5), ev(0.3, dev=3)])
     mon = LiveMonitor(detector_factory(), src,

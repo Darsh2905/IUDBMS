@@ -1,0 +1,48 @@
+# IUDBMS operator API and dashboard. Reads the database the monitor writes.
+# Installed by deploy/install.sh; configured by /etc/iudbms/iudbms.env.
+[Unit]
+Description=IUDBMS operator API and dashboard
+Documentation=file:///opt/iudbms/DEPLOYMENT.md
+After=network.target iudbms-monitor.service
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/iudbms/iudbms.env
+Environment=PYTHONUNBUFFERED=1
+# The API's account has no home and ProtectHome hides /root; point
+# anything that reaches for $HOME at the one writable directory.
+Environment=HOME=/var/lib/iudbms
+# Binds to $IUDBMS_API_HOST, loopback by default. The API has state-changing
+# endpoints and no authentication: reach it through an SSH tunnel, not by
+# binding it to a routable address.
+ExecStart=/opt/iudbms/venv/bin/iudbms-api
+User=iudbms
+Group=iudbms
+UMask=0007
+Restart=on-failure
+RestartSec=5
+
+# Needs nothing but its state directory and a listening socket.
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectHome=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/iudbms
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+LockPersonality=yes
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

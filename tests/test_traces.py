@@ -414,10 +414,26 @@ def test_a_stored_run_replays_through_the_monitor_like_a_capture(
     events, descs = simulated(["keyboard", "mimicry", "mass_storage"])
     with Store(tmp_path / "t.db") as store:
         rec, _, original = monitor_run(store, events, descs.get, detector_factory())
-        replay = list(StoreSource(store, rec.run_id).events())
-    replay_descs = {k: descs[k] for k in descs}
-    with Store(tmp_path / "t2.db") as store2:
-        _, _, again = monitor_run(store2, replay, replay_descs.get, detector_factory())
+
+    class Threaded(GatedSource):
+        """Iterates the StoreSource INSIDE the monitor's reader thread, which is
+        where a real --replay-db run reads it."""
+        def __init__(self, inner):
+            super().__init__([])
+            self.inner = inner
+
+        def events(self):
+            yield from self.inner.events()
+            self.done.set()
+
+    with Store(tmp_path / "t.db") as store, Store(tmp_path / "t2.db") as store2:
+        src = StoreSource(store, rec.run_id)
+        gate = Threaded(src)
+        rec2 = TraceRecorder(store2, source="replay")
+        mon = LiveMonitor(detector_factory(), gate, src.descriptor,
+                          clock=gated_clock(gate), recorder=rec2)
+        again = {(v.device_id, v.t_start): v.features.copy()
+                 for b in mon.run() for v in b}
     assert again.keys() == original.keys()
     for k in original:
         assert np.array_equal(original[k], again[k]), f"window {k} scored differently"

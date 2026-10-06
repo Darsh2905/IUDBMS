@@ -42,12 +42,24 @@ diagrams:  ## architecture + gate diagrams as PNG/PDF (needs `make eval` first)
 	cp out/architecture.png out/architecture.pdf out/architecture_ieee.png out/architecture_ieee.pdf \
 	   out/gate_timeline.png out/gate_timeline.pdf docs/report/
 
-monitor-replay:  ## the monitor loop driven from a recorded capture (any OS)
+monitor-replay:  ## the monitor loop driven from a recorded capture (any OS); writes out/live.db
 	python3 scripts/live_monitor.py --replay tests/fixtures/usbmon/demo_capture.txt \
 		--descriptors tests/fixtures/usbmon/demo_descriptors.json
 
-monitor:  ## LIVE capture on Linux (needs root + usbmon); not runnable on macOS
+monitor:  ## LIVE capture on Linux (needs root + usbmon); writes out/live.db
 	sudo python3 scripts/live_monitor.py --bus 0
+
+dashboard-live:  ## the dashboard over the monitor's database rather than the evaluation's
+	IUDBMS_DB=out/live.db python3 -m uvicorn iudbms.api.app:app
+
+dist:  ## build the installable wheel into dist/
+	python3 -m pip wheel . --no-deps -w dist
+
+install-service:  ## install the systemd services on this Linux host (see docs/DEPLOYMENT.md)
+	sudo ./deploy/install.sh
+
+verify-service:  ## post-install checks on this Linux host
+	sudo ./deploy/verify.sh
 
 demo:  ## live replay: watch the loop close in real time (needs `make eval` first)
 	python3 scripts/live_replay.py --profile staged_delay --speed 6
