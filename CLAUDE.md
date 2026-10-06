@@ -971,6 +971,24 @@ shows the capture→parse→window→score→persist→trace path runs end to en
 kernel text. It says nothing about real device behaviour, and the models were
 trained on simulated traffic so their scores here are out of distribution.
 
+### Finding 27 — the install script's PyTorch advice was wrong, and the default wheel is a trap (06 Oct)
+
+`deploy/install.sh` said `--cpu-torch` was "unnecessary on ARM64, where the default
+wheel is CPU-only". That was true when written and is not now. PyPI's torch 2.14.1
+declares `cuda-toolkit[...]==13.0.3`, `nvidia-cudnn-cu13`, `nvidia-nccl-cu13`,
+`nvidia-nvshmem-cu13` and `triton` for **every** `platform_system == "Linux"` —
+ARM64 included. The aarch64 wheel alone is 454 MB, plus several GB of NVIDIA
+libraries, for a 36 KB LSTM that only ever runs on CPU. Found on the first real
+install: ~150 KB/s made it a multi-hour download. I stopped it, and the CPU-only
+index serves the same torch 2.14.1 for aarch64 at 159 MB.
+
+CPU-only is now the default on every architecture (`--default-torch` opts out), and
+it is installed first from the CPU index so the project install sees `torch>=2.2`
+already satisfied and does not replace it. `docs/DEPLOYMENT.md` says the same for
+anyone installing by hand. **Lesson:** a dependency claim about someone else's
+packaging is a claim about a moving target; I verified neither the wheel's metadata
+nor its size when I wrote it.
+
 ### Live monitoring — wired 10 Sep, never yet run on real traffic
 
 Until now **nothing called `UsbmonSource.live()`.** It existed and was

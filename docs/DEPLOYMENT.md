@@ -24,13 +24,17 @@ not that its verdicts are calibrated for real devices.
 - Python ≥ 3.11 with `venv` (`sudo apt install python3-venv`).
 - Trained models: `deploy.json`, `stage1.pkl`, `stage2.pt` (in `out/models/`, or
   regenerate with `make eval`).
-- About 2 GB of disk for the virtualenv; PyTorch is most of it.
+- About 2 GB of disk for the virtualenv. PyTorch is installed from its **CPU-only**
+  index (~160 MB); the PyPI wheel now pulls the whole CUDA stack on every Linux
+  architecture, which is several GB for a model that only runs on CPU. If you
+  install the package by hand, do the same:
+  `pip install torch --index-url https://download.pytorch.org/whl/cpu` first.
 
 ## Install
 
 ```bash
 git clone <repo> iudbms && cd iudbms
-sudo ./deploy/install.sh --enable          # add --cpu-torch on x86_64
+sudo ./deploy/install.sh --enable
 sudo ./deploy/verify.sh
 ```
 

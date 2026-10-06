@@ -1,14 +1,19 @@
 #!/usr/bin/env bash
 # Install IUDBMS on a Linux host as two systemd services.
 #
-#   sudo ./deploy/install.sh [--models DIR] [--enable] [--cpu-torch]
+#   sudo ./deploy/install.sh [--models DIR] [--enable] [--default-torch]
 #
-#   --models DIR   trained models to deploy (default: out/models in this repo).
-#                  Must contain deploy.json, stage1.pkl and stage2.pt.
-#   --enable       enable and start both services now (default: install only)
-#   --cpu-torch    install PyTorch's CPU-only build first. Recommended on
-#                  x86_64, where the default wheel pulls in gigabytes of CUDA.
-#                  Unnecessary on ARM64, where the default wheel is CPU-only.
+#   --models DIR      trained models to deploy (default: out/models in this repo).
+#                     Must contain deploy.json, stage1.pkl and stage2.pt.
+#   --enable          enable and start both services now (default: install only)
+#   --default-torch   install PyTorch from PyPI instead of the CPU-only build.
+#                     Don't, unless you have a GPU you intend to use: on Linux
+#                     the PyPI wheel now depends on the whole CUDA stack
+#                     (cuda-toolkit, cuDNN, NCCL, NVSHMEM, triton) on every
+#                     architecture, ARM64 included -- a 454 MB wheel plus several
+#                     GB of libraries, for a 36 KB model that only runs on CPU.
+#
+# PyTorch is installed from the CPU-only index by default (~160 MB).
 #
 # Layout:
 #   /opt/iudbms/venv            the package, in its own virtualenv
@@ -23,7 +28,7 @@ set -euo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MODELS="$REPO/out/models"
 ENABLE=0
-CPU_TORCH=0
+DEFAULT_TORCH=0
 PREFIX=/opt/iudbms
 STATE=/var/lib/iudbms
 ETC=/etc/iudbms
@@ -32,8 +37,8 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --models)    MODELS="$2"; shift 2 ;;
     --enable)    ENABLE=1; shift ;;
-    --cpu-torch) CPU_TORCH=1; shift ;;
-    -h|--help)   sed -n '2,25p' "$0"; exit 0 ;;
+    --default-torch) DEFAULT_TORCH=1; shift ;;
+    -h|--help)   sed -n '2,28p' "$0"; exit 0 ;;
     *) echo "install: unknown option $1 (see --help)" >&2; exit 2 ;;
   esac
 done
@@ -70,7 +75,10 @@ install -d -m 0750 -o root -g iudbms "$ETC"
 step "virtualenv and package -> $PREFIX/venv"
 [[ -x "$PREFIX/venv/bin/python" ]] || "$PY" -m venv "$PREFIX/venv"
 "$PREFIX/venv/bin/pip" install --quiet --upgrade pip
-if [[ $CPU_TORCH -eq 1 ]]; then
+if [[ $DEFAULT_TORCH -eq 0 ]]; then
+  # Installed first and from the CPU index only, so the project install below
+  # finds torch already satisfied (torch>=2.2) and does not replace it with
+  # PyPI's CUDA-dependent wheel.
   step "PyTorch, CPU-only build"
   "$PREFIX/venv/bin/pip" install --quiet torch --index-url https://download.pytorch.org/whl/cpu
 fi
