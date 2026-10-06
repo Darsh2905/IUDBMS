@@ -62,6 +62,58 @@ CREATE TABLE IF NOT EXISTS actions (
     action    TEXT,
     rule      TEXT
 );
+
+-- Raw URB traces (storage.traces). Plan §5: "store raw traces, not just
+-- features, so the feature set can be revised without re-collecting."
+-- IF NOT EXISTS throughout, so databases written before these tables existed
+-- gain them on next open.
+CREATE TABLE IF NOT EXISTS trace_runs (
+    run_id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    started          REAL,          -- wall clock, epoch seconds
+    source           TEXT,
+    payload_mode     TEXT,          -- pseudonymous | none | full
+    window_s         REAL,
+    contract_version TEXT
+);
+
+CREATE TABLE IF NOT EXISTS trace_sessions (
+    session_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id     INTEGER REFERENCES trace_runs(run_id),
+    device_id  TEXT,
+    t_attach   REAL,                -- start of the first window scored
+    t_detach   REAL,                -- end of the last window scored; NULL = open
+    descriptor TEXT                 -- JSON, as attached by the detector
+);
+CREATE INDEX IF NOT EXISTS ix_trace_sessions ON trace_sessions(run_id, device_id);
+
+CREATE TABLE IF NOT EXISTS urb_events (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,   -- drain order
+    run_id         INTEGER,
+    device_id      TEXT,
+    ts             REAL,
+    evt            TEXT,
+    ttype          TEXT,
+    dir            TEXT,
+    ep             INTEGER,
+    status         INTEGER,
+    length         INTEGER,
+    interval       INTEGER,
+    data           BLOB,            -- per trace_runs.payload_mode
+    data_truncated INTEGER,
+    setup          BLOB,
+    late           INTEGER DEFAULT 0,   -- arrived after its window closed
+    pinned         INTEGER DEFAULT 0    -- alert evidence; never evicted
+);
+CREATE INDEX IF NOT EXISTS ix_urb_dev ON urb_events(run_id, device_id, ts);
+CREATE INDEX IF NOT EXISTS ix_urb_evict ON urb_events(pinned, id);
+
+CREATE TABLE IF NOT EXISTS trace_evictions (
+    run_id          INTEGER,
+    device_id       TEXT,
+    evicted_through REAL,           -- latest ts ever evicted for this device
+    n_evicted       INTEGER,
+    PRIMARY KEY (run_id, device_id)
+);
 """
 
 
@@ -168,4 +220,5 @@ class Store:
 
     def counts(self) -> dict[str, int]:
         return {t: int(self.cx.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0])
-                for t in ("devices", "windows", "baselines", "alerts", "actions")}
+                for t in ("devices", "windows", "baselines", "alerts", "actions",
+                          "trace_runs", "trace_sessions", "urb_events")}

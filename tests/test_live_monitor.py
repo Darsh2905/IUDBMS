@@ -118,6 +118,65 @@ def test_unenumerated_device_is_retried_not_dropped(detector_factory):
     assert "1-3" in mon.detector.devices
 
 
+def test_deferred_events_keep_chronological_order(detector_factory):
+    """A device's events held before sysfs enumerates it must be scored in time
+    order. They were folded in AFTER the attach window's own events, and in
+    reverse window order, so np.diff produced negative inter-arrival times
+    (min_iat -1.2 s on this input). On a real hotplug the enumeration URBs
+    precede the sysfs entry, so this hit the first scored window of every new
+    device -- the window in which a BadUSB starts typing."""
+    from iudbms.contract import feature_index
+
+    def e(ts):
+        return URBEvent(ts=ts, evt="C", ttype="intr", direction="in", bus=1, dev=3,
+                        ep=1, status=0, length=8, data=b"\x01" * 8)
+
+    calls = {"n": 0}
+
+    def desc(key):
+        calls["n"] += 1
+        return None if calls["n"] < 3 else DESC
+
+    src = FakeSource([e(0.10), e(0.30), e(1.10), e(1.30), e(2.10), e(2.30)])
+    mon = LiveMonitor(detector_factory(), src, desc, clock=_fast_clock())
+    first = next(v for b in mon.run(max_windows=4) for v in b)
+    assert first.features[feature_index("n_events")] == 6, "deferred events were lost"
+    assert first.features[feature_index("min_iat")] >= 0.0, (
+        f"negative inter-arrival time {first.features[feature_index('min_iat')]:.3f}: "
+        f"deferred events were not scored in chronological order")
+
+
+def test_finite_source_ends_the_run_without_max_windows(detector_factory):
+    """A replay must stop on its own once its traffic is scored. End-of-stream
+    used to be seen only on the drain that dequeued the sentinel; if later
+    windows still held buffered events at that moment, every subsequent drain
+    reported the source alive again and run() scored idle windows forever.
+    Every other test here passes max_windows, which is why this went unseen --
+    and it meant `live_monitor.py --replay` could never exit by itself."""
+    import threading
+
+    src = FakeSource([ev(0.1), ev(1.5), ev(4.2)])   # traffic spans five windows
+    t = {"v": 0.0}
+
+    def clock():
+        t["v"] += 1.0
+        return t["v"]
+
+    mon = LiveMonitor(detector_factory(), src, lambda k: DESC, clock=clock)
+    finished = threading.Event()
+
+    def consume():
+        for _ in mon.run():          # no max_windows
+            pass
+        finished.set()
+
+    th = threading.Thread(target=consume, daemon=True)
+    th.start()
+    assert finished.wait(10), (
+        f"run() did not terminate; {mon.windows_scored} windows scored so far")
+    assert mon.windows_scored < 50
+
+
 def test_two_devices_are_tracked_independently(detector_factory):
     src = FakeSource([ev(0.1, dev=3), ev(0.2, dev=5), ev(0.3, dev=3)])
     mon = LiveMonitor(detector_factory(), src,

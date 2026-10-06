@@ -57,9 +57,20 @@ class LiveMonitor:
         window: float = 1.0,
         idle_detach_windows: int = 30,
         clock: Callable[[], float] = time.monotonic,
+        recorder=None,
     ):
         self.detector = detector
         self.source = source
+        #: Optional ``storage.traces.TraceRecorder``. Receives every drained
+        #: event (late ones flagged) and every attach/detach, which is what lets
+        #: a stored run be re-featurised exactly as this loop scored it.
+        self.recorder = recorder
+        self._last_window: int | None = None
+        #: Sticky once the source's end-of-stream sentinel is seen. It used to be
+        #: reported only by the drain that dequeued it, so a finite source whose
+        #: traffic still filled later windows at that moment was treated as live
+        #: again on every following drain, and run() never returned.
+        self._ended = False
         self.descriptor_for = descriptor_for
         self.window = window
         self.idle_detach_windows = idle_detach_windows
@@ -103,14 +114,15 @@ class LiveMonitor:
         Placement uses the event's own timestamp. Returns False once the source
         has ended.
         """
-        alive = True
+        on_time: list[URBEvent] = []
+        late: list[URBEvent] = []
         while True:
             try:
                 item = self._q.get_nowait()
             except queue.Empty:
                 break
             if item is None:
-                alive = False
+                self._ended = True
                 break
             if isinstance(item, Exception):
                 raise item
@@ -119,15 +131,27 @@ class LiveMonitor:
                 # its window already closed; count it rather than silently
                 # folding it into a later one and distorting that window's rate
                 self.events_late += 1
+                late.append(item)
                 continue
+            on_time.append(item)
             self._buckets.setdefault(w, {}).setdefault(item.device_key, []).append(item)
-        return alive
+        if self.recorder is not None:
+            # Late events are still part of what the kernel emitted, so they are
+            # stored -- flagged, because this loop never scored them.
+            self.recorder.record(on_time)
+            self.recorder.record(late, late=True)
+        return not self._ended
 
     def _close_window(self, w: int) -> list[WindowVerdict]:
         t_start = w * self.window
         bucket = self._buckets.pop(w, {})
         for key, evs in self._deferred.items():
-            bucket.setdefault(key, []).extend(evs)
+            # Held events are OLDER than this window's, so they go first. They
+            # used to be appended after, and accumulated in reverse window order
+            # across repeated deferrals; the extractor diffs timestamps as given,
+            # so that produced negative inter-arrival times on the first scored
+            # window of every device sysfs had not yet enumerated.
+            bucket[key] = evs + bucket.get(key, [])
         self._deferred = {}
 
         verdicts: list[WindowVerdict] = []
@@ -145,6 +169,8 @@ class LiveMonitor:
                         self._deferred[key] = events
                     continue
                 self.detector.attach(desc, key)
+                if self.recorder is not None:
+                    self.recorder.on_attach(key, t_start, desc)
             verdicts.append(self.detector.observe_window(key, t_start, events))
             self._idle[key] = 0 if events else self._idle.get(key, 0) + 1
 
@@ -152,7 +178,10 @@ class LiveMonitor:
             if n >= self.idle_detach_windows:
                 self.detector.detach(key)
                 self._idle.pop(key, None)
+                if self.recorder is not None:
+                    self.recorder.on_detach(key, t_start + self.window)
         self.windows_scored += 1
+        self._last_window = w
         return verdicts
 
     def run(self, max_windows: int | None = None) -> Iterator[list[WindowVerdict]]:
@@ -178,3 +207,7 @@ class LiveMonitor:
                     break
         finally:
             self.stop()
+            if self.recorder is not None:
+                end = (None if self._last_window is None
+                       else (self._last_window + 1) * self.window)
+                self.recorder.close(end)
