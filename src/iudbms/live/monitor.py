@@ -98,6 +98,9 @@ class LiveMonitor:
         #: max_defer_windows. Without it an 18 s replay took 34 windows.
         self.end_grace_windows = end_grace_windows
         self._windows_since_end = 0
+        #: Items pulled off the queue while waiting for the time origin; they are
+        #: put back in front of the queue's contents for the first drain.
+        self._pending: list = []
         #: Events dropped because their device never had a descriptor. Counted,
         #: not silent: they still reach the raw trace, which records at drain.
         self.events_undescribed = 0
@@ -140,10 +143,13 @@ class LiveMonitor:
         on_time: list[URBEvent] = []
         late: list[URBEvent] = []
         while True:
-            try:
-                item = self._q.get_nowait()
-            except queue.Empty:
-                break
+            if self._pending:
+                item = self._pending.pop(0)
+            else:
+                try:
+                    item = self._q.get_nowait()
+                except queue.Empty:
+                    break
             if item is None:
                 self._ended = True
                 break
@@ -213,12 +219,43 @@ class LiveMonitor:
         self._last_window = w
         return verdicts
 
+    def _await_origin(self) -> float | None:
+        """Block until the first event arrives and return the window clock origin.
+
+        Event timestamps are relative to the first event the parser sees, so the
+        window clock has to start from that same instant. It used to start when
+        the monitor did: a first URB arriving even a second later left every
+        event's window permanently behind the clock (both advance at one second
+        per second), and the whole stream was dropped as late. A real service
+        scored nothing for exactly this reason. Anchoring on arrival makes the
+        offset zero by construction, however long the bus was idle first.
+
+        ``origin = now - first_event.ts`` so an event arriving "on time" lands in
+        the window that is open when it arrives. Returns None if the source ends
+        or the monitor is stopped before any event arrives.
+        """
+        while not self._stop.is_set():
+            try:
+                item = self._q.get(timeout=0.05)
+            except queue.Empty:
+                continue
+            if item is None:
+                self._ended = True
+                return None
+            if isinstance(item, Exception):
+                raise item
+            self._pending.append(item)
+            return self._clock() - item.ts
+        return None
+
     def run(self, max_windows: int | None = None) -> Iterator[list[WindowVerdict]]:
         """Yield one list of verdicts per closed window, until the source ends."""
         self.start()
-        t0 = self._clock()
         w = 0
         try:
+            t0 = self._await_origin()
+            if t0 is None:
+                return
             while max_windows is None or w < max_windows:
                 deadline = t0 + (w + 1) * self.window
                 while True:

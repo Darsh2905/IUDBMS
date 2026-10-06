@@ -276,6 +276,56 @@ def test_replay_does_not_linger_for_undescribed_devices(detector_factory):
     assert mon.events_undescribed == 15
 
 
+def test_a_first_event_that_arrives_after_startup_is_not_late(detector_factory):
+    """Found on the first live service on a real kernel: it scored NOTHING --
+    heartbeat `devices=0 late=174 urb_recorded=174`, every event late.
+
+    usbmon timestamps are relative to the FIRST event the parser sees, but the
+    window clock used to start when the monitor started. If the first URB arrives
+    after the monitor starts, every event's window index sits permanently behind
+    the clock -- both advance at one second per second, so it never catches up --
+    and the whole stream is dropped as late. A foreground run had worked only
+    because its first URB happened to arrive within a fraction of a second.
+    Every simulated or replayed source delivers its first event immediately, so
+    nothing could see it."""
+    import threading
+    import time
+
+    gate = threading.Event()
+
+    class Delayed:
+        stats = CaptureStats()
+
+        def events(self):
+            gate.wait()                                   # an idle bus, then traffic
+            for i in range(12):
+                yield ev(0.0 + 0.5 * i)
+
+        def descriptor(self, key):
+            raise KeyError(key)
+
+    t = {"v": 0.0}
+
+    def clock():
+        t["v"] += 1.0          # races ahead whenever the loop asks for the time
+        return t["v"]
+
+    mon = LiveMonitor(detector_factory(), Delayed(), lambda k: DESC, clock=clock)
+    threading.Timer(0.4, gate.set).start()                # first URB 0.4 s after start
+    done = threading.Event()
+    scored = []
+
+    def consume():
+        for batch in mon.run():
+            scored.extend(batch)
+        done.set()
+
+    threading.Thread(target=consume, daemon=True).start()
+    assert done.wait(15), "run() did not finish"
+    assert mon.events_late == 0, f"{mon.events_late} events were dropped as late"
+    assert scored and "1-3" in mon.detector.devices, "the device was never scored"
+
+
 def test_two_devices_are_tracked_independently(detector_factory):
     src = FakeSource([ev(0.1, dev=3), ev(0.2, dev=5), ev(0.3, dev=3)])
     mon = LiveMonitor(detector_factory(), src,

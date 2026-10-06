@@ -71,7 +71,13 @@ def load_models(models: Path, *, allow_stage1_only: bool = False):
     configuration measured at 15.8% detection, presented as the deployed one.
     """
     cfg_path = models / "deploy.json"
-    if not cfg_path.exists():
+    try:
+        present = cfg_path.exists()
+    except PermissionError:
+        raise SystemExit(
+            f"Cannot read {models}: permission denied. The deployed models are "
+            f"root:iudbms 2750 -- run with sudo, or as a member of group iudbms.") from None
+    if not present:
         raise SystemExit(
             f"No trained models at {models}.\n"
             f"Produce them with:  make eval   (writes out/models/)\n"

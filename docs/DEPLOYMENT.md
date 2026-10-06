@@ -98,17 +98,29 @@ sudo ./deploy/uninstall.sh --purge    # deletes data, configuration and the acco
 ## What has and has not been verified
 
 Verified on the development host (macOS), by tests and by an install from a built
-wheel into a clean virtualenv outside the repository:
+wheel into a clean virtualenv outside the repository: both entry points, the
+dashboard as package data, persistence, the pseudonymised trace, every API endpoint,
+and no cross-origin grant.
 
-- the package installs with both entry points and the dashboard as package data;
-- `iudbms-monitor` replays a capture and a stored run, persisting windows, alerts,
-  actions and a pseudonymised trace that recomputes every feature bit-exactly;
-- `iudbms-api` serves the dashboard, the deployed policy and the trace endpoints,
-  and grants no cross-origin access;
-- the shell scripts parse.
+**Verified on a real Linux host** (Ubuntu 24.04.5 aarch64, kernel 6.8.0-146, UTM/QEMU
+guest), 06 Oct 2026:
 
-**Not yet verified — needs the Linux VM:** the systemd units themselves (sandboxing
-directives, the setgid state directory shared between root and `iudbms`, SIGTERM
-handling under systemd), `install.sh` and `verify.sh` end to end, and live capture
-from `/sys/kernel/debug/usb/usbmon`. Run `sudo ./deploy/verify.sh` on the VM and
-treat this section as outdated until it passes there.
+- `deploy/install.sh --enable` completes; both units start and stay active;
+- `deploy/verify.sh` passes all 18 checks, including a live check that windows are
+  being persisted;
+- the service reads `/sys/kernel/debug/usb/usbmon`, parses real kernel output with
+  0.0000% loss, attaches the described devices and scores them every second;
+- the same real capture replayed on the Mac and on the VM scores identically to six
+  decimals.
+
+**Not yet verified:** that the services come back after a reboot; SIGTERM handling
+under systemd's stop timeout; any real keystroke traffic (the VM had no display
+device, so the virtual USB keyboard was never fed); and, above all, behaviour on
+real *physical* devices or a real attack. The devices seen so far are QEMU's
+virtual ones, mostly idle.
+
+**A green `verify.sh` is necessary, not sufficient.** The first service on a real
+kernel passed every structural check and scored nothing (CLAUDE.md finding 28);
+only reading the monitor's heartbeat (`devices=0 late=174`) showed it. After
+installing, confirm `journalctl -u iudbms-monitor` shows a heartbeat with
+`devices>=1` and `late=0`.
