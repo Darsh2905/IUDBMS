@@ -18,8 +18,21 @@ def store(tmp_path):
 
 
 def test_schema_creates_every_table(store):
-    assert set(store.counts()) == {"devices", "windows", "baselines", "alerts", "actions"}
+    assert set(store.counts()) == {"devices", "windows", "baselines", "alerts", "actions",
+                                   "trace_runs", "trace_sessions", "urb_events"}
     assert all(v == 0 for v in store.counts().values())
+
+
+def test_old_database_gains_trace_tables(tmp_path):
+    """Databases written before the trace tables existed must gain them on the
+    next open rather than fail -- the dashboard opens whatever DB it is given."""
+    import sqlite3
+    db = tmp_path / "old.db"
+    cx = sqlite3.connect(db)
+    cx.execute("CREATE TABLE devices (device_id TEXT PRIMARY KEY, bus INTEGER)")
+    cx.commit(); cx.close()
+    with Store(db) as s:
+        assert s.counts()["urb_events"] == 0
 
 
 def test_device_round_trip(store):
