@@ -214,6 +214,68 @@ def test_stop_ends_the_run_even_while_the_source_is_blocked(detector_factory):
     assert mon.windows_scored <= 4
 
 
+def test_a_device_that_never_gets_a_descriptor_is_not_held_forever(detector_factory):
+    """Found on the first real usbmon capture. SysfsScanner deliberately skips
+    root hubs, and the kernel emits traffic for them, so descriptor_for returns
+    None for ever. The monitor holds a not-yet-enumerated device's events and
+    retries -- and re-deferred them APPENDED to each window's new events, so the
+    held list grew by that device's traffic every window, without bound. The
+    simulator never exercised it: every simulated device has a descriptor."""
+    # a root-hub-like device (1-1) chattering every window for 60 windows,
+    # alongside a normal one (1-3)
+    events = []
+    for w in range(60):
+        events += [ev(w + 0.2, dev=1), ev(w + 0.4, dev=1), ev(w + 0.6, dev=1)]
+    events += [ev(0.1, dev=3), ev(59.5, dev=3)]
+    events.sort(key=lambda e: e.ts)
+
+    mon = LiveMonitor(detector_factory(), FakeSource(events),
+                      lambda k: DESC if k == "1-3" else None,
+                      clock=_fast_clock(), max_defer_windows=10)
+    list(mon.run(max_windows=62))
+
+    held = len(mon._deferred.get("1-1", []))
+    assert held <= 3 * 11, f"{held} events still held for a device with no descriptor"
+    assert mon.events_undescribed >= 3 * 40, "events for the undescribed device were not dropped"
+    assert "1-1" not in mon.detector.devices
+    assert "1-3" in mon.detector.devices, "the described device must be unaffected"
+
+
+def test_a_late_descriptor_still_attaches_within_the_deferral_window(detector_factory):
+    """The cap must not break the case deferral exists for: a device whose
+    sysfs entry appears a few seconds after its first URBs."""
+    calls = {"n": 0}
+
+    def desc(key):
+        calls["n"] += 1
+        return None if calls["n"] < 4 else DESC
+
+    src = FakeSource([ev(0.1), ev(0.4), ev(1.2), ev(2.2), ev(3.2), ev(4.2)])
+    mon = LiveMonitor(detector_factory(), src, desc, clock=_fast_clock(),
+                      max_defer_windows=10)
+    list(mon.run(max_windows=8))
+    assert "1-3" in mon.detector.devices
+    assert mon.events_undescribed == 0
+
+
+def test_replay_does_not_linger_for_undescribed_devices(detector_factory):
+    """Found replaying the first real capture: 18 s of traffic took 34 windows,
+    because root-hub events held for max_defer_windows kept run() alive long
+    after the source had ended. Once nothing more can arrive there is nothing to
+    wait for, so the grace is a few windows, not the full cap."""
+    events = [ev(0.1 + 0.3 * i, dev=3) for i in range(20)]            # described, ~6 s
+    events += [ev(0.2 + 0.4 * i, dev=1) for i in range(15)]           # root hub, never described
+    events.sort(key=lambda e: e.ts)
+    mon = LiveMonitor(detector_factory(), FakeSource(events),
+                      lambda k: DESC if k == "1-3" else None,
+                      clock=_fast_clock(), max_defer_windows=30)
+    n = sum(1 for _ in mon.run())
+    last = max(e.ts for e in events)
+    assert n <= int(last) + 1 + 5, (
+        f"{n} windows for {last:.1f} s of traffic: replay lingered on held events")
+    assert mon.events_undescribed == 15
+
+
 def test_two_devices_are_tracked_independently(detector_factory):
     src = FakeSource([ev(0.1, dev=3), ev(0.2, dev=5), ev(0.3, dev=3)])
     mon = LiveMonitor(detector_factory(), src,

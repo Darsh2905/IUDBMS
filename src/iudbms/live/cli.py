@@ -349,6 +349,9 @@ def main(argv: list[str] | None = None) -> int:
         if monitor.events_late:
             out.line(f"  late events    : {monitor.events_late:,} (arrived after their "
                      f"window closed; stored, not scored)")
+        if monitor.events_undescribed:
+            out.line(f"  undescribed    : {monitor.events_undescribed:,} events from devices "
+                     f"with no sysfs entry (root hubs); stored, not scored")
         if persister is not None:
             out.line(f"  persisted      : {persister.n_windows:,} windows, "
                      f"{persister.n_actions} actions -> {args.db}")
