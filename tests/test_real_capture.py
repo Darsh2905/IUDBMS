@@ -138,3 +138,41 @@ def test_real_capture_through_the_monitor():
     assert mon.events_undescribed == 158          # every root-hub event, counted
     assert mon.windows_scored <= 18 + 1 + 5, (
         f"{mon.windows_scored} windows for 18.1 s of traffic")
+
+
+# --------------------------------------------------------------------------
+# the simulator's keyboard, measured the way a real one was (eval/real_typing)
+# --------------------------------------------------------------------------
+
+def _simulated_keyboard_capture(tmp_path):
+    from iudbms.capture.simulator import Simulator
+    s = Simulator(seed=3).session("K", "keyboard", duration=60.0)
+    path = tmp_path / "sim_keyboard.txt"
+    path.write_text("\n".join(s.lines) + "\n")
+    return path, s.descriptor.device_key
+
+
+def test_real_typing_report_needs_actual_keystrokes(tmp_path):
+    from eval.real_typing import capture_report
+    with pytest.raises(SystemExit, match="nothing was typed"):
+        capture_report(CAP, "1-4")        # the idle real capture: no HID reports
+
+
+def test_simulated_keyboard_has_no_key_release_reports(tmp_path):
+    """Documents a gap against real hardware, not a property to preserve.
+
+    A real keyboard (UTM/QEMU USB keyboard, one person mashing keys, 06 Oct 2026)
+    sent 10.2% all-zero key-release reports, 35.7% distinct payloads, 22.6
+    reports/s and a median gap of 24 ms. The simulator's `_human_typing` emits ONE
+    URB per keystroke: no release report, ~2.2 reports/s, median gap ~150 ms, and
+    -- measured, not the "~100%" first claimed here -- ~53% distinct payloads,
+    because it draws from only ~110 distinct reports. If this starts failing
+    because the simulator learned to emit releases, update CLAUDE.md finding 29
+    rather than this assertion.
+    """
+    from eval.real_typing import capture_report
+    path, key = _simulated_keyboard_capture(tmp_path)
+    r = capture_report(path, key)
+    assert r["release_share"] == 0.0
+    assert 0.3 < r["unique_payload_share"] < 0.8
+    assert 1.0 < r["reports_per_s"] < 5.0
