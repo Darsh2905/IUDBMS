@@ -1026,6 +1026,56 @@ ran `0` as a command (it is systemd syntax, not shell — now read as data, and 
 value is quoted); and an unreadable models directory gave a raw `PermissionError`
 traceback instead of a message.
 
+### Finding 29 — real typing through a real kernel: no false alarm, and the simulator's keyboard differs in shape (06 Oct)
+
+**Setup.** The UTM VM had no display device, so the virtual USB keyboard could never
+be fed (the first "typing" capture, made in the serial-console window, contained no
+keyboard traffic — keystrokes there go down a UART, not USB). Adding a
+`virtio-gpu-pci` display fixed it. One person typed (mashed keys: nonsense,
+continuously) for ~76 s into the graphical console while `scripts/vm_capture.sh`
+recorded and the deployed `iudbms-monitor` service scored the same seconds live.
+Capture kept at `~/Downloads/iudbms-real-captures/` and **not committed**: it is
+decodable keycodes. Re-run: `python3 -m eval.real_typing CAPTURE --device 1-4`, and
+`--scores DB` on the host.
+
+**The monitor did not alarm.** 3,759 lines, 0.0000% loss, 1,708 real HID reports.
+Over the keyboard's 144 windows with traffic: Stage 2 min 0.517, median 0.812, max
+0.849 against a 0.9916 threshold; **0 windows at or above it, 0 alerts, 0 actions.**
+That is a real, if small, no-false-positive observation on real human input. It is
+**not** a false-positive rate: one session, one person, nonsense text, a virtual
+keyboard. And the margin is thin by comparison with idle devices (0.25–0.45).
+
+**The shape differs.** Measured side by side by `eval/real_typing.py` (the simulator
+column is measured from a simulated session, never asserted):
+
+| | real | simulator |
+|---|---|---|
+| HID reports per second | 22.6 | 2.2 |
+| key-release (all-zero) reports | 10.2% | 0.0% |
+| distinct payloads | 35.7% | 47.9% |
+| inter-arrival median | 0.025 s | 0.150 s |
+| inter-arrival p10 / p90 | 0.007 / 0.078 s | 0.076 / 1.740 s |
+| gaps longer than 1 s | 0.2% | 15.5% |
+
+**Read this with the right caution.** A person mashing keys continuously is a stress
+case, not typing prose — real prose has think-pauses and runs several times slower,
+so the *speed* gap is mostly the task I set, and says little about whether
+`HUMAN_IAT_LOGNORM` is right. The *structural* gap holds regardless: real keyboards
+emit a report on key-**up** as well as key-down (and on rollover), the simulator
+emits one URB per keystroke. Those are real differences in event count, `min_iat`
+and the payload features that no timing constant can fix.
+
+**One correction to myself.** I first wrote that simulated payloads are "~100%
+distinct". The test I wrote to pin that failed: the simulator draws from only ~110
+distinct reports and measures 48–53%. The real figure (35.7%) is therefore much
+closer than I claimed. The script now measures the simulator instead.
+
+**Consequence for the paper.** Limitation 1 ("no real USB traffic") is now partly
+answered and partly sharpened: real traffic has now been parsed, windowed, scored and
+persisted end to end, and a real keyboard was scored without alarm — but it also
+shows the simulator is not a faithful generator of real HID reports. The honest
+claim remains that all *detection* numbers are measured on simulated traffic.
+
 ### Live monitoring — wired 10 Sep, never yet run on real traffic
 
 Until now **nothing called `UsbmonSource.live()`.** It existed and was
