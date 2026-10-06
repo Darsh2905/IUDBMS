@@ -932,6 +932,45 @@ The monitor's dev default database is `out/live.db`, not `out/iudbms.db`:
 `make eval` deletes the latter before rewriting it, and would have wiped live
 data and mixed live devices with evaluation sessions on the dashboard.
 
+### Finding 26 — first real kernel traffic: the parser holds, the monitor had two bugs (06 Oct)
+
+**The first real usbmon output this project has parsed.** A UTM/QEMU guest (Ubuntu
+24.04.5 aarch64, kernel 6.8.0-146) has `usbmon` as a module, debugfs mounted and a
+real xHCI controller with a QEMU keyboard, mouse, tablet, hub and USB CD-ROM.
+`scripts/vm_capture.sh` recorded 20 s while `lsusb -v` read every descriptor
+(control transfers) and the kernel polled the empty CD-ROM (SCSI bulk-only
+transport — the payloads start `USBC`/`USBS`). Committed as
+`tests/fixtures/usbmon/real_qemu_vm_{capture.txt,descriptors.json}`;
+`tests/test_real_capture.py` pins what follows.
+
+**What held.** 338 of 338 lines parsed — **0.0000% loss against the plan's < 0.1%
+criterion, which had never been measurable.** 0 of 338 events fail
+`URBEvent.validate()`; all 108 control submissions carry their SETUP packet;
+timestamps are monotone; the polling interval is its own field rather than the
+length. Those were the line forms and the length defect the Sprint-0 parser got
+wrong, and the parser handles them on genuine kernel output.
+
+**What real traffic found that the simulator could not — a device with no
+descriptor.** `SysfsScanner` skips root hubs on purpose (`usbN`), and the kernel
+emits traffic for devnum 1 on every bus: 158 of the 338 events. The monitor holds
+a not-yet-enumerated device's events and retries — and re-held them *appended* to
+each window's new events, so the held list grew by that device's traffic every
+window, without bound. Every simulated device has a descriptor, so nothing
+exercised it. Fixed with `max_defer_windows` (30): held events are counted in
+`events_undescribed` and dropped, still present in the raw trace which records at
+drain. A second effect of the same cause: an 18 s capture took **34 windows** to
+replay, because held events kept `run()` alive for the whole cap after the source
+ended. Once nothing more can arrive there is nothing to wait for, so held events
+now get `end_grace_windows` (3) more windows.
+
+**What this does and does not show.** All five described devices scored, zero
+alerts, Stage 2 between 0.23 and 0.46 against a 0.9916 threshold. That is **not**
+a false-positive rate: the traffic is 34 s of mostly idle devices plus an
+enumeration-style descriptor read, from *virtual* devices, with nobody typing. It
+shows the capture→parse→window→score→persist→trace path runs end to end on real
+kernel text. It says nothing about real device behaviour, and the models were
+trained on simulated traffic so their scores here are out of distribution.
+
 ### Live monitoring — wired 10 Sep, never yet run on real traffic
 
 Until now **nothing called `UsbmonSource.live()`.** It existed and was

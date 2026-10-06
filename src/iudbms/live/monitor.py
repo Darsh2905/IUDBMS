@@ -58,6 +58,8 @@ class LiveMonitor:
         idle_detach_windows: int = 30,
         clock: Callable[[], float] = time.monotonic,
         recorder=None,
+        max_defer_windows: int = 30,
+        end_grace_windows: int = 3,
     ):
         self.detector = detector
         self.source = source
@@ -84,12 +86,33 @@ class LiveMonitor:
         self._deferred: dict[str, list[URBEvent]] = {}
         self.windows_scored = 0
         self.events_late = 0
+        #: How long a not-yet-enumerated device's events are held. A real device
+        #: enumerates within a second or two; a device that has had no descriptor
+        #: for this long never will -- root hubs, which SysfsScanner skips on
+        #: purpose, are the standing example. Without a cap their events were held
+        #: and RE-held every window, growing without bound.
+        self.max_defer_windows = max_defer_windows
+        self._defer_since: dict[str, int] = {}
+        #: Once the source has ended nothing new can arrive to prompt an
+        #: enumeration, so held events get this many more windows, not the full
+        #: max_defer_windows. Without it an 18 s replay took 34 windows.
+        self.end_grace_windows = end_grace_windows
+        self._windows_since_end = 0
+        #: Events dropped because their device never had a descriptor. Counted,
+        #: not silent: they still reach the raw trace, which records at drain.
+        self.events_undescribed = 0
 
     # ------------------------------------------------------------------
 
     def _read_loop(self) -> None:
         try:
             for ev in self.source.events():
+                if self._ended:
+                    self._windows_since_end += 1
+                    if self._windows_since_end > self.end_grace_windows and self._deferred:
+                        self.events_undescribed += sum(
+                            len(v) for v in self._deferred.values())
+                        self._deferred = {}
                 if self._stop.is_set():
                     break
                 self._q.put(ev)
@@ -164,10 +187,16 @@ class LiveMonitor:
             if key not in self.detector.devices:
                 desc = self.descriptor_for(key)
                 if desc is None:
-                    # not enumerated yet; hold its events for the next window
+                    # not enumerated yet; hold its events for the next window --
+                    # but only for max_defer_windows, then count and drop them
                     if events:
-                        self._deferred[key] = events
+                        since = self._defer_since.setdefault(key, w)
+                        if w - since >= self.max_defer_windows:
+                            self.events_undescribed += len(events)
+                        else:
+                            self._deferred[key] = events
                     continue
+                self._defer_since.pop(key, None)
                 self.detector.attach(desc, key)
                 if self.recorder is not None:
                     self.recorder.on_attach(key, t_start, desc)
@@ -200,6 +229,12 @@ class LiveMonitor:
                 alive = self._drain(w)
                 yield self._close_window(w)
                 w += 1
+                if self._ended:
+                    self._windows_since_end += 1
+                    if self._windows_since_end > self.end_grace_windows and self._deferred:
+                        self.events_undescribed += sum(
+                            len(v) for v in self._deferred.values())
+                        self._deferred = {}
                 if self._stop.is_set():
                     # Honour stop() here rather than waiting for the reader: on
                     # an idle live bus it is blocked in a debugfs read and would
