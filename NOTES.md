@@ -34,12 +34,20 @@ claim below.
 Each pillar now has an experiment built to falsify it, with its acceptance
 criterion fixed before the first run. Two do not survive.
 
+**Numbering.** The paper's §3.3 order is N1 fusion, N2 per-device baseline,
+**N3 closed-loop enforcement, N4 temporal modelling** — and that is the order
+the Review 1 submission established. Findings 1-16 in this file use N3 and N4
+the other way round; they were written against the pipeline order and are left
+as written rather than silently rewritten. **When reading an older finding,
+check which claim is meant rather than trusting the number.** Everything from
+finding 17 onward, and the paper, use the §3.3 order.
+
 | pillar | verdict | evidence |
 |---|---|---|
 | N1 multi-modal fusion | **supported only non-uniformly** | `make fusion-ablation`, finding 21 |
 | N2 per-device baseline | **not supported** | `make baseline-ablation`, finding 18 |
-| N3 temporal modelling | **strongly supported** | 15.8% → 89.2%, findings 14-15 |
-| N4 closed-loop enforcement | **dry-run only** | never executed against a kernel |
+| N3 closed-loop enforcement | **dry-run only** | never executed against a kernel |
+| N4 temporal modelling | **strongly supported** | 15.8% → 89.2%, findings 14-15 |
 
 N1 is the nuanced one: fusion is the *only* configuration that detects
 descriptor-only attacks (100% vs 3.7% for the best specialist, because the

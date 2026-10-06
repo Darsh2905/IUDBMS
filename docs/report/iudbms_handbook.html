@@ -222,11 +222,11 @@
 <section id="s2">
   <h2><span class="n">02</span>The scorecard — four claims, checked against our own evidence</h2>
   <p class="lede">The paper (§3.3) makes four specific novelty claims. This project has spent the
-    build phase running ablations that directly test each one. Two hold up. Two don't.</p>
+    build phase running ablations that directly test each one, each with its acceptance criterion fixed before the first run. One holds up, one holds only within bounds, one is refuted, and one was never executed.</p>
 
   <div class="claimcard">
     <div class="head"><h3>N1 — Multi-modal feature fusion</h3>
-      <span class="verdict refuted">Refuted by our own ablation</span></div>
+      <span class="verdict partial">Supported only non-uniformly</span></div>
     <p class="quote">&ldquo;Fuses event timing, traffic volume, and descriptor changes into one
       feature stream&hellip; answering the network-only gap.&rdquo;</p>
     <div class="evidence">
@@ -239,13 +239,33 @@
           <tr><td>Timing (9 features)</td><td class="num">0.9662</td><td class="num">77.5%</td></tr>
           <tr class="lead"><td>Payload (8 features)</td><td class="num">0.9752</td><td class="num"><strong>90.8%</strong></td></tr>
           <tr><td>Protocol (6 features)</td><td class="num">0.9458</td><td class="num">77.5%</td></tr>
-          <tr><td>Identity (6 features)</td><td class="num">0.8884</td><td class="num">39.2%</td></tr>
+          <tr><td>Identity (5 features)</td><td class="num">0.8472</td><td class="num">100.0% <span style="opacity:.7">at 42.1% benign FP</span></td></tr>
           <tr class="total"><td>All 28 fused (deployed)</td><td class="num">0.9762</td><td class="num">89.2%</td></tr>
         </tbody></table></div>
-      <p style="margin-top:12px">The payload modality <em>alone</em> reaches 90.8% — a full point
-        <em>higher</em> than the fully fused model. Fusion adds essentially nothing measurable on
-        this corpus, because payload sequence novelty (the feature that catches most attacks) is
-        already strong enough on its own.</p>
+      <p style="margin-top:12px">On this corpus the payload modality <em>alone</em> reaches 90.8%,
+        a point <em>higher</em> than the fused model. That was previously reported as refuting N1.
+        It does not — and the reason is a flaw in the test rather than a fact about fusion.</p>
+      <p><strong>Every attack family in this corpus deviates on several modalities at once</strong>
+        — an injection is faster <em>and</em> scripted <em>and</em> burstier — so any single
+        modality catches all of them and fusion has no headroom in which to show a gain. A fair
+        test needs families that differ on one axis at a time. Those were built
+        (<code>make fusion-ablation</code>), with axis purity measured by a per-feature KS scan
+        rather than assumed, and the verdict changes:</p>
+      <ul>
+        <li>Against a <strong>descriptor-only</strong> attack, fusion is the <em>only</em>
+          configuration that works — 100% against 3.7% for the best specialist. With the leaking
+          positional feature correctly excluded (see §7), the identity modality is left with five
+          near-constant features, cannot calibrate a threshold, and goes degenerate at 42.1% benign
+          FP. Its 100% in the table above is alarming, not detecting.</li>
+        <li>Against a <strong>diffuse</strong> attack spread weakly across two axes, fusion gains
+          <strong>+19.8 points</strong> at moderate strength — but is beaten by a 9-feature subset
+          of itself by <strong>11.1 points</strong> when the attack is subtle enough, where the
+          extra dimensions cost more variance than they contribute.</li>
+      </ul>
+      <p>The honest verdict is <em>non-uniform</em> rather than refuted: fusion is the only
+        configuration covering all four axes, and the wrong choice against a maximally subtle
+        single-channel adversary. By the pre-registered criterion — win somewhere, never lose —
+        N1 does not pass, and that criterion stands as written. Report the curve, not the binary.</p>
     </div>
   </div>
 
@@ -268,10 +288,29 @@
         </tbody></table></div>
       <p style="margin-top:12px">Removing the per-device baseline changes detection by less than a
         session either way, and its window-level AUC contribution is <em>negative</em> at both
-        rows. Likely explanation, offered as hypothesis: the forests are already
+        rows. The explanation offered at the time was a hypothesis: the forests are already
         class-conditioned, so a device's class-specific normality is largely captured at the
-        population level, leaving little for a per-device term to add — at least on a corpus where
-        devices within one class are close to identical.</p>
+        population level, leaving little for a per-device term to add &mdash; at least on a corpus
+        where devices within one class are close to identical. Real devices vary more, so the
+        pillar might earn its keep on real captures.</p>
+      <p><strong>That hypothesis has since been tested, and it is wrong.</strong> Device
+        homogeneity is a property of the generator, not of reality, so it can be removed: each
+        device now draws its own behavioural persona &mdash; typing speed, burst length, pause
+        tendency &mdash; from a hyperprior. Benign and malicious devices draw from the same prior,
+        because if only benign devices varied then &ldquo;behaves like the population mean&rdquo;
+        would itself become a tell.</p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Corpus</th><th class="num">Between-device spread</th><th class="num">Full</th><th class="num">Forest only</th><th class="num">Baseline adds</th></tr></thead>
+        <tbody>
+          <tr><td>Homogeneous (as before)</td><td class="num">0.173</td><td class="num">89.2%</td><td class="num">90.0%</td><td class="num">&minus;0.8%</td></tr>
+          <tr class="lead"><td>Heterogeneous devices</td><td class="num">0.485</td><td class="num">85.8%</td><td class="num">85.0%</td><td class="num">+0.8%</td></tr>
+        </tbody></table></div>
+      <p style="margin-top:12px">Between-device variation rose by a factor of 2.8 and the baseline
+        stayed inert: +0.8% is one session out of 120, exactly the noise floor. So the explanation
+        does not hold, and <strong>N2&rsquo;s negative result is stronger than previously reported
+        rather than explained away.</strong> Detection also falls under heterogeneity, which is the
+        expected direction &mdash; more varied benign behaviour is a harder discrimination problem,
+        and 85.8% is arguably the more honest headline. <code>make baseline-ablation</code>.</p>
     </div>
   </div>
 
@@ -317,12 +356,16 @@
   <div class="callout" style="margin-top:28px">
     <h3>The honest one-paragraph summary</h3>
     <p>Of four claimed contributions, one (N4, temporal modelling) is strongly supported by direct
-      measurement; one (N3, kernel-level enforcement) was never actually built and remains a design
-      on paper; and two (N1 fusion, N2 adaptive baselines) were built exactly as specified and then
-      <strong>measured to contribute nothing</strong> on this corpus once properly isolated. That
-      last part — building something, then finding your own ablation doesn't support it, then
-      reporting that plainly instead of hiding it — is itself the project's strongest methodological
-      asset, and is documented in full in Section&nbsp;7.</p>
+      measurement; one (N3, kernel-level enforcement) generates correct rules but has never been
+      executed against a kernel; one (N1 fusion) is supported <em>non-uniformly</em> — it is the
+      only configuration that handles descriptor-only attacks, and the wrong choice against a
+      maximally subtle one; and one (N2 adaptive baselines) is <strong>refuted</strong>, including
+      the explanation originally offered for why it looked inert.</p>
+    <p>Each of those verdicts now rests on an experiment built to falsify that specific claim, with
+      its acceptance criterion fixed before the first run — not on the absence of evidence, which is
+      what two of them rested on previously. Building something, testing it adversarially, and
+      reporting plainly when your own ablation does not support it is the project's strongest
+      methodological asset, and is documented in full in Section&nbsp;7.</p>
   </div>
 </section>
 
@@ -562,7 +605,10 @@
   <div class="finding"><span class="tag">Missing ablation</span>
     <h4>N2 had never been isolated — until this document's §2</h4>
     <p>Three of four novelty pillars had ablations; the per-device baseline didn't. Built one; it
-      showed the pillar contributes nothing measurable (§2).</p></div>
+      showed the pillar contributes nothing measurable (§2). A later session tested the explanation
+      offered for that — device homogeneity in the corpus — by giving every device its own
+      behavioural persona. The baseline stayed inert, so the explanation was wrong and the negative
+      result is stronger, not weaker.</p></div>
 
   <div class="finding"><span class="tag">Infrastructure</span>
     <h4>The corpus cache could silently serve results for code that no longer existed</h4>
@@ -596,9 +642,10 @@
   <div class="col"><ul>
     <li><strong>Zero real hardware.</strong> Every session is synthetic. The paper's Objective 6
       (Pi Pico / Digispark evaluation) remains unmet.</li>
-    <li><strong>N1 and N2 are unsupported by our own ablations</strong> (§2) — built as specified,
-      measured to contribute nothing on this corpus.</li>
-    <li><strong>N3's kernel-level enforcement was never built.</strong> Correct rule generation,
+    <li><strong>N2 is refuted and N1 holds only within bounds</strong> (§2). Both were tested by
+      purpose-built ablations with pre-registered criteria; N2's failure survives the removal of
+      the device homogeneity once blamed for it.</li>
+    <li><strong>N3's kernel-level enforcement has never executed.</strong> Correct rule generation,
       dry-run only, gated behind a constant that is still <code>False</code>.</li>
     <li><strong>Recurrence is not uniquely justified.</strong> GRU, a CNN, and gradient boosting all
       tie the LSTM on the identical sequence input (§6). "Temporal modelling" is supported;
