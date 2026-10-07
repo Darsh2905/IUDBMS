@@ -1,0 +1,83 @@
+{
+  "trained_on": "Corpus B (realistic), seed 7",
+  "threshold": 0.9943356477737426,
+  "window_auc": 0.9842037298460296,
+  "session": {
+    "attack_detect": 0.8333333333333334,
+    "benign_fp": 0.0,
+    "revoked": 0.8,
+    "median_latency": 3.82111587120608,
+    "p90_latency": 13.749998153676575,
+    "fp_per_benign_hour": 0.0,
+    "n_attack": 120,
+    "n_benign": 178
+  },
+  "per_profile": {
+    "audio": {
+      "n": 37,
+      "label": 0,
+      "detect_rate": 0.0,
+      "median_latency": null
+    },
+    "class_exfil": {
+      "n": 24,
+      "label": 1,
+      "detect_rate": 1.0,
+      "median_latency": 3.62928737970723
+    },
+    "hid_injection": {
+      "n": 21,
+      "label": 1,
+      "detect_rate": 1.0,
+      "median_latency": 4.251799089792019
+    },
+    "identity_switch": {
+      "n": 20,
+      "label": 1,
+      "detect_rate": 1.0,
+      "median_latency": 3.541558422728164
+    },
+    "keyboard": {
+      "n": 38,
+      "label": 0,
+      "detect_rate": 0.0,
+      "median_latency": null
+    },
+    "mass_storage": {
+      "n": 33,
+      "label": 0,
+      "detect_rate": 0.0,
+      "median_latency": null
+    },
+    "mimicry": {
+      "n": 15,
+      "label": 1,
+      "detect_rate": 1.0,
+      "median_latency": 14.900909389865888
+    },
+    "mimicry_adaptive": {
+      "n": 20,
+      "label": 1,
+      "detect_rate": 0.0,
+      "median_latency": null
+    },
+    "mouse": {
+      "n": 37,
+      "label": 0,
+      "detect_rate": 0.0,
+      "median_latency": null
+    },
+    "staged_delay": {
+      "n": 20,
+      "label": 1,
+      "detect_rate": 1.0,
+      "median_latency": 3.5297688405162706
+    },
+    "webcam": {
+      "n": 33,
+      "label": 0,
+      "detect_rate": 0.0,
+      "median_latency": null
+    }
+  }
+}

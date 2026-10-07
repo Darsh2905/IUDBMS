@@ -280,10 +280,13 @@ def main() -> int:
     path.write_text(json.dumps(metrics, indent=2, default=float))
     print(f"  wrote {path.relative_to(OUT.parent)}")
 
-    # Save the trained models so the streaming detector runs the exact weights
-    # these numbers were produced by.
+    # Save the Corpus-A models so these numbers stay reproducible and checkable.
+    # NOT out/models/: that directory is the DEPLOYED set, trained on the realistic
+    # corpus by `make train-deployed` (eval/train_deployed.py). `make eval` used to
+    # overwrite it, which is how a model unfit for idle devices (finding 32) sat in
+    # the deployment path.
     if full.models:
-        mdir = OUT / "models"
+        mdir = OUT / "models_corpus_a"
         mdir.mkdir(exist_ok=True)
         s1m, s2m = full.models
         s1m.save(mdir / "stage1.pkl")
@@ -300,7 +303,7 @@ def main() -> int:
             "canary": {"stage1": s1m.canary(),
                        "stage2": s2m.canary(args.seq_len) if s2m is not None else None},
         }, indent=2))
-        print(f"  wrote out/models/  (stage1.pkl, stage2.pt, deploy.json)")
+        print(f"  wrote out/models_corpus_a/  (stage1.pkl, stage2.pt, deploy.json)")
 
     from .figure_data import export_figure_data
     fd = export_figure_data(OUT, full, s1_only, modality, corpus, test,

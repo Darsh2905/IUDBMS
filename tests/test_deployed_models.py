@@ -112,3 +112,40 @@ def test_shipped_models_stay_quiet_on_simulated_benign_devices():
     for profile in ("mouse", "webcam", "mass_storage", "audio"):
         _, actions = _stream(profile, seed=11)
         assert not actions, f"{profile}: false alarm {actions}"
+
+
+# --------------------------------------------------------------------------
+# the property finding 32 is about: an IDLE keyboard must not be an attack
+# --------------------------------------------------------------------------
+
+@pytest.mark.parametrize("name,kw", [
+    ("idle after enumeration", dict(fully_idle=True)),
+    ("gaps 8-20 s", dict(idle=(8.0, 20.0))),
+    ("gaps 20-60 s", dict(idle=(20.0, 60.0))),
+])
+def test_shipped_models_do_not_flag_idle_keyboards_or_mice(name, kw):
+    """Corpus A's benign devices were always active, so the model it produced flagged
+    90-100% of keyboards and mice the moment they had realistic idle gaps. The
+    deployed set is trained on duty-cycled traffic; this keeps it that way."""
+    import numpy as np
+
+    from eval.analysis_idle import DutyCycleSim
+    from iudbms.capture.simulator import SimulatedSource
+    from iudbms.features.extractor import window_events
+    from iudbms.live import StreamingDetector
+    from iudbms.policy import PolicyEngine
+
+    cfg, s1, s2 = _load()
+    flagged = 0
+    for i, prof in enumerate(("keyboard", "mouse") * 6):
+        det = StreamingDetector(
+            s1, s2, PolicyEngine(threshold=cfg["threshold"], k=cfg["k"], n=cfg["n"]),
+            feature_idx=np.array(cfg["feature_idx"]), seq_len=cfg["seq_len"])
+        sim = DutyCycleSim(seed=500 + i, **kw)
+        sess = sim.session(f"I{i}", prof)
+        det.attach(sess.descriptor, f"I{i}")
+        for t0, b in window_events(list(SimulatedSource(sess).events()), duration=sess.duration):
+            if det.observe_window(f"I{i}", t0, b).action is not None:
+                flagged += 1
+                break
+    assert flagged == 0, f"{flagged} of 12 idle ({name}) keyboards/mice were flagged"
