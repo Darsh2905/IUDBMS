@@ -65,14 +65,20 @@ def _endpoints(iface_dir: Path) -> tuple[Endpoint, ...]:
 class SysfsScanner:
     """Repeatedly snapshots sysfs, remembering when each interface first appeared.
 
-    ``first_seen_ts`` is seconds relative to ``origin`` (default: scanner
-    construction), matching the URBEvent timebase.
+    ``first_seen_ts`` is 0.0 for interfaces present when their device was first
+    listed, and otherwise seconds relative to ``origin``, which must be the
+    monitor's window-clock origin (``LiveMonitor.time_origin``) so that a late
+    interface lines up with the windows it affects.
     """
 
     def __init__(self, root: Path = SYSFS_USB_DEVICES, origin: float | None = None):
         self.root = Path(root)
         self.origin = time.monotonic() if origin is None else origin
         self._first_seen: dict[tuple[str, str], float] = {}
+        #: Devices the scanner has already listed. An interface is "late" only if it
+        #: appears on a device the scanner had ALREADY seen; everything present the
+        #: first time a device is listed is that device's enumeration.
+        self._devices_seen: set[str] = set()
 
     def _now(self) -> float:
         return time.monotonic() - self.origin
@@ -106,13 +112,21 @@ class SysfsScanner:
                 if d.is_dir():
                     iface_dirs.setdefault(d.name, d)
 
+            new_device = name not in self._devices_seen
+            self._devices_seen.add(name)
+
             ifaces: list[Interface] = []
             for iface_dir in [iface_dirs[k] for k in sorted(iface_dirs)]:
                 cls = _read_int(iface_dir, "bInterfaceClass")
                 if cls is None:
                     continue
                 key = (name, iface_dir.name)
-                first = self._first_seen.setdefault(key, now)
+                # 0.0 for an interface present when its device was first listed.
+                # first_seen_ts > 0 reads, downstream, as "grew an interface after
+                # enumeration" -- the identity_switch signature -- so stamping every
+                # interface with seconds-since-scanner-start made every real device
+                # look like an attack in every window (CLAUDE.md finding 34).
+                first = self._first_seen.setdefault(key, 0.0 if new_device else now)
                 ifaces.append(Interface(
                     bInterfaceClass=cls,
                     bInterfaceSubClass=_read_int(iface_dir, "bInterfaceSubClass") or 0,

@@ -101,6 +101,10 @@ class LiveMonitor:
         #: Items pulled off the queue while waiting for the time origin; they are
         #: put back in front of the queue's contents for the first drain.
         self._pending: list = []
+        #: ``clock()`` reading that corresponds to window time 0, set once the first
+        #: event arrives. A scanner given this as its origin stamps late interfaces on
+        #: the same clock the windows use.
+        self.time_origin: float | None = None
         #: Events dropped because their device never had a descriptor. Counted,
         #: not silent: they still reach the raw trace, which records at drain.
         self.events_undescribed = 0
@@ -256,6 +260,7 @@ class LiveMonitor:
             t0 = self._await_origin()
             if t0 is None:
                 return
+            self.time_origin = t0
             while max_windows is None or w < max_windows:
                 deadline = t0 + (w + 1) * self.window
                 while True:
