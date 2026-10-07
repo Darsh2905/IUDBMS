@@ -64,6 +64,9 @@ REALCAP = load("real_capture_summary.json")
 REALTYPE = load("real_typing.json")
 EBPF_IDLE = load("ebpf/idle.json")
 EBPF_BUSY = load("ebpf/busy.json")
+LIVE_O = load("live_original.json")
+LIVE_R = load("live_retrained.json")
+DIAG = load("analysis_diagnostics.json")
 
 doc = docx.Document()
 
@@ -207,7 +210,7 @@ ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", 
 #: Tables in the order they appear. Text refers to them by key through ``tref`` and
 #: ``table`` asserts the order, so a "Table V" in the prose cannot point at the wrong table.
 TABLE_ORDER = ["families", "headline", "perclass", "n1", "n2", "realism", "parser",
-               "keyboard", "unseen", "perturb", "ebpf"]
+               "keyboard", "live", "unseen", "perturb", "ebpf"]
 
 
 def tref(key):
@@ -380,9 +383,10 @@ ABSTRACT = (
     f"devices go idle and keyboards send key-release reports, the original model flags "
     f"{pct(orig_fp)} of benign sessions. A model retrained on realistic traffic detects "
     f"{pct(seen_mean)} of attacks at {fp_fresh:.2%} false positives on 3,600 fresh "
-    f"sessions, but only {pct(unseen_mean)} of attack families it never saw. The parser "
-    "lost no line of real kernel output, and the retrained model did not flag a real "
-    "typing session. Two of four novelty claims were not supported."
+    f"sessions, but only {pct(unseen_mean)} of attack families it never saw. Watching a "
+    "real keyboard live on a Linux guest, the original model revoked it and the "
+    "retrained model, now deployed, raised no alert. Two of four novelty claims were "
+    "not supported."
 )
 n_words = len(re.findall(r"\S+", ABSTRACT))
 assert 185 <= n_words <= 199, f"abstract is {n_words} words; IEEE allows at most 200"
@@ -687,7 +691,8 @@ body("<i>Training and calibration.</i> Sessions, never windows, are split by pro
      "ten-window sequences, trained with class-weighted cross-entropy (Adam, learning rate "
      "2×10⁻³, gradient norm clipped at 5). The decision threshold is the empirical quantile "
      "of Stage-2 scores on held-out benign windows at a per-window false-positive rate of "
-     "0.01%. It is never read off the test set.")
+     "0.01%. It is never read off the test set. The deployed model set is the one trained "
+     "on Corpus B.")
 body("<i>Metrics and statistics.</i> A session counts as detected when the persistence gate "
      "fires. We report session-level detection, the benign session false-positive rate, and "
      "the median time from attack onset to the first alert. Rates carry 95% Wilson "
@@ -700,8 +705,9 @@ body("<i>Real kernel traffic.</i> For the real-traffic checks we ran Ubuntu 24.0
      "tablet, hub and storage device. We recorded usbmon output with the project’s own "
      "capture script. In one recording a person typed into the guest keyboard for about "
      "100 s. These recordings are scored offline with named model weights and are never "
-     "used for training or tuning. Development used Python 3.12, scikit-learn and PyTorch "
-     "on macOS/arm64.")
+     "used for training or tuning. A later live run watched the guest with both the "
+     "original and the retrained model at once. Development used Python 3.12, "
+     "scikit-learn and PyTorch on macOS/arm64.")
 
 # ---------------------------------------------------------------- VI
 h1("VI", "Results")
@@ -950,6 +956,37 @@ body(f"One person typed into the guest’s virtual keyboard for about 100 s. {tr
      "because Corpus B was built from HID-protocol facts that the capture happens to "
      "share. What it does show is that the original model’s failure on real typing is "
      "real and not a simulation artefact.")
+body("A third defect appeared only on live devices. The descriptor scanner stamped every "
+     "interface with the time since the scanner started, and the model reads any interface "
+     "with a positive arrival time as one that appeared after enumeration, which is the "
+     "signature of the identity-switch attack. Every window of every real device therefore "
+     "carried the late-interface flag, and no device was assigned its class group. The "
+     "first live alerts, a keyboard and a drive escalated to a dry-run revoke, came from a "
+     "system in this state and cannot be read as evidence about behaviour, so we do not "
+     "report them. The drive stopped alerting once the defect was fixed. Interfaces present "
+     "when a device is first listed now count as enumeration-time, and the scanner shares "
+     "the monitor’s window clock. With the fix the flag is 0.00 in every window and the "
+     "keyboard is classed as an HID device.")
+rows = []
+for model, LV in (("Original", LIVE_O), ("Retrained", LIVE_R)):
+    for did, label in (("1-4", "keyboard"), ("1-6", "USB drive")):
+        d = LV["devices"][did]
+        rows.append([f"{model}, {label}", f"{d['windows']} ({d['busy_windows']})",
+                     f"{d['stage2_busy_median']:.2f}", d["alerts"], d["trust_state"]])
+table("A live run on the guest: both models watching the same real devices for seven minutes",
+      ["Model, device", "Windows (with traffic)", "Median Stage-2", "Alerts", "Final state"],
+      rows, key="live")
+ko, kr = LIVE_O["devices"]["1-4"], LIVE_R["devices"]["1-4"]
+body(f"{tref('live')} records the run. The deployed set is now the retrained model, and we "
+     "ran it beside the original on the guest while a person typed on the keyboard and then "
+     f"left it idle. On the keyboard the original model’s median Stage-2 score was "
+     f"{ko['stage2_busy_median']:.2f}, its gate fired {ko['alerts']} times, and the keyboard "
+     f"ended in a dry-run revoke. The retrained model scored the same windows with a median "
+     f"of {kr['stage2_busy_median']:.2f} (maximum {kr['stage2_max']:.2f}) and raised no alert. "
+     "Neither model alerted on the USB drive. Both models watched the same device in the same "
+     "seconds, so the comparison is paired. It is still one keyboard, one typist and one "
+     "session on a virtual device, and it repeats the offline result in place of adding "
+     "independent evidence about attacks.")
 
 h2("H", "Generalisation to Unseen Attack Families")
 rows = []
@@ -1009,6 +1046,27 @@ body("<i>Synthetic attacks.</i> We trained on 152 generated sessions of devices 
      "of the real held-out families, because they are not plain class swaps. "
      "<i>identity_switch</i> relies on an interface that appears late, and "
      "<i>class_exfil</i> is low-rate covert bulk traffic.")
+cal = DIAG["calibration"]
+lo_pt, mid_pt = cal["operating_points"][0], cal["operating_points"][2]
+imp = sorted(DIAG["importance"]["drops"].items(), key=lambda kv: -kv[1])[:3]
+bm = DIAG["importance"]["by_modality"]
+body("<i>Calibration noise.</i> The threshold is the 1-in-10,000 quantile of benign validation "
+     "windows, and with 4,964 of them that is half a window, so in effect it is the single "
+     f"highest benign score. Resampling the validation sessions 400 times moves it from "
+     f"{lo_pt['threshold']:.2f} (2.5th percentile) to {mid_pt['threshold']:.3f} (median). On "
+     f"Corpus C the low end gives {pct(lo_pt['fp'], 2)} benign false positives and "
+     f"{pct(lo_pt['detect'])} detection, the median {pct(mid_pt['fp'], 2)} and "
+     f"{pct(mid_pt['detect'])}. The operating point therefore depends partly on which benign "
+     "window happened to be the largest. A deployment should calibrate on thousands of benign "
+     "sessions against a session-level target, as in the alerting-rule study.")
+body("<i>What the model relies on.</i> Shuffling one feature at a time across a 300-session "
+     f"sample lowers window AUC ({DIAG['importance']['base_auc']:.3f}) most for "
+     + ", ".join(f"{k} ({v:.3f})" for k, v in imp) + f". By modality the payload features "
+     f"account for {bm['payload']:.3f}, timing {bm['timing']:.3f}, protocol {bm['protocol']:.3f} "
+     f"and identity {bm['identity']:.3f}. No proxy for position in the session is among the "
+     "inputs, since time since enumeration is excluded. The streaming detector costs "
+     f"{DIAG['cost']['ms_per_device_window']:.1f} ms per device-window, about "
+     f"{DIAG['cost']['devices_per_core']} devices per core at one window per second.")
 mo = ROB["mimicry_overlap"]
 body("<i>The replay-loop result hangs on one attacker choice.</i> A device replaying a script "
      "presses and releases keys cleanly, and detection is "
@@ -1065,8 +1123,8 @@ body(f"Agreement is exact across a {ebpf_ratio}-fold difference in traffic volum
 # ---------------------------------------------------------------- VII
 h1("VII", "Limitations")
 item("1)", "<i>No real attack traffic.</i> Every detection figure is measured on simulated "
-           "attacks. The real-traffic checks cover the capture machinery and one benign "
-           "typing session of about 100 s on a virtual keyboard. They cannot validate "
+           "attacks. The real-traffic checks cover the capture machinery and benign typing "
+           "on a virtual keyboard, scored offline and live. They cannot validate "
            "detection accuracy. This is the main limitation.")
 item("2)", "<i>Corpus B encodes our assumptions.</i> The idle mix, the text model, the "
            "hold times and the typing-speed range come from the HID specification and the "
@@ -1084,10 +1142,10 @@ item("5)", "<i>Enforcement has never executed,</i> and eBPF is a counting protot
            "closed in software only.")
 item("6)", "<i>Two novelty claims are unsupported.</i> N1 holds only non-uniformly and N2 "
            "not at all. Both stay in the architecture and are reported as measured.")
-item("7)", "<i>A live-integration defect is still open.</i> The descriptor scanner stamps "
-           "every interface of a device already attached at start-up as having arrived late, "
-           "which sets the late-interface feature on every real device. Alert rates from the "
-           "live service on real devices are therefore not reported here.")
+item("7)", "<i>The live evidence is thin.</i> The live comparison is one keyboard, one typist "
+           "and one seven-minute session on a virtual device, with no attack traffic. It shows "
+           "that the deployed model leaves a typing keyboard alone and that the original did "
+           "not. It says nothing about detection on real attack hardware.")
 item("8)", "<i>A feature was designed against a known failure.</i> The cross-window payload "
            "feature was added after seeing which family the system missed. Its constraint is "
            "real, since a payload must type specific commands, but it raises the attacker’s "
@@ -1106,8 +1164,10 @@ body("That number was too kind. Giving benign devices idle periods and realistic
      f"behaviour made the original model flag {pct(orig_fp)} of benign sessions. Retraining "
      f"restored zero false positives at {pct(seen_mean)} detection on fresh data, and "
      f"detection of unseen families is only {pct(unseen_mean)}. Two of four novelty claims "
-     "failed their tests. Running the system against a real kernel found a timing defect "
-     "and a mismatched checkpoint that 385 simulator-driven tests had not. The next steps "
+     "failed their tests. Running the system against a real kernel found a timing defect, "
+     "a mismatched checkpoint and a scanner defect that 385 simulator-driven tests had not. "
+     "The retrained model is now the deployed one, and on a live guest it left a typing "
+     "keyboard alone where the original revoked it. The next steps "
      "follow directly: capture real attack hardware and a longer record of ordinary use, "
      "close the generalisation gap, measure false positives at deployment scale, and review "
      "the enforcement loop before it touches a kernel.")

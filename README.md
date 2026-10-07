@@ -48,7 +48,8 @@ project results — see the caveats in plan §10 and the defect list in
 ```bash
 make install                              # editable install + dev extras
 make test                                 # 371 tests
-make eval                                 # regenerate every reported number (~5 min cold)
+make eval                                 # regenerate the Corpus-A numbers (~5 min cold)
+make train-deployed                       # train the deployed model set on realistic traffic
 python3 -m eval.leakage_audit             # plan §5 mandatory leakage audit
 python3 -m eval.run_eval --persist        # also populate out/iudbms.db
 make dashboard                            # operator dashboard on :8000 (evaluation DB)
