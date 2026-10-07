@@ -119,6 +119,53 @@ def score_report(db: Path, device: str, last: int, threshold: float = 0.9916) ->
             "actions": cx.execute("SELECT COUNT(*) FROM actions").fetchone()[0]}
 
 
+def rescore_report(capture: Path, descriptors: Path, device: str, models: Path) -> dict:
+    """Score the recorded capture offline with an explicit model directory.
+
+    Reading scores back from the service's database reports whatever model the
+    service happened to be running. That is how a Stage-2 checkpoint that could
+    not fire at all (0 of 120 simulated attacks detected) produced a clean
+    "no false alarm on real typing" -- it could not alarm on anything. Rescoring
+    the capture with named weights makes the result a property of those weights,
+    and the offline path is bit-identical to the streaming one
+    (tests/test_live.py::test_streaming_matches_offline_scoring).
+    """
+    import numpy as np
+
+    from eval.analysis_common import deployed, run_gate, score_with
+    from eval.corpus import SessionData
+    from iudbms.features.extractor import WindowFeatureExtractor, window_events
+    from iudbms.live.cli import _load_descriptor_snapshot
+
+    desc = _load_descriptor_snapshot(descriptors)[device]
+    ev = [e for e in UsbmonSource(path=capture).events() if e.device_key == device]
+    ex, X, T = WindowFeatureExtractor(), [], []
+    dur = max(e.ts for e in ev)
+    for t0, b in window_events(ev, duration=dur):
+        X.append(ex.extract(b, t0, desc))
+        T.append(t0)
+    X, T = np.vstack(X), np.array(T)
+    cfg, s1, lstm = deployed()
+    sess = SessionData(sid="real", profile="keyboard", label=0, descriptor=desc, X=X, t=T,
+                       y=np.zeros(len(T), int), onset=None, duration=dur)
+    _, S2, _ = score_with(s1, lstm, [sess], np.array(cfg["feature_idx"]), cfg["seq_len"])
+    sc = S2["real"]
+    busy = X[:, 0] > 0                                  # column 0 is n_events
+    thr = cfg["threshold"]
+    seq = X[busy, 22] if X.shape[1] > 22 else np.array([np.nan])   # payload_seq_novelty
+    first = run_gate({"real": sc}, [sess], thr, cfg["k"], cfg["n"])
+    return {"windows": len(sc), "busy": int(busy.sum()), "threshold": thr,
+            "stage2_min": float(sc[busy].min()), "stage2_median": float(np.median(sc[busy])),
+            "stage2_max": float(sc[busy].max()),
+            "at_or_above_threshold": int((sc[busy] >= thr).sum()),
+            "gate_fires": first["real"] is not None,
+            "first_alert_s": first["real"],
+            "seq_novelty_median": float(np.median(seq)),
+            "n_events_median": float(np.median(X[busy, 0])),
+            "alerts": int(first["real"] is not None), "actions": int(first["real"] is not None),
+            "source": f"offline rescoring with {models}"}
+
+
 def print_scores(r: dict) -> None:
     print(f"monitor scores: {r['busy']} windows with traffic (of {r['windows']} read)")
     print(f"  Stage 2  min {r['stage2_min']:.3f}   median {r['stage2_median']:.3f}   "
@@ -126,13 +173,22 @@ def print_scores(r: dict) -> None:
     print(f"  windows at/above threshold: {r['at_or_above_threshold']} of {r['busy']}   "
           f"(median {r['n_events_median']:.0f} events per window)")
     print(f"  alerts {r['alerts']}   actions {r['actions']}")
+    if "gate_fires" in r:
+        print(f"  4-of-6 gate fires: {r['gate_fires']}"
+              + (f" (first alert at {r['first_alert_s']:.0f} s)" if r["gate_fires"] else "")
+              + f"   payload_seq_novelty median {r['seq_novelty_median']:.2f}")
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("capture", nargs="?", type=Path)
-    ap.add_argument("--scores", type=Path, metavar="DB")
+    ap.add_argument("--scores", type=Path, metavar="DB",
+                    help="read scores from a service database (reflects whichever model "
+                         "the service ran -- prefer --rescore)")
+    ap.add_argument("--rescore", type=Path, metavar="DESCRIPTORS",
+                    help="score the capture offline with out/models; needs the "
+                         "descriptors JSON recorded beside it")
     ap.add_argument("--device", default="1-4")
     ap.add_argument("--last", type=int, default=140)
     ap.add_argument("--json", action="store_true",
@@ -140,6 +196,8 @@ def main() -> int:
     a = ap.parse_args()
     if a.capture is None and a.scores is None:
         ap.error("give a capture file, --scores DB, or both")
+    if a.rescore is not None and a.capture is None:
+        ap.error("--rescore needs the capture file")
 
     result = {"capture_path": str(a.capture) if a.capture else None,
              "scores_db": str(a.scores) if a.scores else None, "device": a.device}
@@ -147,7 +205,12 @@ def main() -> int:
         cap = capture_report(a.capture, a.device)
         print_capture(cap)
         result["capture"] = cap
-    if a.scores is not None:
+    if a.rescore is not None:
+        print()
+        sc = rescore_report(a.capture, a.rescore, a.device, ROOT / "out" / "models")
+        print_scores(sc)
+        result["scores"] = sc
+    elif a.scores is not None:
         if a.capture is not None:
             print()
         sc = score_report(a.scores, a.device, a.last)

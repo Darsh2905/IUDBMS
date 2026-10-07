@@ -39,3 +39,8 @@ dashboard/dist/
 # tracked copy is a stale binary waiting to be loaded, which is how `make eval`
 # came to report numbers from a corpus a third of the intended size.
 out/corpus_cache.npz
+
+# Analysis-experiment checkpoints (eval/analysis_retrain.py); never the deployment's
+out/analysis_models/
+out/analysis_*.npz
+out/analysis_*.cond.json

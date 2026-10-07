@@ -1028,6 +1028,13 @@ traceback instead of a message.
 
 ### Finding 29 — real typing through a real kernel: no false alarm, and the simulator's keyboard differs in shape (06 Oct)
 
+> **RETRACTED (07 Oct, finding 31).** The headline of this finding -- "the monitor did
+> not alarm on real typing" -- was produced by a Stage-2 checkpoint that could not
+> alarm on *anything* (0 of 120 simulated attacks detected). Rescored with the
+> evaluated model, the same real typing **is flagged**: 70 of 71 busy windows at or
+> above threshold, gate fires at 4 s. The structural comparison table below
+> (real vs simulator keyboard) is unaffected and still stands.
+
 **Setup.** The UTM VM had no display device, so the virtual USB keyboard could never
 be fed (the first "typing" capture, made in the serial-console window, contained no
 keyboard traffic — keystrokes there go down a UART, not USB). Adding a
@@ -1075,6 +1082,47 @@ answered and partly sharpened: real traffic has now been parsed, windowed, score
 persisted end to end, and a real keyboard was scored without alarm — but it also
 shows the simulator is not a faithful generator of real HID reports. The honest
 claim remains that all *detection* numbers are measured on simulated traffic.
+
+### Finding 31 — the shipped Stage-2 checkpoint was not the evaluated one (07 Oct)
+
+**What was wrong.** `out/models/stage2.pt` -- committed in d59c900 and installed on
+the VM -- is a different model from the one `make eval` evaluates. Scoring the
+shipped set on the test split: window AUC **0.9598** (reported 0.9762) and
+**0 of 120** attacks detected at the shipped threshold (reported 89.2%). Stage 1 was
+byte-identical to a fresh retrain (max |diff| 0.0), so the corpus, features and
+threshold were right; only the Stage-2 weights did not belong to the run.
+
+**What was not wrong.** The evaluation. `eval.analysis_retrain` retrains with
+`run_eval`'s exact parameters in 17 s and reproduces every reported number to the
+last digit (AUC 0.9762, detection 0.8917, FP 0.0, threshold 0.991553). The reported
+results were always reproducible; the *file* was wrong.
+
+**How it likely happened (inferred, not proven).** `stage1.pkl`, `deploy.json`,
+`metrics.json` and `figure_data.json` share one timestamp (21:30:56) -- the look of
+a restore -- while `stage2.pt` is 21:29:32. `*.pt` was git-ignored then, so a
+restore from git could bring back the tracked siblings and leave a `.pt` from a
+clobbering run in place. I later un-ignored it and committed whatever was there.
+
+**Why nothing noticed.** Every file was individually valid. It loaded, scored real
+traffic, persisted, passed `verify.sh`, and the dashboard showed a healthy monitor.
+It simply could never reach a threshold calibrated for another model's score scale.
+Two earlier claims rested on it and are retracted: "the deployed service works end to
+end" (it could not fire) and finding 29's "no false alarm on real typing" (a monitor
+that cannot alarm cannot false-alarm).
+
+**Fixed, with two independent guards.**
+1. *Fingerprint.* Each stage records a seeded fixed-input output (`canary()`) in
+   `deploy.json`; the loader refuses weights that do not match it.
+2. *Can it fire?* `tests/test_deployed_models.py` pushes simulated attacks through
+   the real streaming detector with the shipped set and asserts it alerts, and that
+   benign mouse/webcam/storage/audio stay quiet.
+Both fail on the old checkpoint and pass on the regenerated set; each catches the bug
+alone. `make eval` regenerated the set: `metrics.json` identical but for runtime,
+`stage1.pkl` byte-identical, `stage2.pt` and `deploy.json` the only substantive change.
+
+**Lesson, again.** A green structural check (loads, runs, persists) is not evidence the
+system works. The check that found this was scoring the deployed artefact on the
+evaluation corpus -- something no test did.
 
 ### Live monitoring — wired 10 Sep, never yet run on real traffic
 

@@ -348,9 +348,10 @@ run(p, "—USB peripherals are trusted by what they claim to be: during enumerat
        "not supported even after device heterogeneity is introduced to test the "
        "explanation previously offered for its inertness. We further validate the capture "
        "and scoring pipeline, as distinct from its detection accuracy, against a real "
-       "Linux kernel: the parser loses none of 338 real usbmon lines, and the deployed "
-       "service scores unscripted human typing live without a false alarm, a check that "
-       "also surfaced and fixed a timing defect invisible to 385 simulator-driven tests.")
+       "Linux kernel: the parser loses none of 338 real usbmon lines, but real human typing "
+       "is flagged by the evaluated model, a sim-to-real failure of the cross-window payload "
+       "feature, and the same validation surfaced a timing defect and a mismatched "
+       "checkpoint that 385 simulator-driven tests had not.")
 
 p = doc.add_paragraph(style="IEEE Abstract")
 run(p, "Index Terms", italic=True)
@@ -840,6 +841,18 @@ body("Running the live monitor service against this traffic, rather than only pa
      "Fixed by anchoring the window clock to the first event\u2019s arrival; confirmed "
      "against the same capture after the fix.")
 
+body("A second defect surfaced only when the deployed models were scored against the "
+     "evaluation corpus rather than against traffic: the Stage-2 checkpoint installed on the "
+     "test host was not the one the reported numbers came from. It loaded, scored traffic "
+     "and passed every structural check, but at its recorded threshold it detected none of "
+     "120 simulated attacks, so an earlier \u201cno false alarm on real typing\u201d "
+     "reading was produced by a monitor that could not alarm at all. Retraining with the "
+     "documented command reproduced the reported figures exactly (window AUC 0.9762, 89.2% "
+     "detection, 0.0% benign false positives), so the evaluation was sound and the shipped "
+     "file was wrong. Each stage now records a fixed-input output fingerprint in the "
+     "deployment manifest, the loader refuses weights that do not match it, and an "
+     "end-to-end test asserts that the shipped set alerts on simulated attacks.")
+
 if REALTYPE and REALTYPE.get("capture"):
     rt, sc = REALTYPE["capture"], REALTYPE.get("scores")
     sim = rt["simulator_measured"]
@@ -852,23 +865,28 @@ if REALTYPE and REALTYPE.get("capture"):
     table("A real keyboard vs. the simulator\u2019s, measured identically "
           f"({rt['reports']:,} real HID reports, {rt['span_s']:.0f} s of continuous typing)",
           ["Property", "Real", "Simulator"], rows)
-    body("One person typed continuously into the guest\u2019s virtual USB keyboard while "
-         "the deployed monitor scored the traffic live. "
-         + (f"Over the {sc['busy']} windows containing keystrokes, Stage-2 scores ranged "
-            f"{sc['stage2_min']:.3f} to {sc['stage2_max']:.3f} (median {sc['stage2_median']:.3f}) "
-            f"against the deployed threshold of {sc['threshold']}; {sc['at_or_above_threshold']} "
-            "windows reached it, and no alert fired. "
-            if sc else "")
-         + "This is a single session of one person deliberately mashing keys through a "
-         "virtualised keyboard, not a false-positive-rate measurement \u2014 but it is the "
-         "first time the deployed model has scored unscripted human input end to end. The "
-         "structural comparison is the more durable finding: a real keyboard emits a report "
-         "on key-release as well as key-press and repeats roughly a third of its payloads, "
-         "properties the simulator\u2019s one-URB-per-keystroke model does not reproduce. "
-         "The timing gap is confounded by task (continuous mashing is not prose and has "
-         "almost no think-pauses) and is not read as evidence against the simulator\u2019s "
-         "timing constants; the structural gap is not confounded by task and is reported as "
-         "a limitation of the simulated corpus.")
+    flagged = (f"Over the {sc['busy']} windows containing keystrokes, Stage-2 scores ranged "
+               f"{sc['stage2_min']:.3f} to {sc['stage2_max']:.3f} (median {sc['stage2_median']:.3f}) "
+               f"against the evaluated threshold of {sc['threshold']:.4f}; "
+               f"{sc['at_or_above_threshold']} of them reached it, and the "
+               f"{'persistence gate fired' if sc.get('gate_fires') else 'persistence gate did not fire'}"
+               + (f" {sc['first_alert_s']:.0f} s into the capture. " if sc.get('gate_fires') else ". ")
+               if sc and 'at_or_above_threshold' in sc else "")
+    body("One person typed continuously into the guest\u2019s virtual USB keyboard; the "
+         "recording was then scored offline with the evaluated model (the same code path as "
+         "the streaming detector). " + flagged
+         + "The evaluated system false-alarms on the one real keyboard session we have. "
+         "This is a single session of one person deliberately mashing keys through a "
+         "virtualised keyboard, so it is not a false-positive rate, but it is the only "
+         "real benign keyboard the model has seen and it is flagged. The structural "
+         "comparison explains why: a real keyboard emits a report on key-release as well as "
+         "key-press and repeats roughly a third of its payloads, so the cross-window payload "
+         "feature that detects scripted replay (median "
+         + (f"{sc['seq_novelty_median']:.2f}" if sc and 'seq_novelty_median' in sc else "n/a")
+         + " on real typing against about 0.99 on simulated benign typing) reads real typing "
+         "as a replayed script. The timing gap is confounded by task (continuous mashing is "
+         "not prose); the structural gap is not, and it is the finding: detection numbers "
+         "measured on the simulated corpus do not transfer to a real keyboard.")
 
 h2("F", "eBPF Capture Feasibility")
 body("Section V-A names two capture backends behind one interface: usbmon, "
@@ -912,7 +930,7 @@ body(f"Agreement is exact across {ebpf_ratio_str} difference in traffic volume, 
 # ---------------------------------------------------------------- VII
 h1("VII", "Limitations")
 item("1)", "<i>No real attack traffic.</i> Section VI-E validates the capture and "
-           "scoring pipeline against a real kernel and real (if benign) human input; it "
+           "scoring pipeline against a real kernel and real human typing, which it flags; it "
            "does not and cannot validate detection accuracy, because no malicious device "
            "was exercised against it. Every <i>detection</i> number in this paper remains "
            "measured on simulated attacks, and the real keyboard measured in VI-E differs "

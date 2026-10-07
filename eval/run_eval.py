@@ -294,6 +294,11 @@ def main() -> int:
             "threshold": full.threshold, "target_fpr": args.target_fpr,
             "seq_len": args.seq_len, "k": GATE_K, "n": GATE_N,
             "contract_version": CONTRACT_VERSION,
+            # Fingerprints of the saved weights. The loader refuses a checkpoint
+            # whose outputs do not match, so a Stage-2 file that belongs to a
+            # different run than this threshold cannot be deployed silently.
+            "canary": {"stage1": s1m.canary(),
+                       "stage2": s2m.canary(args.seq_len) if s2m is not None else None},
         }, indent=2))
         print(f"  wrote out/models/  (stage1.pkl, stage2.pt, deploy.json)")
 

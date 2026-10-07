@@ -226,6 +226,13 @@ class Stage1:
         v = float(np.percentile(dev_raw_benign, 99)) if len(dev_raw_benign) else 1.0
         self.scale["dev"] = v if v > 0 else 1.0
 
+    def canary(self, n: int = 8) -> list[float]:
+        """Population-forest scores on a fixed, seeded input -- see LSTMDetector.canary."""
+        rng = np.random.default_rng(20261007)
+        x = rng.normal(0.0, 1.0, size=(n, len(self.mu))) * self.sd + self.mu
+        group = "hid" if "hid" in self.forests else "other"
+        return [round(float(v), 6) for v in self._raw_if(x, group)]
+
     # ------------------------------------------------------------------
     # persistence
     # ------------------------------------------------------------------

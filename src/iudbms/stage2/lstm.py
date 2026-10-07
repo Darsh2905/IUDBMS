@@ -173,6 +173,20 @@ class LSTMDetector(nn.Module):
             out[s:s + batch] = torch.sigmoid(self(Xt[s:s + batch])).numpy()
         return out
 
+    def canary(self, seq_len: int = SEQ_LEN, n: int = 8) -> list[float]:
+        """Outputs on a fixed, seeded input -- a fingerprint of the weights.
+
+        ``deploy.json`` records these when a model is trained; the loader and
+        ``tests/test_deployed_models.py`` recompute them. The shipped Stage-2
+        checkpoint once did not belong to the run whose threshold sat beside it
+        (0 of 120 attacks detected against a reported 89.2%), and nothing could
+        tell, because each file loaded without complaint. Corpus-independent on
+        purpose: it needs no data, so it can run at service start-up.
+        """
+        rng = np.random.default_rng(20261007)
+        x = rng.normal(0.0, 1.0, size=(n, seq_len, self.d_in)).astype(np.float32)
+        return [round(float(v), 6) for v in self.predict_proba(x)]
+
     # ------------------------------------------------------------------
     # persistence
     # ------------------------------------------------------------------
