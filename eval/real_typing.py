@@ -145,7 +145,7 @@ def rescore_report(capture: Path, descriptors: Path, device: str, models: Path) 
         X.append(ex.extract(b, t0, desc))
         T.append(t0)
     X, T = np.vstack(X), np.array(T)
-    cfg, s1, lstm = deployed()
+    cfg, s1, lstm = deployed(models)
     sess = SessionData(sid="real", profile="keyboard", label=0, descriptor=desc, X=X, t=T,
                        y=np.zeros(len(T), int), onset=None, duration=dur)
     _, S2, _ = score_with(s1, lstm, [sess], np.array(cfg["feature_idx"]), cfg["seq_len"])
@@ -186,6 +186,8 @@ def main() -> int:
     ap.add_argument("--scores", type=Path, metavar="DB",
                     help="read scores from a service database (reflects whichever model "
                          "the service ran -- prefer --rescore)")
+    ap.add_argument("--models", type=Path, default=ROOT / "out" / "models",
+                    help="model directory for --rescore (default: the deployment's)")
     ap.add_argument("--rescore", type=Path, metavar="DESCRIPTORS",
                     help="score the capture offline with out/models; needs the "
                          "descriptors JSON recorded beside it")
@@ -207,7 +209,7 @@ def main() -> int:
         result["capture"] = cap
     if a.rescore is not None:
         print()
-        sc = rescore_report(a.capture, a.rescore, a.device, ROOT / "out" / "models")
+        sc = rescore_report(a.capture, a.rescore, a.device, a.models)
         print_scores(sc)
         result["scores"] = sc
     elif a.scores is not None:

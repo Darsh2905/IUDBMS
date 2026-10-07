@@ -1,0 +1,336 @@
+{
+  "base": [
+    {
+      "auc": 0.9818309873002499,
+      "threshold": 0.9944048890113832,
+      "fp": 0.0006666666666666666,
+      "detect": 0.8266666666666667,
+      "detect_at_0.5pct": 0.835,
+      "per_profile": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 0.95,
+        "mimicry_adaptive": 0.01,
+        "staged_delay": 1.0
+      },
+      "per_profile_matched": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 0.99,
+        "mimicry_adaptive": 0.02,
+        "staged_delay": 1.0
+      }
+    },
+    {
+      "auc": 0.9819482031336763,
+      "threshold": 0.9799701604962356,
+      "fp": 0.001,
+      "detect": 0.8333333333333334,
+      "detect_at_0.5pct": 0.8416666666666667,
+      "per_profile": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 1.0,
+        "mimicry_adaptive": 0.0,
+        "staged_delay": 1.0
+      },
+      "per_profile_matched": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 1.0,
+        "mimicry_adaptive": 0.05,
+        "staged_delay": 1.0
+      }
+    },
+    {
+      "auc": 0.9833959675165003,
+      "threshold": 0.995208741265536,
+      "fp": 0.0023333333333333335,
+      "detect": 0.8333333333333334,
+      "detect_at_0.5pct": 0.8433333333333334,
+      "per_profile": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 0.97,
+        "mimicry_adaptive": 0.03,
+        "staged_delay": 1.0
+      },
+      "per_profile_matched": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 0.99,
+        "mimicry_adaptive": 0.07,
+        "staged_delay": 1.0
+      }
+    }
+  ],
+  "+repeat": [
+    {
+      "auc": 0.98231179510334,
+      "threshold": 0.9824903881490238,
+      "fp": 0.0016666666666666668,
+      "detect": 0.8333333333333334,
+      "detect_at_0.5pct": 0.8416666666666667,
+      "per_profile": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 0.97,
+        "mimicry_adaptive": 0.03,
+        "staged_delay": 1.0
+      },
+      "per_profile_matched": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 0.98,
+        "mimicry_adaptive": 0.07,
+        "staged_delay": 1.0
+      }
+    },
+    {
+      "auc": 0.9781151704584408,
+      "threshold": 0.9455335282683374,
+      "fp": 0.005666666666666667,
+      "detect": 0.84,
+      "detect_at_0.5pct": 0.84,
+      "per_profile": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 1.0,
+        "mimicry_adaptive": 0.04,
+        "staged_delay": 1.0
+      },
+      "per_profile_matched": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 1.0,
+        "mimicry_adaptive": 0.04,
+        "staged_delay": 1.0
+      }
+    },
+    {
+      "auc": 0.9825976155298234,
+      "threshold": 0.9958679476559165,
+      "fp": 0.0006666666666666666,
+      "detect": 0.8283333333333334,
+      "detect_at_0.5pct": 0.8366666666666667,
+      "per_profile": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 0.96,
+        "mimicry_adaptive": 0.01,
+        "staged_delay": 1.0
+      },
+      "per_profile_matched": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 1.0,
+        "mimicry_adaptive": 0.02,
+        "staged_delay": 1.0
+      }
+    }
+  ],
+  "+context": [
+    {
+      "auc": 0.9858813292930022,
+      "threshold": 0.9974638101100926,
+      "fp": 0.0026666666666666666,
+      "detect": 0.8333333333333334,
+      "detect_at_0.5pct": 0.8433333333333334,
+      "per_profile": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 0.97,
+        "mimicry_adaptive": 0.03,
+        "staged_delay": 1.0
+      },
+      "per_profile_matched": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 0.99,
+        "mimicry_adaptive": 0.07,
+        "staged_delay": 1.0
+      }
+    },
+    {
+      "auc": 0.9860020136007961,
+      "threshold": 0.9875292541980766,
+      "fp": 0.0016666666666666668,
+      "detect": 0.8333333333333334,
+      "detect_at_0.5pct": 0.8383333333333334,
+      "per_profile": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 0.96,
+        "mimicry_adaptive": 0.04,
+        "staged_delay": 1.0
+      },
+      "per_profile_matched": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 0.96,
+        "mimicry_adaptive": 0.07,
+        "staged_delay": 1.0
+      }
+    },
+    {
+      "auc": 0.9866189557532427,
+      "threshold": 0.9976281585693361,
+      "fp": 0.0,
+      "detect": 0.8216666666666667,
+      "detect_at_0.5pct": 0.8483333333333334,
+      "per_profile": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 0.92,
+        "mimicry_adaptive": 0.01,
+        "staged_delay": 1.0
+      },
+      "per_profile_matched": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 0.97,
+        "mimicry_adaptive": 0.12,
+        "staged_delay": 1.0
+      }
+    }
+  ],
+  "+repeat+ctx": [
+    {
+      "auc": 0.9866176370713767,
+      "threshold": 0.9973738460421563,
+      "fp": 0.001,
+      "detect": 0.8333333333333334,
+      "detect_at_0.5pct": 0.8466666666666667,
+      "per_profile": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 0.95,
+        "mimicry_adaptive": 0.05,
+        "staged_delay": 1.0
+      },
+      "per_profile_matched": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 0.99,
+        "mimicry_adaptive": 0.09,
+        "staged_delay": 1.0
+      }
+    },
+    {
+      "auc": 0.9859873150036024,
+      "threshold": 0.9700316265583048,
+      "fp": 0.007333333333333333,
+      "detect": 0.8533333333333334,
+      "detect_at_0.5pct": 0.845,
+      "per_profile": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 0.99,
+        "mimicry_adaptive": 0.13,
+        "staged_delay": 1.0
+      },
+      "per_profile_matched": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 0.99,
+        "mimicry_adaptive": 0.08,
+        "staged_delay": 1.0
+      }
+    },
+    {
+      "auc": 0.986041078877923,
+      "threshold": 0.9982102785170079,
+      "fp": 0.003,
+      "detect": 0.8366666666666667,
+      "detect_at_0.5pct": 0.8383333333333334,
+      "per_profile": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 0.97,
+        "mimicry_adaptive": 0.05,
+        "staged_delay": 1.0
+      },
+      "per_profile_matched": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 0.97,
+        "mimicry_adaptive": 0.06,
+        "staged_delay": 1.0
+      }
+    }
+  ],
+  "ens5": [
+    {
+      "auc": 0.9841125709720872,
+      "threshold": 0.9846778635191932,
+      "fp": 0.0003333333333333333,
+      "detect": 0.8316666666666667,
+      "detect_at_0.5pct": 0.8433333333333334,
+      "per_profile": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 0.98,
+        "mimicry_adaptive": 0.01,
+        "staged_delay": 1.0
+      },
+      "per_profile_matched": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 1.0,
+        "mimicry_adaptive": 0.06,
+        "staged_delay": 1.0
+      }
+    }
+  ],
+  "ens5+repeat": [
+    {
+      "auc": 0.9833746055882973,
+      "threshold": 0.922632671943912,
+      "fp": 0.005,
+      "detect": 0.8483333333333334,
+      "detect_at_0.5pct": 0.8416666666666667,
+      "per_profile": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 1.0,
+        "mimicry_adaptive": 0.09,
+        "staged_delay": 1.0
+      },
+      "per_profile_matched": {
+        "class_exfil": 1.0,
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "mimicry": 1.0,
+        "mimicry_adaptive": 0.05,
+        "staged_delay": 1.0
+      }
+    }
+  ]
+}

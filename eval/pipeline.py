@@ -124,7 +124,8 @@ def run_configuration(
     Xb = np.vstack([s.X[:, sel] for s in train if s.label == 0])
     groups = [class_group(s.descriptor) for s in train if s.label == 0
               for _ in range(len(s.X))]
-    names = tuple(FEATURE_NAMES[i] for i in sel)
+    # Experiment-only columns appended past the frozen schema get a generic name.
+    names = tuple(FEATURE_NAMES[i] if i < len(FEATURE_NAMES) else f"ext{i}" for i in sel)
     # use_device_baseline=False is the N2 ablation: population forest only,
     # on the same score scale because the weights are renormalised.
     weights = None if use_device_baseline else (1.0, 0.0)

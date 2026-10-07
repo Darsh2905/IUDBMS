@@ -1,0 +1,82 @@
+{
+  "class_exfil": {
+    "no augmentation": {
+      "heldout": [
+        0.0,
+        [
+          0.0,
+          0.03699480747600191
+        ]
+      ],
+      "fp": 0.0013333333333333333,
+      "others": {
+        "class_exfil": 0.0,
+        "hid_injection": 1.0,
+        "mimicry": 0.96,
+        "identity_switch": 1.0,
+        "staged_delay": 1.0
+      },
+      "n_swaps": 0
+    },
+    "+ swaps (held-out pair removed)": {
+      "heldout": [
+        0.0,
+        [
+          0.0,
+          0.03699480747600191
+        ]
+      ],
+      "fp": 0.007,
+      "others": {
+        "class_exfil": 0.0,
+        "hid_injection": 1.0,
+        "mimicry": 0.97,
+        "identity_switch": 1.0,
+        "staged_delay": 1.0
+      },
+      "n_swaps": 152,
+      "swap_seen_pairs": 0.8842105263157896,
+      "swap_withheld_pair": 1.0
+    }
+  },
+  "identity_switch": {
+    "no augmentation": {
+      "heldout": [
+        0.0,
+        [
+          0.0,
+          0.03699480747600191
+        ]
+      ],
+      "fp": 0.007333333333333333,
+      "others": {
+        "identity_switch": 0.0,
+        "hid_injection": 1.0,
+        "mimicry": 0.99,
+        "class_exfil": 1.0,
+        "staged_delay": 1.0
+      },
+      "n_swaps": 0
+    },
+    "+ swaps (held-out pair removed)": {
+      "heldout": [
+        0.0,
+        [
+          0.0,
+          0.03699480747600191
+        ]
+      ],
+      "fp": 0.001,
+      "others": {
+        "identity_switch": 0.0,
+        "hid_injection": 1.0,
+        "mimicry": 0.96,
+        "class_exfil": 1.0,
+        "staged_delay": 1.0
+      },
+      "n_swaps": 152,
+      "swap_seen_pairs": 0.8842105263157896,
+      "swap_withheld_pair": 1.0
+    }
+  }
+}
