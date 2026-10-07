@@ -1124,6 +1124,50 @@ alone. `make eval` regenerated the set: `metrics.json` identical but for runtime
 system works. The check that found this was scoring the deployed artefact on the
 evaluation corpus -- something no test did.
 
+### Finding 32 — the 0.0% false-positive headline held only because no keyboard ever went idle (07 Oct)
+
+Every benign generator in `Simulator` is always active (keyboard pauses <= 3 s, mouse
+always moving, drive always busy). With realistic duty cycles
+(`eval/analysis_idle.py`, 60 sessions per cell) the evaluated model flags **90% of
+keyboards and 35% of mice at 3-8 s gaps, ~100% of both at >= 8 s and when idle after
+enumeration**; mass storage 0%. The 40% on `mimicry_adaptive` was the same artefact:
+its only tell (typing then permanent silence) is what any idle keyboard does.
+
+Retraining on Corpus B (`eval/analysis_realistic.py`: duty cycles, HID key-release +
+rollover reports, Zipf-word text tuned to Shannon's 3.56 bits, per-device speed 60-300
+ms, applied to attacks too) gives **0.0% FP in every benign condition** (original:
+46.6% overall, 100% of keyboards) at 83.3% detection; `mimicry_adaptive` -> 0% (the
+honest number). On fresh Corpus C (seed 2025, 3,000 benign + 100/family; never used to
+train or tune): 82.7% detection, 0.07% FP (2/3000). The held-out real typing capture goes
+from flagged (70/71 windows, gate at 4 s) to 0/71 and silent. Not independent evidence:
+Corpus B is built from HID-protocol facts the capture also shares.
+
+### Finding 33 — generalisation, and what did not help (07 Oct)
+
+`eval/analysis_lopo.py`: trained **without** a family, mean detection falls
+**82.7% -> 34.8%** (hid_injection and staged_delay transfer to each other at 100%;
+identity_switch, class_exfil -> 0%, mimicry -> 9%). Stage 1 alone is label-free and
+catches 53% of identity_switch that Stage 2 scores 0%; OR-ing the two paths gives 45.2%
+at FP 0.07% -> 0.31%. Negative results, each with a noise floor: 13 alerting rules
+(k-of-n, EWMA of log-odds, CUSUM) at matched FP all 82.0-84.3% (the gate adds ~3 s
+latency and no FP benefit here); long-repeat n-gram feature, long-memory context and a
+5-seed ensemble all inside the 84.0 +/- 0.4 seed spread; behaviour-swap anomaly injection
+learns the swaps (88% of fresh ones, 100% of the withheld pair) but transfers to neither
+held-out real family. The replay-loop result swings **97% <-> 1%** on one attacker choice
+(clean press/release vs imitated human rollover); report it as a range.
+
+### Finding 34 — bugs of mine found along the way (07 Oct)
+
+Two silent session-id collisions (a fresh evaluation set reuses the corpus's S0001/A0007
+names; a loop repeated "X0000" per profile) overwrote one session's scores with another's
+in dicts keyed by sid. `score_with` now raises on duplicate ids. And **open**: the live
+`SysfsScanner` stamps every interface of an already-attached device with
+`first_seen_ts` = seconds since scanner start (> 0), which the model reads as "interface
+appeared late": on the VM every window of every real device has `late_iface_flag = 1.0`
+and class group `other`. Live alert rates on real devices are therefore NOT evidence
+about anything until this is fixed (interfaces present at a device's first scan should be
+0.0, and the scanner's clock must share the monitor's window time base).
+
 ### Live monitoring — wired 10 Sep, never yet run on real traffic
 
 Until now **nothing called `UsbmonSource.live()`.** It existed and was

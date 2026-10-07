@@ -50,15 +50,43 @@ def load_splits(seed: int = 7):
     return corpus, fit, val, test
 
 
-def deployed():
-    """The checkpoint a deployment runs: (config, Stage1, LSTMDetector)."""
-    cfg = json.loads((MODELS / "deploy.json").read_text())
-    return cfg, Stage1.load(MODELS / "stage1.pkl"), LSTMDetector.load(MODELS / "stage2.pt")
+def deployed(models: Path | None = None):
+    """A checkpoint set: (config, Stage1, LSTMDetector). Default is the deployment's."""
+    d = Path(models) if models is not None else MODELS
+    cfg = json.loads((d / "deploy.json").read_text())
+    return cfg, Stage1.load(d / "stage1.pkl"), LSTMDetector.load(d / "stage2.pt")
+
+
+def save_set(dest: Path, result, idx, *, target_fpr: float, seq_len: int = 10,
+             k: int = GATE_K, n: int = GATE_N) -> Path:
+    """Write a trained configuration as a loadable, canary-stamped model set.
+
+    Experiments keep their checkpoints under out/analysis_models/, never in
+    out/models/ -- that directory is the deployment's.
+    """
+    dest = Path(dest)
+    dest.mkdir(parents=True, exist_ok=True)
+    s1m, s2m = result.models
+    s1m.save(dest / "stage1.pkl")
+    s2m.save(dest / "stage2.pt")
+    (dest / "deploy.json").write_text(json.dumps({
+        "feature_idx": [int(i) for i in idx], "threshold": result.threshold,
+        "target_fpr": target_fpr, "seq_len": seq_len, "k": k, "n": n,
+        "canary": {"stage1": s1m.canary(), "stage2": s2m.canary(seq_len)}}, indent=2))
+    return dest
 
 
 def score_with(s1: Stage1, lstm: LSTMDetector | None, sessions: list[SessionData],
                idx: np.ndarray, seq_len: int = 10):
     """Stage-1 and Stage-2 per-window scores for each session, keyed by sid."""
+    # Scores are returned in dicts keyed by session id. Twice in one analysis a
+    # duplicate id (a fresh evaluation set reusing the training corpus's S0001/A0007
+    # names; a loop that repeated "X0000" per profile) silently overwrote one session's
+    # scores with another's, so make it a loud error instead.
+    sids = [s.sid for s in sessions]
+    if len(set(sids)) != len(sids):
+        dup = sorted({x for x in sids if sids.count(x) > 1})[:5]
+        raise ValueError(f"duplicate session ids in one scoring call, e.g. {dup}")
     S1, S2, EXPL = {}, {}, {}
     for s in sessions:
         sc, ex, _ = s1.score_session(s.X[:, idx], s.descriptor)
@@ -126,12 +154,16 @@ def per_profile(first: dict, sessions: list[SessionData]) -> dict:
     return out
 
 
-def featurize(sim_session, sid: str, profile: str) -> SessionData:
-    """One simulated session -> SessionData, exactly as eval.corpus.build_corpus does it."""
+def featurize(sim_session, sid: str, profile: str, extractor_cls=None) -> SessionData:
+    """One simulated session -> SessionData, exactly as eval.corpus.build_corpus does it.
+
+    ``extractor_cls`` lets an experiment append columns (see eval.analysis_ngram); the
+    default is the frozen 30-feature extractor.
+    """
     from iudbms.capture.simulator import SimulatedSource
     from iudbms.features.extractor import WindowFeatureExtractor, window_events
 
-    ex = WindowFeatureExtractor()
+    ex = (extractor_cls or WindowFeatureExtractor)()
     X, t, y = [], [], []
     for t0, bucket in window_events(list(SimulatedSource(sim_session).events()),
                                     duration=sim_session.duration):
@@ -142,3 +174,32 @@ def featurize(sim_session, sid: str, profile: str) -> SessionData:
     return SessionData(sid=sid, profile=profile, label=sim_session.label,
                        descriptor=sim_session.descriptor, X=np.vstack(X), t=np.asarray(t),
                        y=np.asarray(y), onset=sim_session.onset, duration=sim_session.duration)
+
+
+def featurize_multi(sim_session, sid: str, profile: str, transforms: dict,
+                    extractor_cls=None) -> dict:
+    """Featurise ONE simulated session under several event-level transforms.
+
+    ``transforms`` maps a name to ``f(events) -> events`` (use ``None`` for identity).
+    The events are generated and parsed once and discarded afterwards, so memory stays
+    flat however many perturbations are applied.
+    """
+    from iudbms.capture.simulator import SimulatedSource
+    from iudbms.features.extractor import WindowFeatureExtractor, window_events
+
+    base = list(SimulatedSource(sim_session).events())
+    out = {}
+    for name, fn in transforms.items():
+        ev = base if fn is None else fn(base)
+        ex = (extractor_cls or WindowFeatureExtractor)()
+        X, t, y = [], [], []
+        for t0, bucket in window_events(ev, duration=sim_session.duration):
+            X.append(ex.extract(bucket, t0, sim_session.descriptor))
+            t.append(t0)
+            y.append(int(sim_session.label == 1 and sim_session.onset is not None
+                         and (t0 + ex.WINDOW) > sim_session.onset))
+        out[name] = SessionData(sid=sid, profile=profile, label=sim_session.label,
+                                descriptor=sim_session.descriptor, X=np.vstack(X),
+                                t=np.asarray(t), y=np.asarray(y), onset=sim_session.onset,
+                                duration=sim_session.duration)
+    return out

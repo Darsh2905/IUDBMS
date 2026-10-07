@@ -1,0 +1,149 @@
+{
+  "benign": {
+    "active": {
+      "original": 0.13333333333333333,
+      "idle-aware": 0.13333333333333333,
+      "realistic": 0.0
+    },
+    "gap3-8": {
+      "original": 0.4,
+      "idle-aware": 0.32,
+      "realistic": 0.0
+    },
+    "gap8-20": {
+      "original": 0.875,
+      "idle-aware": 0.20833333333333334,
+      "realistic": 0.0
+    },
+    "gap20-60": {
+      "original": 0.7,
+      "idle-aware": 0.1,
+      "realistic": 0.0
+    },
+    "idle": {
+      "original": 0.875,
+      "idle-aware": 0.0,
+      "realistic": 0.0
+    },
+    "keyboards": {
+      "original": 1.0,
+      "idle-aware": 0.6842105263157895,
+      "realistic": 0.0
+    }
+  },
+  "attack": {
+    "class_exfil": {
+      "original": 1.0,
+      "idle-aware": 1.0,
+      "realistic": 1.0
+    },
+    "hid_injection": {
+      "original": 1.0,
+      "idle-aware": 1.0,
+      "realistic": 1.0
+    },
+    "identity_switch": {
+      "original": 1.0,
+      "idle-aware": 1.0,
+      "realistic": 1.0
+    },
+    "mimicry": {
+      "original": 1.0,
+      "idle-aware": 1.0,
+      "realistic": 1.0
+    },
+    "mimicry_adaptive": {
+      "original": 1.0,
+      "idle-aware": 1.0,
+      "realistic": 0.0
+    },
+    "staged_delay": {
+      "original": 1.0,
+      "idle-aware": 1.0,
+      "realistic": 1.0
+    }
+  },
+  "window_auc": {
+    "original": 0.9550163022943905,
+    "idle-aware": 0.9709089471883838,
+    "realistic": 0.9842037298460296
+  },
+  "wire": {
+    "real": {
+      "reports_per_s": 22.558359089110894,
+      "release_share": 0.10245901639344263,
+      "unique_payload_share": 0.35714285714285715,
+      "gaps_over_1s": 0.0023432923257176333
+    },
+    "corpus_a_sim": {
+      "reports_per_s": 2.163595803023575,
+      "release_share": 0.0,
+      "unique_payload_share": 0.47928994082840237,
+      "gaps_over_1s": 0.15476190476190477
+    },
+    "corpus_b_sim": {
+      "reports_per_s": 4.120736128443363,
+      "release_share": 0.36509002530829515,
+      "unique_payload_share": 0.31120278597156054,
+      "gaps_over_1s": 0.07073722089926902,
+      "iat_median": 0.07378516666666668
+    }
+  },
+  "benign_n": {
+    "active": 75,
+    "gap3-8": 25,
+    "gap8-20": 24,
+    "gap20-60": 30,
+    "idle": 24,
+    "keyboards": 38,
+    "ALL": 178
+  },
+  "attack_n": {
+    "hid_injection": 21,
+    "identity_switch": 20,
+    "staged_delay": 20,
+    "class_exfil": 24,
+    "mimicry": 15,
+    "mimicry_adaptive": 20
+  },
+  "overall": {
+    "original": {
+      "detect": 1.0,
+      "fp": 0.46629213483146065,
+      "median_latency": 3.5482060225807506
+    },
+    "idle-aware": {
+      "detect": 1.0,
+      "fp": 0.14606741573033707,
+      "median_latency": 3.7674832602768538
+    },
+    "realistic": {
+      "detect": 0.8333333333333334,
+      "fp": 0.0,
+      "median_latency": 3.82111587120608
+    }
+  },
+  "real": {
+    "original": {
+      "at_or_above_threshold": 70,
+      "busy": 71,
+      "stage2_median": 0.9990851879119873,
+      "gate_fires": true,
+      "first_alert_s": 4.0
+    },
+    "idle-aware": {
+      "at_or_above_threshold": 50,
+      "busy": 71,
+      "stage2_median": 0.9983296990394592,
+      "gate_fires": true,
+      "first_alert_s": 35.0
+    },
+    "realistic": {
+      "at_or_above_threshold": 0,
+      "busy": 71,
+      "stage2_median": 0.3960775136947632,
+      "gate_fires": false,
+      "first_alert_s": null
+    }
+  }
+}

@@ -1,0 +1,304 @@
+{
+  "deployed": {
+    "fp": 0.0006666666666666666,
+    "detect": 0.8233333333333334
+  },
+  "rules": [
+    {
+      "alpha": 0.005,
+      "rows": [
+        {
+          "rule": "k-of-n",
+          "params": "1/1",
+          "level": 0.9926090836524964,
+          "fp": 0.010666666666666666,
+          "detect_sel": 0.8366666666666667,
+          "detect_test": 0.8366666666666667,
+          "median_latency": 0.8553906060026293,
+          "mimicry": 1.0,
+          "adaptive": 0.02
+        },
+        {
+          "rule": "k-of-n",
+          "params": "2/3",
+          "level": 0.9880962371826173,
+          "fp": 0.008,
+          "detect_sel": 0.8366666666666667,
+          "detect_test": 0.8366666666666667,
+          "median_latency": 1.801195499458288,
+          "mimicry": 1.0,
+          "adaptive": 0.02
+        },
+        {
+          "rule": "k-of-n",
+          "params": "3/6",
+          "level": 0.9832386970520021,
+          "fp": 0.006666666666666667,
+          "detect_sel": 0.8366666666666667,
+          "detect_test": 0.8333333333333334,
+          "median_latency": 2.7579196401775956,
+          "mimicry": 1.0,
+          "adaptive": 0.0
+        },
+        {
+          "rule": "k-of-n",
+          "params": "4/6",
+          "level": 0.9570828080177308,
+          "fp": 0.009333333333333334,
+          "detect_sel": 0.8433333333333334,
+          "detect_test": 0.8333333333333334,
+          "median_latency": 3.6722949476506015,
+          "mimicry": 0.98,
+          "adaptive": 0.02
+        },
+        {
+          "rule": "k-of-n",
+          "params": "5/6",
+          "level": 0.93819397687912,
+          "fp": 0.008666666666666666,
+          "detect_sel": 0.8433333333333334,
+          "detect_test": 0.8366666666666667,
+          "median_latency": 4.670753980527728,
+          "mimicry": 1.0,
+          "adaptive": 0.02
+        },
+        {
+          "rule": "k-of-n",
+          "params": "8/10",
+          "level": 0.8799735307693483,
+          "fp": 0.007333333333333333,
+          "detect_sel": 0.85,
+          "detect_test": 0.8366666666666667,
+          "median_latency": 7.649834114399713,
+          "mimicry": 1.0,
+          "adaptive": 0.02
+        },
+        {
+          "rule": "EWMA",
+          "params": "lam=0.5",
+          "level": 3.8268104245555334,
+          "fp": 0.009333333333333334,
+          "detect_sel": 0.84,
+          "detect_test": 0.8366666666666667,
+          "median_latency": 2.264817217871361,
+          "mimicry": 1.0,
+          "adaptive": 0.02
+        },
+        {
+          "rule": "EWMA",
+          "params": "lam=0.7",
+          "level": 2.9416933507024905,
+          "fp": 0.010666666666666666,
+          "detect_sel": 0.8466666666666667,
+          "detect_test": 0.84,
+          "median_latency": 3.2198618833692376,
+          "mimicry": 1.0,
+          "adaptive": 0.04
+        },
+        {
+          "rule": "EWMA",
+          "params": "lam=0.85",
+          "level": 2.0197096213879298,
+          "fp": 0.008,
+          "detect_sel": 0.8566666666666667,
+          "detect_test": 0.8433333333333334,
+          "median_latency": 5.385774743457077,
+          "mimicry": 1.0,
+          "adaptive": 0.06
+        },
+        {
+          "rule": "CUSUM",
+          "params": "drift=0.0",
+          "level": 44.8618499400875,
+          "fp": 0.012666666666666666,
+          "detect_sel": 0.8466666666666667,
+          "detect_test": 0.8366666666666667,
+          "median_latency": 4.842732493935969,
+          "mimicry": 1.0,
+          "adaptive": 0.02
+        },
+        {
+          "rule": "CUSUM",
+          "params": "drift=2.0",
+          "level": 8.34633448188591,
+          "fp": 0.010666666666666666,
+          "detect_sel": 0.8433333333333334,
+          "detect_test": 0.8366666666666667,
+          "median_latency": 1.7641148802164928,
+          "mimicry": 1.0,
+          "adaptive": 0.02
+        },
+        {
+          "rule": "CUSUM",
+          "params": "drift=4.0",
+          "level": 0.9314549047510622,
+          "fp": 0.010666666666666666,
+          "detect_sel": 0.8366666666666667,
+          "detect_test": 0.84,
+          "median_latency": 0.8682781402043673,
+          "mimicry": 1.0,
+          "adaptive": 0.04
+        },
+        {
+          "rule": "CUSUM",
+          "params": "drift=6.0",
+          "level": 5e-324,
+          "fp": 0.004,
+          "detect_sel": 0.8366666666666667,
+          "detect_test": 0.82,
+          "median_latency": 1.3927363521357297,
+          "mimicry": 0.92,
+          "adaptive": 0.0
+        }
+      ]
+    },
+    {
+      "alpha": 0.02,
+      "rows": [
+        {
+          "rule": "k-of-n",
+          "params": "1/1",
+          "level": 0.9711886644363404,
+          "fp": 0.024666666666666667,
+          "detect_sel": 0.87,
+          "detect_test": 0.8666666666666667,
+          "median_latency": 0.7384735112337637,
+          "mimicry": 1.0,
+          "adaptive": 0.2
+        },
+        {
+          "rule": "k-of-n",
+          "params": "2/3",
+          "level": 0.9507849216461183,
+          "fp": 0.025333333333333333,
+          "detect_sel": 0.8733333333333333,
+          "detect_test": 0.8566666666666667,
+          "median_latency": 1.6731261765560617,
+          "mimicry": 1.0,
+          "adaptive": 0.14
+        },
+        {
+          "rule": "k-of-n",
+          "params": "3/6",
+          "level": 0.9235954880714418,
+          "fp": 0.02666666666666667,
+          "detect_sel": 0.8733333333333333,
+          "detect_test": 0.8666666666666667,
+          "median_latency": 2.6751340759317523,
+          "mimicry": 1.0,
+          "adaptive": 0.2
+        },
+        {
+          "rule": "k-of-n",
+          "params": "4/6",
+          "level": 0.9040422439575196,
+          "fp": 0.023333333333333334,
+          "detect_sel": 0.8766666666666667,
+          "detect_test": 0.8633333333333333,
+          "median_latency": 3.671293552507825,
+          "mimicry": 1.0,
+          "adaptive": 0.18
+        },
+        {
+          "rule": "k-of-n",
+          "params": "5/6",
+          "level": 0.8570642471313478,
+          "fp": 0.03,
+          "detect_sel": 0.88,
+          "detect_test": 0.8766666666666667,
+          "median_latency": 4.671463718745141,
+          "mimicry": 1.0,
+          "adaptive": 0.26
+        },
+        {
+          "rule": "k-of-n",
+          "params": "8/10",
+          "level": 0.7716621160507203,
+          "fp": 0.03,
+          "detect_sel": 0.88,
+          "detect_test": 0.8633333333333333,
+          "median_latency": 7.651776532492466,
+          "mimicry": 1.0,
+          "adaptive": 0.18
+        },
+        {
+          "rule": "EWMA",
+          "params": "lam=0.5",
+          "level": 2.7475860879894793,
+          "fp": 0.02666666666666667,
+          "detect_sel": 0.8666666666666667,
+          "detect_test": 0.86,
+          "median_latency": 1.6508053234460895,
+          "mimicry": 1.0,
+          "adaptive": 0.16
+        },
+        {
+          "rule": "EWMA",
+          "params": "lam=0.7",
+          "level": 2.174152538008268,
+          "fp": 0.025333333333333333,
+          "detect_sel": 0.8733333333333333,
+          "detect_test": 0.8666666666666667,
+          "median_latency": 2.6233993718465687,
+          "mimicry": 1.0,
+          "adaptive": 0.2
+        },
+        {
+          "rule": "EWMA",
+          "params": "lam=0.85",
+          "level": 1.4241843599197108,
+          "fp": 0.029333333333333333,
+          "detect_sel": 0.88,
+          "detect_test": 0.8733333333333333,
+          "median_latency": 5.011413208309213,
+          "mimicry": 1.0,
+          "adaptive": 0.24
+        },
+        {
+          "rule": "CUSUM",
+          "params": "drift=0.0",
+          "level": 27.267943904097052,
+          "fp": 0.03333333333333333,
+          "detect_sel": 0.89,
+          "detect_test": 0.8733333333333333,
+          "median_latency": 3.630964489693162,
+          "mimicry": 1.0,
+          "adaptive": 0.24
+        },
+        {
+          "rule": "CUSUM",
+          "params": "drift=2.0",
+          "level": 2.8569585253505463,
+          "fp": 0.027333333333333334,
+          "detect_sel": 0.8833333333333333,
+          "detect_test": 0.87,
+          "median_latency": 0.8715598716806099,
+          "mimicry": 1.0,
+          "adaptive": 0.22
+        },
+        {
+          "rule": "CUSUM",
+          "params": "drift=4.0",
+          "level": 5e-324,
+          "fp": 0.016666666666666666,
+          "detect_sel": 0.8566666666666667,
+          "detect_test": 0.8533333333333334,
+          "median_latency": 0.772636242681942,
+          "mimicry": 1.0,
+          "adaptive": 0.12
+        },
+        {
+          "rule": "CUSUM",
+          "params": "drift=6.0",
+          "level": 5e-324,
+          "fp": 0.004,
+          "detect_sel": 0.8366666666666667,
+          "detect_test": 0.82,
+          "median_latency": 1.3927363521357297,
+          "mimicry": 0.92,
+          "adaptive": 0.0
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,189 @@
+{
+  "mimicry_overlap": {
+    "short": {
+      "k": 97,
+      "n": 100,
+      "rate": 0.97,
+      "ci": [
+        0.915479219195973,
+        0.9897456617765851
+      ]
+    },
+    "human": {
+      "k": 1,
+      "n": 100,
+      "rate": 0.01,
+      "ci": [
+        0.0017673865655472645,
+        0.0544875247609346
+      ]
+    }
+  },
+  "perturbations": {
+    "as generated": {
+      "fp": 0.0,
+      "fp_keyboard": 0.0,
+      "detect": 0.8333333333333334,
+      "per_profile": {
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "staged_delay": 1.0,
+        "class_exfil": 1.0,
+        "mimicry": 1.0,
+        "mimicry_adaptive": 0.0
+      },
+      "n_benign": 200,
+      "n_attack": 180
+    },
+    "jitter 0.5 ms": {
+      "fp": 0.0,
+      "fp_keyboard": 0.0,
+      "detect": 0.8333333333333334,
+      "per_profile": {
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "staged_delay": 1.0,
+        "class_exfil": 1.0,
+        "mimicry": 1.0,
+        "mimicry_adaptive": 0.0
+      },
+      "n_benign": 200,
+      "n_attack": 180
+    },
+    "jitter 2 ms": {
+      "fp": 0.0,
+      "fp_keyboard": 0.0,
+      "detect": 0.8333333333333334,
+      "per_profile": {
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "staged_delay": 1.0,
+        "class_exfil": 1.0,
+        "mimicry": 1.0,
+        "mimicry_adaptive": 0.0
+      },
+      "n_benign": 200,
+      "n_attack": 180
+    },
+    "jitter 5 ms": {
+      "fp": 0.0,
+      "fp_keyboard": 0.0,
+      "detect": 0.8333333333333334,
+      "per_profile": {
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "staged_delay": 1.0,
+        "class_exfil": 1.0,
+        "mimicry": 1.0,
+        "mimicry_adaptive": 0.0
+      },
+      "n_benign": 200,
+      "n_attack": 180
+    },
+    "quantise 1 ms": {
+      "fp": 0.0,
+      "fp_keyboard": 0.0,
+      "detect": 0.8333333333333334,
+      "per_profile": {
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "staged_delay": 1.0,
+        "class_exfil": 1.0,
+        "mimicry": 1.0,
+        "mimicry_adaptive": 0.0
+      },
+      "n_benign": 200,
+      "n_attack": 180
+    },
+    "quantise 8 ms": {
+      "fp": 0.0,
+      "fp_keyboard": 0.0,
+      "detect": 0.8333333333333334,
+      "per_profile": {
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "staged_delay": 1.0,
+        "class_exfil": 1.0,
+        "mimicry": 1.0,
+        "mimicry_adaptive": 0.0
+      },
+      "n_benign": 200,
+      "n_attack": 180
+    },
+    "quantise 10 ms": {
+      "fp": 0.0,
+      "fp_keyboard": 0.0,
+      "detect": 0.8277777777777777,
+      "per_profile": {
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "staged_delay": 1.0,
+        "class_exfil": 1.0,
+        "mimicry": 0.9666666666666667,
+        "mimicry_adaptive": 0.0
+      },
+      "n_benign": 200,
+      "n_attack": 180
+    },
+    "drop 1%": {
+      "fp": 0.0,
+      "fp_keyboard": 0.0,
+      "detect": 0.8333333333333334,
+      "per_profile": {
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "staged_delay": 1.0,
+        "class_exfil": 1.0,
+        "mimicry": 1.0,
+        "mimicry_adaptive": 0.0
+      },
+      "n_benign": 200,
+      "n_attack": 180
+    },
+    "drop 5%": {
+      "fp": 0.0,
+      "fp_keyboard": 0.0,
+      "detect": 0.8277777777777777,
+      "per_profile": {
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "staged_delay": 1.0,
+        "class_exfil": 1.0,
+        "mimicry": 0.9666666666666667,
+        "mimicry_adaptive": 0.0
+      },
+      "n_benign": 200,
+      "n_attack": 180
+    },
+    "drop 20%": {
+      "fp": 0.0,
+      "fp_keyboard": 0.0,
+      "detect": 0.7833333333333333,
+      "per_profile": {
+        "hid_injection": 1.0,
+        "identity_switch": 1.0,
+        "staged_delay": 1.0,
+        "class_exfil": 1.0,
+        "mimicry": 0.7,
+        "mimicry_adaptive": 0.0
+      },
+      "n_benign": 200,
+      "n_attack": 180
+    },
+    "dilate x2": {
+      "fp": 0.0,
+      "fp_keyboard": 0.0,
+      "detect": NaN,
+      "per_profile": {
+        "hid_injection": NaN,
+        "identity_switch": NaN,
+        "staged_delay": NaN,
+        "class_exfil": NaN,
+        "mimicry": NaN,
+        "mimicry_adaptive": NaN
+      },
+      "n_benign": 200,
+      "n_attack": 0
+    }
+  }
+}
