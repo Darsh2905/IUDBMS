@@ -98,7 +98,37 @@ def load_models(models: Path, *, allow_stage1_only: bool = False):
             f"{s2_path} is missing. Without Stage 2 the monitor runs the Stage-1-only "
             f"configuration (15.8% session detection on the evaluation corpus), not the "
             f"deployed system. Pass --allow-stage1-only if that is really intended.")
+    verify_canary(cfg, s1, s2, models)
     return cfg, s1, s2
+
+
+def verify_canary(cfg: dict, s1, s2, models: Path, tol: float = 1e-4) -> None:
+    """Refuse weights that do not belong to the threshold they are deployed with.
+
+    The first deployment shipped a Stage-2 checkpoint from a different run than
+    the ``deploy.json`` beside it: at the recorded threshold it detected 0 of 120
+    attacks, while the service reported itself healthy and scored traffic. Every
+    other check passed, because each file was individually valid.
+    """
+    want = cfg.get("canary")
+    if not want:
+        print(f"warning: {models / 'deploy.json'} has no canary, so these weights "
+              f"cannot be verified against the threshold. Retrain with `make eval`.",
+              file=sys.stderr)
+        return
+    for name, model, ref in (("stage1", s1, want.get("stage1")),
+                             ("stage2", s2, want.get("stage2"))):
+        if model is None or ref is None:
+            continue
+        got = model.canary(cfg["seq_len"]) if name == "stage2" else model.canary()
+        worst = max(abs(a - b) for a, b in zip(got, ref))
+        if worst > tol:
+            raise SystemExit(
+                f"{models / ('stage1.pkl' if name == 'stage1' else 'stage2.pt')} does not "
+                f"match deploy.json (canary differs by {worst:.4g}). These weights are not "
+                f"the ones the threshold {cfg['threshold']:.4f} was calibrated for, so the "
+                f"monitor would score traffic but could not be trusted to alert. "
+                f"Regenerate the set together with `make eval`.")
 
 
 def _load_descriptor_snapshot(path):

@@ -1,0 +1,256 @@
+{
+  "headline": {
+    "detect": 0.8916666666666667,
+    "detect_k": 107,
+    "n_attack": 120,
+    "detect_ci": [
+      0.8234449199472613,
+      0.9355892010589275
+    ],
+    "fp": 0.0,
+    "fp_k": 0,
+    "n_benign": 178,
+    "fp_ci": [
+      0.0,
+      0.021126078961029818
+    ],
+    "median_latency": 4.299803074238076,
+    "p90_latency": 34.76807424575374
+  },
+  "per_class": {
+    "audio": {
+      "n": 37,
+      "k": 0,
+      "rate": 0.0,
+      "ci": [
+        0.0,
+        0.09406095745514377
+      ],
+      "label": 0
+    },
+    "class_exfil": {
+      "n": 24,
+      "k": 24,
+      "rate": 1.0,
+      "ci": [
+        0.8620194241710247,
+        1.0
+      ],
+      "label": 1
+    },
+    "hid_injection": {
+      "n": 21,
+      "k": 21,
+      "rate": 1.0,
+      "ci": [
+        0.8453561767357979,
+        0.9999999999999999
+      ],
+      "label": 1
+    },
+    "identity_switch": {
+      "n": 20,
+      "k": 20,
+      "rate": 1.0,
+      "ci": [
+        0.8388698745050667,
+        1.0
+      ],
+      "label": 1
+    },
+    "keyboard": {
+      "n": 38,
+      "k": 0,
+      "rate": 0.0,
+      "ci": [
+        0.0,
+        0.09181293258383999
+      ],
+      "label": 0
+    },
+    "mass_storage": {
+      "n": 33,
+      "k": 0,
+      "rate": 0.0,
+      "ci": [
+        0.0,
+        0.10427343003561192
+      ],
+      "label": 0
+    },
+    "mimicry": {
+      "n": 15,
+      "k": 14,
+      "rate": 0.9333333333333333,
+      "ci": [
+        0.7018292244757601,
+        0.9881334113938051
+      ],
+      "label": 1
+    },
+    "mimicry_adaptive": {
+      "n": 20,
+      "k": 8,
+      "rate": 0.4,
+      "ci": [
+        0.21880396741419272,
+        0.613422057684794
+      ],
+      "label": 1
+    },
+    "mouse": {
+      "n": 37,
+      "k": 0,
+      "rate": 0.0,
+      "ci": [
+        0.0,
+        0.09406095745514377
+      ],
+      "label": 0
+    },
+    "staged_delay": {
+      "n": 20,
+      "k": 20,
+      "rate": 1.0,
+      "ci": [
+        0.8388698745050667,
+        1.0
+      ],
+      "label": 1
+    },
+    "webcam": {
+      "n": 33,
+      "k": 0,
+      "rate": 0.0,
+      "ci": [
+        0.0,
+        0.10427343003561192
+      ],
+      "label": 0
+    }
+  },
+  "misses": [
+    {
+      "sid": "A0234",
+      "profile": "mimicry",
+      "post_onset_windows": 40,
+      "max": 0.9993973970413208,
+      "p90": 0.9261653423309326,
+      "windows_over": 2,
+      "best_k_in_n": 2
+    },
+    {
+      "sid": "A0048",
+      "profile": "mimicry_adaptive",
+      "post_onset_windows": 49,
+      "max": 0.8475854396820068,
+      "p90": 0.7775560259819031,
+      "windows_over": 0,
+      "best_k_in_n": 0
+    },
+    {
+      "sid": "A0305",
+      "profile": "mimicry_adaptive",
+      "post_onset_windows": 32,
+      "max": 0.8577451109886169,
+      "p90": 0.8132367908954621,
+      "windows_over": 0,
+      "best_k_in_n": 0
+    },
+    {
+      "sid": "A0291",
+      "profile": "mimicry_adaptive",
+      "post_onset_windows": 54,
+      "max": 0.8740798234939575,
+      "p90": 0.7374622762203217,
+      "windows_over": 0,
+      "best_k_in_n": 0
+    },
+    {
+      "sid": "A0140",
+      "profile": "mimicry_adaptive",
+      "post_onset_windows": 54,
+      "max": 0.8758441805839539,
+      "p90": 0.767592042684555,
+      "windows_over": 0,
+      "best_k_in_n": 0
+    },
+    {
+      "sid": "A0124",
+      "profile": "mimicry_adaptive",
+      "post_onset_windows": 55,
+      "max": 0.8979560136795044,
+      "p90": 0.6838180661201478,
+      "windows_over": 0,
+      "best_k_in_n": 0
+    },
+    {
+      "sid": "A0200",
+      "profile": "mimicry_adaptive",
+      "post_onset_windows": 41,
+      "max": 0.9268935322761536,
+      "p90": 0.8531898856163025,
+      "windows_over": 0,
+      "best_k_in_n": 0
+    },
+    {
+      "sid": "A0037",
+      "profile": "mimicry_adaptive",
+      "post_onset_windows": 40,
+      "max": 0.9366429448127747,
+      "p90": 0.9029021441936493,
+      "windows_over": 0,
+      "best_k_in_n": 0
+    },
+    {
+      "sid": "A0057",
+      "profile": "mimicry_adaptive",
+      "post_onset_windows": 48,
+      "max": 0.8866324424743652,
+      "p90": 0.7461284756660462,
+      "windows_over": 0,
+      "best_k_in_n": 0
+    },
+    {
+      "sid": "A0346",
+      "profile": "mimicry_adaptive",
+      "post_onset_windows": 66,
+      "max": 0.9755629301071167,
+      "p90": 0.7659319043159485,
+      "windows_over": 0,
+      "best_k_in_n": 0
+    },
+    {
+      "sid": "A0055",
+      "profile": "mimicry_adaptive",
+      "post_onset_windows": 60,
+      "max": 0.9939467906951904,
+      "p90": 0.9534493863582612,
+      "windows_over": 1,
+      "best_k_in_n": 1
+    },
+    {
+      "sid": "A0205",
+      "profile": "mimicry_adaptive",
+      "post_onset_windows": 41,
+      "max": 0.9456193447113037,
+      "p90": 0.8817282915115356,
+      "windows_over": 0,
+      "best_k_in_n": 0
+    },
+    {
+      "sid": "A0197",
+      "profile": "mimicry_adaptive",
+      "post_onset_windows": 36,
+      "max": 0.7998822331428528,
+      "p90": 0.7734316289424896,
+      "windows_over": 0,
+      "best_k_in_n": 0
+    }
+  ],
+  "threshold": 0.9915531560778632,
+  "gate": [
+    4,
+    6
+  ]
+}

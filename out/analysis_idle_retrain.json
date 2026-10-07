@@ -1,0 +1,73 @@
+{
+  "benign": {
+    "active": {
+      "n": 75,
+      "original": 0.013333333333333334,
+      "idle_aware": 0.0
+    },
+    "gap3-8": {
+      "n": 25,
+      "original": 0.36,
+      "idle_aware": 0.0
+    },
+    "gap8-20": {
+      "n": 24,
+      "original": 0.875,
+      "idle_aware": 0.0
+    },
+    "gap20-60": {
+      "n": 30,
+      "original": 0.7,
+      "idle_aware": 0.0
+    },
+    "idle": {
+      "n": 24,
+      "original": 0.875,
+      "idle_aware": 0.0
+    }
+  },
+  "attack": {
+    "class_exfil": {
+      "n": 24,
+      "original": 1.0,
+      "idle_aware": 1.0
+    },
+    "hid_injection": {
+      "n": 21,
+      "original": 1.0,
+      "idle_aware": 1.0
+    },
+    "identity_switch": {
+      "n": 20,
+      "original": 1.0,
+      "idle_aware": 1.0
+    },
+    "mimicry": {
+      "n": 15,
+      "original": 0.9333333333333333,
+      "idle_aware": 1.0
+    },
+    "mimicry_adaptive": {
+      "n": 20,
+      "original": 0.2,
+      "idle_aware": 0.0
+    },
+    "staged_delay": {
+      "n": 20,
+      "original": 1.0,
+      "idle_aware": 1.0
+    }
+  },
+  "overall": {
+    "original": {
+      "detect": 0.8583333333333333,
+      "fp": 0.4101123595505618
+    },
+    "idle_aware": {
+      "detect": 0.8333333333333334,
+      "fp": 0.0
+    },
+    "window_auc": 0.98197281729412,
+    "threshold": 0.9950155305981621
+  }
+}

@@ -1,6 +1,6 @@
 {
   "capture_path": "/Users/darshsharma/Downloads/iudbms-real-captures/capture-20261006-161418-bus0.txt",
-  "scores_db": "/tmp/vm_live.db",
+  "scores_db": null,
   "device": "1-4",
   "capture": {
     "reports": 1708,
@@ -52,15 +52,19 @@
     }
   },
   "scores": {
-    "windows": 216,
-    "busy": 144,
-    "threshold": 0.9916,
-    "stage2_min": 0.5169656276702881,
-    "stage2_median": 0.8122662007808685,
-    "stage2_max": 0.8494794368743896,
-    "at_or_above_threshold": 0,
-    "n_events_median": 22.0,
-    "alerts": 0,
-    "actions": 0
+    "windows": 100,
+    "busy": 71,
+    "threshold": 0.9915531560778632,
+    "stage2_min": 0.9516218900680542,
+    "stage2_median": 0.9990851879119873,
+    "stage2_max": 0.9999823570251465,
+    "at_or_above_threshold": 70,
+    "gate_fires": true,
+    "first_alert_s": 4.0,
+    "seq_novelty_median": 0.4848484992980957,
+    "n_events_median": 23.0,
+    "alerts": 1,
+    "actions": 1,
+    "source": "offline rescoring with /Users/darshsharma/Downloads/iudbms/out/models"
   }
 }
