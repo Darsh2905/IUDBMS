@@ -59,6 +59,8 @@ M = load("metrics.json")
 FUSION = load("fusion_ablation.json")
 BASE = load("baseline_ablation.json")
 CROSS = load("cross_device.json")
+REALCAP = load("real_capture_summary.json")
+REALTYPE = load("real_typing.json")
 
 doc = docx.Document()
 
@@ -328,7 +330,11 @@ run(p, "—USB peripherals are trusted by what they claim to be: during enumerat
        "the four novelty claims: temporal modelling is strongly supported, multi-modal "
        "fusion is supported only non-uniformly, and the per-device adaptive baseline is "
        "not supported even after device heterogeneity is introduced to test the "
-       "explanation previously offered for its inertness.")
+       "explanation previously offered for its inertness. We further validate the capture "
+       "and scoring pipeline, as distinct from its detection accuracy, against a real "
+       "Linux kernel: the parser loses none of 338 real usbmon lines, and the deployed "
+       "service scores unscripted human typing live without a false alarm, a check that "
+       "also surfaced and fixed a timing defect invisible to 385 simulator-driven tests.")
 
 p = doc.add_paragraph(style="IEEE Abstract")
 run(p, "Index Terms", italic=True)
@@ -779,13 +785,84 @@ body("The single-shot bound invites an obvious extension: a person typing is usu
      "either a coupled generator — which risks building in the signal one then "
      "detects — or real captured traffic.")
 
+h2("E", "Validation Against Real Kernel Traffic")
+body("Every result above is measured on simulated sessions. To check whether the "
+     "pipeline itself holds on genuine kernel output, we captured real usbmon "
+     "text from a Linux guest (Ubuntu 24.04.5, kernel 6.8, aarch64) with a real USB "
+     "host controller and virtual HID, hub and mass-storage devices attached, using "
+     "the project\u2019s own capture script. This checks the mechanism, not the "
+     "detector: the devices are virtual and no attack traffic was generated, so "
+     "nothing here is a detection-accuracy result.")
+
+if REALCAP:
+    rc = REALCAP
+    rows = [["Lines parsed", f"{rc['lines_seen']:,}"],
+            ["Lines unparsed", f"{rc['lines_unparsed']}"],
+            ["Loss rate", f"{rc['loss_rate']:.4%}"],
+            ["Target (plan \u00a74.1)", f"< {rc['plan_criterion']:.1%}"],
+            ["Events satisfying the contract", f"{rc['events_contract_valid']} of {rc['events_total']}"],
+            ["Control submissions carrying SETUP", f"{rc['control_submissions_with_setup']} of "
+                                                    f"{rc['control_submissions_total']}"],
+            ["Devices observed", f"{rc['n_devices']}"]]
+    table("Parser validation against a real usbmon capture "
+          f"({rc['span_s']:.1f} s, {rc['fixture'].split('/')[-1]})",
+          ["Metric", "Value"], rows)
+
+body("The parser lost zero of "
+     f"{REALCAP['lines_seen'] if REALCAP else 'N'} real kernel lines against the plan\u2019s "
+     "under-0.1% target, a criterion that had never been measurable before this capture "
+     "existed. Every emitted event satisfied the frozen contract, and every real control "
+     "submission carried the SETUP packet that the project\u2019s first prototype had "
+     "silently dropped.")
+
+body("Running the live monitor service against this traffic, rather than only parsing it "
+     "offline, surfaced a defect invisible to the simulator entirely: the window clock "
+     "began at service start rather than at the first observed event, so any delay before "
+     "the first USB event left every subsequent window permanently out of phase with "
+     "arriving traffic, and the service scored nothing. 385 simulator-driven tests passed "
+     "throughout, because a simulated source always delivers its first event immediately. "
+     "Fixed by anchoring the window clock to the first event\u2019s arrival; confirmed "
+     "against the same capture after the fix.")
+
+if REALTYPE and REALTYPE.get("capture"):
+    rt, sc = REALTYPE["capture"], REALTYPE.get("scores")
+    sim = rt["simulator_measured"]
+    rows = [["HID reports per second", f"{rt['reports_per_s']:.1f}", f"{sim['reports_per_s']:.1f}"],
+            ["Key-release (all-zero) reports", f"{rt['release_share']:.1%}", f"{sim['release_share']:.1%}"],
+            ["Distinct payloads", f"{rt['unique_payload_share']:.1%}", f"{sim['unique_payload_share']:.1%}"],
+            ["Inter-arrival median", f"{rt['iat_percentiles']['50']:.3f} s",
+             f"{sim['iat_percentiles']['50']:.3f} s"],
+            ["Gaps longer than 1 s", f"{rt['gaps_over_1s']:.1%}", f"{sim['gaps_over_1s']:.1%}"]]
+    table("A real keyboard vs. the simulator\u2019s, measured identically "
+          f"({rt['reports']:,} real HID reports, {rt['span_s']:.0f} s of continuous typing)",
+          ["Property", "Real", "Simulator"], rows)
+    body("One person typed continuously into the guest\u2019s virtual USB keyboard while "
+         "the deployed monitor scored the traffic live. "
+         + (f"Over the {sc['busy']} windows containing keystrokes, Stage-2 scores ranged "
+            f"{sc['stage2_min']:.3f} to {sc['stage2_max']:.3f} (median {sc['stage2_median']:.3f}) "
+            f"against the deployed threshold of {sc['threshold']}; {sc['at_or_above_threshold']} "
+            "windows reached it, and no alert fired. "
+            if sc else "")
+         + "This is a single session of one person deliberately mashing keys through a "
+         "virtualised keyboard, not a false-positive-rate measurement \u2014 but it is the "
+         "first time the deployed model has scored unscripted human input end to end. The "
+         "structural comparison is the more durable finding: a real keyboard emits a report "
+         "on key-release as well as key-press and repeats roughly a third of its payloads, "
+         "properties the simulator\u2019s one-URB-per-keystroke model does not reproduce. "
+         "The timing gap is confounded by task (continuous mashing is not prose and has "
+         "almost no think-pauses) and is not read as evidence against the simulator\u2019s "
+         "timing constants; the structural gap is not confounded by task and is reported as "
+         "a limitation of the simulated corpus.")
+
 # ---------------------------------------------------------------- VII
 h1("VII", "Limitations")
-item("1)", "<i>No real USB traffic.</i> Every number reported here is measured on "
-           "simulated sessions. The simulator emits the kernel’s own text format and "
-           "is parsed by the same code a live capture would use, so the parser is "
-           "exercised realistically, but the <i>behaviour</i> it describes is invented. "
-           "This is the principal limitation and bounds every other claim.")
+item("1)", "<i>No real attack traffic.</i> Section VI-E validates the capture and "
+           "scoring pipeline against a real kernel and real (if benign) human input; it "
+           "does not and cannot validate detection accuracy, because no malicious device "
+           "was exercised against it. Every <i>detection</i> number in this paper remains "
+           "measured on simulated attacks, and the real keyboard measured in VI-E differs "
+           "structurally from the simulator’s, which bounds how far those simulated "
+           "results should be trusted to transfer. This is the principal limitation.")
 item("2)", "<i>eBPF is designed, not built.</i> Layer 1 runs on usbmon. The eBPF backend "
            "sits behind the same interface and remains unimplemented, so the "
            "sub-microsecond overhead claimed for that pattern in [3]–[5] is not "
@@ -822,9 +899,14 @@ body("The evaluation is deliberately adversarial toward its own claims. Each nov
      "in advance; two of four did not survive, one survives only within a bounded regime, "
      "and the strongest result — that temporal context is worth the largest single "
      "margin measured here — is the one the architecture was least committed to in "
-     "advance. The outstanding work is correspondingly concrete: validation against real "
-     "captured traffic, an eBPF capture path, and a reviewed execution of the enforcement "
-     "loop against hardware.")
+     "advance. The same adversarial posture was then applied to the implementation "
+     "itself: running the capture and scoring path against a real kernel, rather than "
+     "only the simulator, immediately found a defect (Section VI-E) that 385 "
+     "simulator-driven tests had not, which is itself evidence that validating against "
+     "real traffic is not optional. The outstanding work is correspondingly concrete: "
+     "detection measured against a real malicious device rather than a benign one, an "
+     "eBPF capture path, and a reviewed execution of the enforcement loop against "
+     "hardware.")
 
 # ---------------------------------------------------------------- refs
 p = doc.add_paragraph(style="IEEE H1")

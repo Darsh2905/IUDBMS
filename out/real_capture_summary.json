@@ -1,0 +1,35 @@
+{
+  "fixture": "tests/fixtures/usbmon/real_qemu_vm_capture.txt",
+  "lines_seen": 338,
+  "events_emitted": 338,
+  "lines_unparsed": 0,
+  "loss_rate": 0.0,
+  "plan_criterion": 0.001,
+  "events_contract_valid": 338,
+  "events_total": 338,
+  "devices_seen": [
+    "1-1",
+    "1-2",
+    "1-3",
+    "1-4",
+    "1-5",
+    "1-6",
+    "2-1",
+    "3-1",
+    "4-1"
+  ],
+  "n_devices": 9,
+  "span_s": 18.113414,
+  "completions_by_type": {
+    "bulk_out": 19,
+    "bulk_in": 34,
+    "control_in": 89,
+    "control_out": 19,
+    "intr_in": 8
+  },
+  "control_submissions_with_setup": 108,
+  "control_submissions_total": 108,
+  "interrupt_events": 16,
+  "interrupt_interval_is_own_field": true,
+  "timestamps_monotone": true
+}

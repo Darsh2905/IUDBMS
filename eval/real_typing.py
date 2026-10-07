@@ -32,6 +32,7 @@ from pathlib import Path
 import numpy as np
 
 ROOT = Path(__file__).resolve().parent.parent
+OUT = ROOT / "out"
 sys.path.insert(0, str(ROOT / "src"))
 
 from iudbms.capture.simulator import HUMAN_IAT_LOGNORM, human_keys_per_second  # noqa: E402
@@ -134,15 +135,29 @@ def main() -> int:
     ap.add_argument("--scores", type=Path, metavar="DB")
     ap.add_argument("--device", default="1-4")
     ap.add_argument("--last", type=int, default=140)
+    ap.add_argument("--json", action="store_true",
+                    help="also write out/real_typing.json for scripts/build_paper.py")
     a = ap.parse_args()
     if a.capture is None and a.scores is None:
         ap.error("give a capture file, --scores DB, or both")
+
+    result = {"capture_path": str(a.capture) if a.capture else None,
+             "scores_db": str(a.scores) if a.scores else None, "device": a.device}
     if a.capture is not None:
-        print_capture(capture_report(a.capture, a.device))
+        cap = capture_report(a.capture, a.device)
+        print_capture(cap)
+        result["capture"] = cap
     if a.scores is not None:
         if a.capture is not None:
             print()
-        print_scores(score_report(a.scores, a.device, a.last))
+        sc = score_report(a.scores, a.device, a.last)
+        print_scores(sc)
+        result["scores"] = sc
+
+    if a.json:
+        OUT.mkdir(exist_ok=True)
+        (OUT / "real_typing.json").write_text(json.dumps(result, indent=2, default=float))
+        print(f"\n  wrote out/real_typing.json")
     return 0
 
 
