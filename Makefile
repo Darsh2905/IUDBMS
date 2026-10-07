@@ -42,6 +42,9 @@ diagrams:  ## architecture + gate diagrams as PNG/PDF (needs `make eval` first)
 	cp out/architecture.png out/architecture.pdf out/architecture_ieee.png out/architecture_ieee.pdf \
 	   out/gate_timeline.png out/gate_timeline.pdf docs/report/
 
+train-deployed:  ## train the DEPLOYED set on the realistic corpus -> out/models/ (~2 min)
+	python3 -m eval.train_deployed
+
 monitor-replay:  ## the monitor loop driven from a recorded capture (any OS); writes out/live.db
 	python3 scripts/live_monitor.py --replay tests/fixtures/usbmon/demo_capture.txt \
 		--descriptors tests/fixtures/usbmon/demo_descriptors.json

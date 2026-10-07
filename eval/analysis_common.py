@@ -30,6 +30,7 @@ ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "out"
 sys.path.insert(0, str(ROOT / "src"))
 
+from iudbms.contract import CONTRACT_VERSION  # noqa: E402
 from iudbms.policy import PolicyEngine  # noqa: E402
 from iudbms.stage1 import Stage1  # noqa: E402
 from iudbms.stage2 import LSTMDetector, build_sequences  # noqa: E402
@@ -72,6 +73,7 @@ def save_set(dest: Path, result, idx, *, target_fpr: float, seq_len: int = 10,
     (dest / "deploy.json").write_text(json.dumps({
         "feature_idx": [int(i) for i in idx], "threshold": result.threshold,
         "target_fpr": target_fpr, "seq_len": seq_len, "k": k, "n": n,
+        "contract_version": CONTRACT_VERSION,
         "canary": {"stage1": s1m.canary(), "stage2": s2m.canary(seq_len)}}, indent=2))
     return dest
 

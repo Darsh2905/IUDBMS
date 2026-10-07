@@ -75,7 +75,7 @@ def main() -> int:
 
     # ---------------- B. permutation importance ----------------
     rs = np.random.default_rng(2)
-    sub = [powered[i] for i in rs.permutation(len(powered))[:900]]
+    sub = [powered[i] for i in rs.permutation(len(powered))[:300]]
     base_auc = roc_auc_score(np.concatenate([s.y for s in sub]),
                              np.concatenate([score_with(s1, lstm, sub, idx, cfg["seq_len"])[1][s.sid] for s in sub]))
     pooled = np.vstack([s.X for s in sub])
@@ -91,6 +91,7 @@ def main() -> int:
         sc = score_with(s1, lstm, shuffled, idx, cfg["seq_len"])[1]
         drops[FEATURE_NAMES[j]] = base_auc - roc_auc_score(np.concatenate([s.y for s in sub]),
                                                            np.concatenate([sc[s.sid] for s in sub]))
+        print(f"   permuted {FEATURE_NAMES[j]:26s} drop {drops[FEATURE_NAMES[j]]:+.4f}", flush=True)
     order = sorted(drops.items(), key=lambda kv: -kv[1])
     print(f"\nB. FEATURE RELIANCE   (window AUC {base_auc:.4f} on {len(sub)} sessions; drop when shuffled)")
     for n, d in order[:10]:
