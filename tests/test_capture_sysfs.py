@@ -95,7 +95,9 @@ def test_late_interface_gets_a_later_first_seen_ts(tmp_path):
     scanner = SysfsScanner(root=tmp_path, origin=0.0)
     first = scanner.scan()["1-4"]
     assert first.classes_at(1e9) == frozenset({0x08})
-    assert not first.has_late_interface() or first.interfaces[0].first_seen_ts >= 0
+    # The old assertion here was `not has_late_interface() or ts >= 0`, which is true
+    # whatever the answer; it hid the defect tested properly below.
+    assert not first.has_late_interface()
 
     _mkiface(tmp_path, "1-2", 1, 1, cls=0x03, endpoints=[(0x83, 0x03, 10)])
     second = scanner.scan()["1-4"]
@@ -125,3 +127,52 @@ def test_unreadable_device_dir_is_skipped_not_fatal(tmp_path):
     _mkdev(tmp_path, "1-3", busnum=1, devnum=5, vid=3, pid=4)
     _mkiface(tmp_path, "1-3", 1, 0, cls=0x03)
     assert set(scan_once(tmp_path)) == {"1-5"}
+
+
+def test_interfaces_present_at_first_sight_are_not_late(tmp_path):
+    """A device already attached when the scanner starts did not grow an interface.
+
+    first_seen_ts > 0 means "this interface appeared after the device did", and the
+    model treats that as the strongest attack indicator it has (identity_switch). The
+    scanner used to stamp every interface with seconds-since-scanner-start, so on a
+    real host EVERY device carried late_iface_flag = 1 in every window and was
+    classed 'other' (classes_at(0.0) excluded its interfaces). The simulator always
+    emits first_seen_ts = 0.0 for enumeration-time interfaces, so nothing in the
+    evaluation could see it; it surfaced as late_iface_flag = 1.0 on every window of
+    every device on the VM.
+    """
+    import time
+    from iudbms.stage1 import class_group
+    _mkdev(tmp_path, "1-2", busnum=1, devnum=4, vid=1, pid=2)
+    _mkiface(tmp_path, "1-2", 1, 0, cls=0x03, endpoints=[(0x81, 0x03, 10)])
+    # a scanner created long before its first scan: now = monotonic() - origin >> 0
+    scanner = SysfsScanner(root=tmp_path, origin=time.monotonic() - 500.0)
+    d = scanner.scan()["1-4"]
+    assert d.interfaces[0].first_seen_ts == 0.0
+    assert not d.has_late_interface()
+    assert class_group(d) == "hid", "an interface present at first sight is an enumeration-time one"
+
+
+def test_a_device_plugged_in_later_is_not_a_late_interface(tmp_path):
+    """Hot-plug: the device is new, so its interfaces are its enumeration, not additions."""
+    import time
+    scanner = SysfsScanner(root=tmp_path, origin=time.monotonic() - 100.0)
+    assert scanner.scan() == {}
+    _mkdev(tmp_path, "1-3", busnum=1, devnum=5, vid=1, pid=2)
+    _mkiface(tmp_path, "1-3", 1, 0, cls=0x03)
+    d = scanner.scan()["1-5"]
+    assert d.interfaces[0].first_seen_ts == 0.0 and not d.has_late_interface()
+
+
+def test_an_interface_added_to_a_known_device_is_late_on_the_shared_clock(tmp_path):
+    """The one real late arrival must still be caught, and stamped on the monitor's clock."""
+    import time
+    _mkdev(tmp_path, "1-2", busnum=1, devnum=4, vid=1, pid=2)
+    _mkiface(tmp_path, "1-2", 1, 0, cls=0x08)
+    scanner = SysfsScanner(root=tmp_path, origin=time.monotonic() - 40.0)
+    scanner.scan()
+    _mkiface(tmp_path, "1-2", 1, 1, cls=0x03)
+    d = scanner.scan()["1-4"]
+    late = next(i for i in d.interfaces if i.bInterfaceClass == 0x03)
+    assert 39.0 < late.first_seen_ts < 42.0       # seconds since `origin`, the window clock
+    assert d.has_late_interface()

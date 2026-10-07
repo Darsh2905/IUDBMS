@@ -286,6 +286,8 @@ def main(argv: list[str] | None = None) -> int:
             # rescan periodically: a device that enumerates mid-session, or
             # grows an interface, only becomes visible on a later scan
             if key not in cache or state["w"] % args.rescan_every == 0:
+                if monitor.time_origin is not None:
+                    scanner.origin = monitor.time_origin
                 cache.update(scanner.scan())
             return cache.get(key)
 
