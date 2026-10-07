@@ -61,11 +61,13 @@ BASE = load("baseline_ablation.json")
 CROSS = load("cross_device.json")
 REALCAP = load("real_capture_summary.json")
 REALTYPE = load("real_typing.json")
+EBPF_IDLE = load("ebpf/idle.json")
+EBPF_BUSY = load("ebpf/busy.json")
 
 doc = docx.Document()
 
 # ---------------------------------------------------------------- fonts
-def force_fonts(rpr):
+def force_fonts(rpr, name=None):
     rf = rpr.find(qn("w:rFonts"))
     if rf is None:
         rf = OxmlElement("w:rFonts")
@@ -73,7 +75,7 @@ def force_fonts(rpr):
     for a in list(rf.attrib):
         del rf.attrib[a]
     for a in ("ascii", "hAnsi", "cs", "eastAsia"):
-        rf.set(qn(f"w:{a}"), FONT)
+        rf.set(qn(f"w:{a}"), name or FONT)
 
 
 dd = doc.styles.element.find(qn("w:docDefaults"))
@@ -149,14 +151,22 @@ def run(par, text, *, italic=None, bold=None, small_caps=None, size=None):
 
 def rich(par, text, **base):
     italic = False
-    for tok in re.split(r"(</?i>)", text):
+    code = False
+    for tok in re.split(r"(</?i>|</?code>)", text):
         if tok == "<i>":
             italic = True
         elif tok == "</i>":
             italic = False
+        elif tok == "<code>":
+            code = True
+        elif tok == "</code>":
+            code = False
         elif tok:
-            run(par, tok, italic=True if italic else base.get("italic"),
-                bold=base.get("bold"))
+            r = run(par, tok, italic=True if italic else base.get("italic"),
+                    bold=base.get("bold"))
+            if code:
+                force_fonts(r._r.get_or_add_rPr(), name="Courier New")
+                r.font.size = Pt(9)
 
 
 def para(style, text="", **kw):
@@ -308,6 +318,12 @@ det = M["full_system"]["session"]["attack_detect"] if M else None
 fp = M["full_system"]["session"]["benign_fp"] if M else None
 auc = M["full_system"]["window"]["auc"] if M else None
 s1_det = M["stage1_only"]["session"]["attack_detect"] if M else None
+
+ebpf_ratio = None
+if EBPF_IDLE and EBPF_BUSY:
+    idle_n = EBPF_IDLE["ebpf"]["completions_at_giveback_hook"]
+    busy_n = EBPF_BUSY["ebpf"]["completions_at_giveback_hook"]
+    ebpf_ratio = round(busy_n / max(idle_n, 1))
 
 p = doc.add_paragraph(style="IEEE Abstract")
 run(p, "Abstract", italic=True)
@@ -854,6 +870,45 @@ if REALTYPE and REALTYPE.get("capture"):
          "timing constants; the structural gap is not confounded by task and is reported as "
          "a limitation of the simulated corpus.")
 
+h2("F", "eBPF Capture Feasibility")
+body("Section V-A names two capture backends behind one interface: usbmon, "
+     "deployed, and eBPF, designed but not built. Rather than leave that a pure "
+     "design claim, we built a minimal prototype against the exact two hook points "
+     "named there (<code>usb_submit_urb</code>, <code>__usb_hcd_giveback_urb</code>) "
+     "and measured whether counting completions through them agrees with usbmon — "
+     "the literal criterion the project set for this decision and never previously "
+     "evaluated. The probe attaches via kfunc (BTF-typed field access), not raw "
+     "kprobe register offsets, and counts only at the completion hook, matching the "
+     "same completions-only accounting rule the feature extractor already applies.")
+
+if EBPF_IDLE and EBPF_BUSY:
+    rows = [["Idle (25 s)", f"{EBPF_IDLE['usbmon']['completions_and_errors']:,}",
+             f"{EBPF_IDLE['ebpf']['completions_at_giveback_hook']:,}",
+             f"{EBPF_IDLE['agreement_pct']:.3f}%"],
+            [f"Busy, 15× lsusb -v ({EBPF_BUSY['seconds_requested']:.0f} s)",
+             f"{EBPF_BUSY['usbmon']['completions_and_errors']:,}",
+             f"{EBPF_BUSY['ebpf']['completions_at_giveback_hook']:,}",
+             f"{EBPF_BUSY['agreement_pct']:.3f}%"]]
+    table("eBPF-counted URB completions vs. usbmon, same wall-clock window",
+          ["Condition", "usbmon", "eBPF", "Agreement"], rows)
+
+ebpf_ratio_str = f"{ebpf_ratio}×" if ebpf_ratio is not None else "a wide range of"
+body(f"Agreement is exact across {ebpf_ratio_str} difference in traffic volume, "
+     "which is the condition the project set for a go decision on this question "
+     "specifically — whether the hook points work and agree with the deployed "
+     "path, not whether a full backend is ready. One further, unplanned finding came "
+     "only from running this on real hardware rather than reasoning about it offline: "
+     "the URB status field, read via <code>args->urb->status</code> at kfunc entry to "
+     "the completion hook, reads -115 (EINPROGRESS) on every single completion "
+     "observed, including control transfers known to have succeeded. The count is "
+     "unaffected — it depends only on the hook firing, not on the status field "
+     "— but a real capture backend would need a different hook or probe point to "
+     "read per-URB status correctly, a concrete design note this prototype produced "
+     "that a design review alone could not have. No typed records are emitted and no "
+     "ring buffer or interface wiring exists; those, and an overhead measurement "
+     "against the literature’s sub-microsecond claim [3]–[5], remain future "
+     "work.")
+
 # ---------------------------------------------------------------- VII
 h1("VII", "Limitations")
 item("1)", "<i>No real attack traffic.</i> Section VI-E validates the capture and "
@@ -863,10 +918,13 @@ item("1)", "<i>No real attack traffic.</i> Section VI-E validates the capture an
            "measured on simulated attacks, and the real keyboard measured in VI-E differs "
            "structurally from the simulator’s, which bounds how far those simulated "
            "results should be trusted to transfer. This is the principal limitation.")
-item("2)", "<i>eBPF is designed, not built.</i> Layer 1 runs on usbmon. The eBPF backend "
-           "sits behind the same interface and remains unimplemented, so the "
-           "sub-microsecond overhead claimed for that pattern in [3]–[5] is not "
-           "demonstrated here.")
+item("2)", "<i>eBPF is a measured prototype, not a capture backend.</i> Layer 1 runs on "
+           "usbmon. A kfunc-based probe on the two named hook points "
+           "(<code>usb_submit_urb</code>, <code>__usb_hcd_giveback_urb</code>) counts URB "
+           "completions in exact agreement with usbmon across a wide range of traffic volume "
+           "(Section VI-F), answering the only question that was open, but it emits "
+           "no typed records and is not wired to the capture interface. The sub-microsecond "
+           "overhead claimed for this pattern in [3]–[5] is not measured here.")
 item("3)", "<i>Enforcement has never executed.</i> N4 is closed in software only; no "
            "device has been deauthorised by the system against a real kernel.")
 item("4)", "<i>Two novelty claims are unsupported.</i> N1 holds only non-uniformly and N2 "

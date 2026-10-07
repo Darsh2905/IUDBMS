@@ -1,0 +1,17 @@
+{
+  "seconds_requested": 25.0,
+  "wall_elapsed_s": 25.31,
+  "usbmon": {
+    "lines_seen": 72,
+    "lines_unparsed": 0,
+    "loss_rate": 0.0,
+    "events_total": 72,
+    "completions_and_errors": 36
+  },
+  "ebpf": {
+    "completions_at_giveback_hook": 36
+  },
+  "diff": 0,
+  "agreement_pct": 100.0,
+  "within_1pct_criterion": true
+}
