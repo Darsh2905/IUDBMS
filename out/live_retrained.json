@@ -1,0 +1,38 @@
+{
+  "label": "retrained",
+  "db": "/tmp/live_retrained.db",
+  "devices": {
+    "1-4": {
+      "class_group": "hid",
+      "trust_state": "observe",
+      "windows": 239,
+      "busy_windows": 199,
+      "late_iface_flag_mean": 0.0,
+      "stage2_median": 0.3031027615070343,
+      "stage2_max": 0.7602601051330566,
+      "stage2_busy_median": 0.31098416447639465,
+      "alerts": 0,
+      "first_alert_ts": null,
+      "severities": []
+    },
+    "1-6": {
+      "class_group": "storage",
+      "trust_state": "observe",
+      "windows": 417,
+      "busy_windows": 204,
+      "late_iface_flag_mean": 0.0,
+      "stage2_median": 0.01733679138123989,
+      "stage2_max": 0.7745611667633057,
+      "stage2_busy_median": 0.05449804104864597,
+      "alerts": 0,
+      "first_alert_ts": null,
+      "severities": []
+    }
+  },
+  "totals": {
+    "windows": 656,
+    "alerts": 0,
+    "devices": 2,
+    "devices_alerted": 0
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "label": "original",
+  "db": "/tmp/live_original.db",
+  "devices": {
+    "1-4": {
+      "class_group": "hid",
+      "trust_state": "revoked",
+      "windows": 239,
+      "busy_windows": 199,
+      "late_iface_flag_mean": 0.0,
+      "stage2_median": 0.9999780654907227,
+      "stage2_max": 0.9999841451644897,
+      "stage2_busy_median": 0.9999788999557495,
+      "alerts": 2,
+      "first_alert_ts": 20.0,
+      "severities": [
+        "critical",
+        "high"
+      ]
+    },
+    "1-6": {
+      "class_group": "storage",
+      "trust_state": "observe",
+      "windows": 417,
+      "busy_windows": 204,
+      "late_iface_flag_mean": 0.0,
+      "stage2_median": 0.13189697265625,
+      "stage2_max": 0.5239686965942383,
+      "stage2_busy_median": 0.1868082657456398,
+      "alerts": 0,
+      "first_alert_ts": null,
+      "severities": []
+    }
+  },
+  "totals": {
+    "windows": 656,
+    "alerts": 2,
+    "devices": 2,
+    "devices_alerted": 1
+  }
+}

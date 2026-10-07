@@ -1160,13 +1160,32 @@ held-out real family. The replay-loop result swings **97% <-> 1%** on one attack
 
 Two silent session-id collisions (a fresh evaluation set reuses the corpus's S0001/A0007
 names; a loop repeated "X0000" per profile) overwrote one session's scores with another's
-in dicts keyed by sid. `score_with` now raises on duplicate ids. And **open**: the live
-`SysfsScanner` stamps every interface of an already-attached device with
+in dicts keyed by sid. `score_with` now raises on duplicate ids. And **fixed (07 Oct, commit 10689ab)**: the live
+`SysfsScanner` stamped every interface of an already-attached device with
 `first_seen_ts` = seconds since scanner start (> 0), which the model reads as "interface
 appeared late": on the VM every window of every real device has `late_iface_flag = 1.0`
-and class group `other`. Live alert rates on real devices are therefore NOT evidence
-about anything until this is fixed (interfaces present at a device's first scan should be
-0.0, and the scanner's clock must share the monitor's window time base).
+and class group `other`, so the VM alerts seen under the original model (a keyboard and
+a drive escalated to dry-run revoke) were caused by this and say nothing about behaviour.
+Interfaces present when a device is first listed are now 0.0; only an interface added
+to an already-known device is late, on the monitor's window clock
+(`LiveMonitor.time_origin`). Live check after the fix: the drive is class `storage`,
+`late_iface_flag` 0.00, and zero alerts under both the original and the retrained model.
+The test that should have caught it contained `not late or ts >= 0`, true either way.
+
+### Finding 35 — the deployed model is now the one trained on realistic traffic (07 Oct)
+
+`out/models/` was whatever `make eval` last wrote: the Corpus-A model, which flags 46.6%
+of benign sessions on realistic traffic. It is now produced by **`make train-deployed`**
+(`eval/train_deployed.py`): same architecture, seed, epochs, per-window 1e-4
+calibration and 4-of-6 gate, trained on Corpus B. Test split of Corpus B: window AUC
+0.984, detection 83.3%, benign FP 0.0%; threshold and both canaries are identical to
+the model analysed in findings 32-33. `make eval` now writes its Corpus-A models to
+`out/models_corpus_a/`, so the reproducible headline can no longer overwrite the
+deployment. `tests/test_deployed_models.py` gained a guard that idle keyboards and
+mice (idle after enumeration, 8-20 s and 20-60 s gaps) are not flagged.
+
+What this does NOT change: the paper's Corpus-A headline (89.2%) is still the Corpus-A
+model's, and the Stage-1 OR path (finding 33) is a measured option, not deployed.
 
 ### Live monitoring — wired 10 Sep, never yet run on real traffic
 

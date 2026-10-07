@@ -22,8 +22,9 @@ not that its verdicts are calibrated for real devices.
 - Linux with `CONFIG_USB_MON` (every mainstream distribution kernel) and debugfs at
   `/sys/kernel/debug`. Tested target: **Ubuntu Server 24.04 LTS (ARM64 or x86_64)**.
 - Python ≥ 3.11 with `venv` (`sudo apt install python3-venv`).
-- Trained models: `deploy.json`, `stage1.pkl`, `stage2.pt` (in `out/models/`, or
-  regenerate with `make eval`).
+- Trained models: `deploy.json`, `stage1.pkl`, `stage2.pt` in `out/models/`, produced by
+  `make train-deployed` (trained on the realistic corpus). `make eval` writes the
+  Corpus-A set to `out/models_corpus_a/` and does not touch the deployment.
 - About 2 GB of disk for the virtualenv. PyTorch is installed from its **CPU-only**
   index (~160 MB); the PyPI wheel now pulls the whole CUDA stack on every Linux
   architecture, which is several GB for a model that only runs on CPU. If you
