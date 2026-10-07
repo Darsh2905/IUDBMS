@@ -1,0 +1,66 @@
+{
+  "capture_path": "/Users/darshsharma/Downloads/iudbms-real-captures/capture-20261006-161418-bus0.txt",
+  "scores_db": "/tmp/vm_live.db",
+  "device": "1-4",
+  "capture": {
+    "reports": 1708,
+    "span_s": 75.714727,
+    "reports_per_s": 22.558359089110894,
+    "release_share": 0.10245901639344263,
+    "unique_payload_share": 0.35714285714285715,
+    "iat_percentiles": {
+      "1": 0.0028124799999920923,
+      "10": 0.007047999999997501,
+      "50": 0.02489600000000536,
+      "90": 0.07785840000000094,
+      "99": 0.27341170000000553
+    },
+    "iat_lognormal": {
+      "mu": -3.748879045704489,
+      "sigma": 1.0220593836765934,
+      "median_s": 0.023544122955246494
+    },
+    "gaps_over_1s": 0.0023432923257176333,
+    "lines": 3759,
+    "unparsed": 0,
+    "loss_rate": 0.0,
+    "device": "1-4",
+    "simulator_constants": {
+      "mu": -1.9,
+      "sigma": 0.55,
+      "keys_per_s": 2.186630534054454
+    },
+    "simulator_measured": {
+      "reports": 169,
+      "span_s": 78.110708,
+      "reports_per_s": 2.163595803023575,
+      "release_share": 0.0,
+      "unique_payload_share": 0.47928994082840237,
+      "iat_percentiles": {
+        "1": 0.04994682000000001,
+        "10": 0.07571920000000079,
+        "50": 0.15044700000000688,
+        "90": 1.7400700999999952,
+        "99": 2.9927880800000013
+      },
+      "iat_lognormal": {
+        "mu": -1.5358897521202874,
+        "sigma": 1.0868206643746199,
+        "median_s": 0.2152640742701084
+      },
+      "gaps_over_1s": 0.15476190476190477
+    }
+  },
+  "scores": {
+    "windows": 216,
+    "busy": 144,
+    "threshold": 0.9916,
+    "stage2_min": 0.5169656276702881,
+    "stage2_median": 0.8122662007808685,
+    "stage2_max": 0.8494794368743896,
+    "at_or_above_threshold": 0,
+    "n_events_median": 22.0,
+    "alerts": 0,
+    "actions": 0
+  }
+}
