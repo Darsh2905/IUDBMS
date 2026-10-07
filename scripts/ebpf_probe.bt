@@ -1,0 +1,77 @@
+#!/usr/bin/env bpftrace
+/*
+ * eBPF go/no-go prototype (plan §7, deferred as M8; CLAUDE.md "eBPF go/no-go
+ * — PENDING").
+ *
+ * Counts URB completions system-wide via the exact two kernel hook points
+ * the architecture diagram has always named: usb_submit_urb (submission) and
+ * __usb_hcd_giveback_urb (completion). This settles three things a design
+ * document cannot:
+ *
+ *   1. The hook points exist and are reachable from userspace tracing on a
+ *      real kernel (6.8.0-146-generic, this project's target).
+ *   2. struct urb's fields -- dev->devnum, pipe, status, actual_length,
+ *      ep->desc.bEndpointAddress -- are exactly what L1's URBEvent needs
+ *      (bus/dev/ep/status/length), reachable with typed, BTF-resolved
+ *      access (kfunc, not raw kprobe register offsets).
+ *   3. Counting at the COMPLETION hook only (not submission) reproduces the
+ *      same accounting rule L2 already uses: "Features are computed over
+ *      completions and errors only (C, E), never submissions (S)"
+ *      (CLAUDE.md, Milestone 3 notes). The USB_SUBMIT counter below exists
+ *      only to show both hooks fire; it is deliberately NOT what gets
+ *      compared against usbmon in scripts/ebpf_vs_usbmon.sh.
+ *
+ * What this is NOT: a capture backend. It counts; it does not emit typed
+ * records to userspace, has no ring buffer, and is not wired to
+ * EventSource. That is the real remaining work if the go/no-go is "go".
+ *
+ *   sudo bpftrace scripts/ebpf_probe.bt        # Ctrl-C to stop and print the summary
+ *   sudo timeout 20 bpftrace scripts/ebpf_probe.bt   # fixed duration (what the
+ *                                                     # orchestration script uses)
+ *
+ * Prints one line per completion while running (so scripts/ebpf_vs_usbmon.sh
+ * can count lines live), and a summary of totals, per-transfer-type counts
+ * and status codes when it exits -- including on SIGTERM from `timeout`,
+ * which bpftrace treats the same as Ctrl-C.
+ */
+
+BEGIN
+{
+    printf("eBPF probe attached: kfunc:usb_submit_urb, kfunc:__usb_hcd_giveback_urb\n");
+}
+
+kfunc:usb_submit_urb
+{
+    @submitted++;
+}
+
+kfunc:__usb_hcd_giveback_urb
+{
+    @completed++;
+    // bEndpointAddress bit 7 is the direction bit (IN=0x80); bits 3:2 of
+    // bmAttributes give the transfer type (0=ctrl,1=iso,2=bulk,3=intr) --
+    // the same four-way split URBEvent.ttype encodes.
+    $attr = args->urb->ep->desc.bmAttributes & 3;
+    if ($attr == 0) { @by_type["control"]++; }
+    else if ($attr == 1) { @by_type["iso"]++; }
+    else if ($attr == 2) { @by_type["bulk"]++; }
+    else { @by_type["intr"]++; }
+
+    if (args->urb->status != 0) {
+        @errors++;
+    }
+
+    // one line per completion, for the orchestration script to count live
+    printf("COMPLETION dev=%d status=%d len=%d\n",
+           args->urb->dev->devnum, args->urb->status, args->urb->actual_length);
+}
+
+END
+{
+    printf("\n--- eBPF probe summary ---\n");
+    printf("submitted (usb_submit_urb)        : %d\n", @submitted);
+    printf("completed (__usb_hcd_giveback_urb): %d\n", @completed);
+    printf("  of which non-zero status (errors): %d\n", @errors);
+    print(@by_type);
+    clear(@submitted); clear(@completed); clear(@errors); clear(@by_type);
+}

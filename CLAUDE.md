@@ -1105,12 +1105,62 @@ detach/re-attach and error propagation, but not debugfs itself. That needs the
 VM, and it is now the same 30 minutes that the capture always was: run
 `make monitor` there and it monitors for real.
 
-### eBPF go/no-go — **PENDING**
+### Finding 30 — eBPF prototype built and measured: hook points agree with usbmon exactly (07 Oct)
 
-Plan §2 sets the decision at end of W6: proceed only if the usbmon path is
-stable, features are frozen, and Stage 1 is training. Not yet evaluated.
-Plan §7 designates W11 as the sacrifice week, so the fallback position is
-"ship usbmon, reframe eBPF as documented future work" and nothing else moves.
+The go/no-go decision below was PENDING. A minimal prototype now exists and
+answers the only question that was actually open: do the two named hook points
+(`usb_submit_urb`, `__usb_hcd_giveback_urb`) work, and does counting
+completions there agree with usbmon — plan §4.1's literal criterion
+("usbmon and eBPF agree within 1%"), never measurable before this existed.
+
+`scripts/ebpf_probe.bt` attaches via **kfunc** (BTF-typed), not raw `kprobe:`
+register offsets — `args->` needs kfunc/tracepoint, kprobe only gives
+`arg0`/`arg1`. Counts at `__usb_hcd_giveback_urb` only, matching L2's own rule
+("completions and errors only, never submissions"). `scripts/ebpf_vs_usbmon.sh`
+runs both captures over the identical wall-clock window and parses the usbmon
+side through the real `UsbmonSource`, so "completions" means what L2 means by
+it on both sides, not a naive line grep.
+
+| run | usbmon (C+E) | eBPF | agreement |
+|---|---|---|---|
+| idle (25 s) | 36 | 36 | 100.000% |
+| busy, 15× `lsusb -v` (20 s) | 1,144 | 1,144 | 100.000% |
+
+Exact agreement at two very different volumes (31× apart). `out/ebpf/{idle,busy}.json`.
+
+**A real finding, not just a pass.** `args->urb->status`, read at kfunc entry to
+`__usb_hcd_giveback_urb`, is **-115 (EINPROGRESS) on every single completion**
+— including control transfers from `lsusb -v` that plainly succeeded (varying
+non-zero lengths, real descriptor data). Verified this is a probe-placement
+artefact, not a count problem: the function's BTF signature on this kernel
+(6.8.0-146-generic) takes only `struct urb *urb`, no separate status parameter,
+so `urb->status` has not yet been written to its final value at function
+*entry*. **Count is reliable at this hook; per-URB status is not**, and a real
+capture backend needs a different hook (or a return probe elsewhere in the
+completion path) to read it correctly. Recorded as the first concrete
+engineering note for an implementation, not discovered any other way —
+offline design review would not have caught it.
+
+**What this is not.** A counting prototype, not a capture backend: no typed
+records, no ring buffer, nothing wired to `EventSource`. Overhead is not
+measured — the literature's "sub-microsecond" claim ([3]–[5]) is
+unverified here and the paper says so. The decision below is answered on the
+narrow, load-bearing question (do the hooks work and agree), not on readiness
+for production.
+
+**Go/no-go: GO on the hook points; usbmon remains deployed.** The architecture
+is unaffected either way — both sit behind `EventSource` by design —
+and building a full capture backend (typed records, ring buffer, `EventSource`
+wiring, a real overhead benchmark) is correctly scoped as future work, not this
+session's.
+
+### eBPF go/no-go — resolved above (finding 30)
+
+Plan §2 set the decision at end of W6: proceed only if the usbmon path is
+stable, features are frozen, and Stage 1 is training — all true by the time
+this ran. Plan §7 designated W11 as the sacrifice week; the fallback
+position it names ("ship usbmon, reframe eBPF as documented future work") is
+what finding 30 landed on, now backed by a measurement rather than a deferral.
 
 ---
 
