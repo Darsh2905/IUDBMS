@@ -1,0 +1,25 @@
+{
+ "seed": 6007,
+ "rows": [
+  {
+   "threshold": 0.9943356477737426,
+   "windows": 144006,
+   "hours": 40.0,
+   "p_window_over": 0.001048567420801911,
+   "q_next_over_given_over": 0.3841059602649007,
+   "naive_alarms_per_hour": 6.517038511720787e-08,
+   "observed_alarms_per_hour": 0.225,
+   "observed_alarms": 9
+  },
+  {
+   "threshold": 0.9996482133865358,
+   "windows": 144006,
+   "hours": 40.0,
+   "p_window_over": 2.777662041859367e-05,
+   "q_next_over_given_over": 0.25,
+   "naive_alarms_per_hour": 3.2143419367956854e-14,
+   "observed_alarms_per_hour": 0.0,
+   "observed_alarms": 0
+  }
+ ]
+}
