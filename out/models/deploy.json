@@ -29,7 +29,7 @@
     26,
     27
   ],
-  "threshold": 0.9943356477737426,
+  "threshold": 0.9996482133865358,
   "target_fpr": 0.0001,
   "seq_len": 10,
   "k": 4,
@@ -83,5 +83,12 @@
       1,
       0
     ]
-  ]
+  ],
+  "threshold_history": [
+    {
+      "threshold": 0.9943356477737426,
+      "rule": "per-window FPR 0.0001 on validation benign windows"
+    }
+  ],
+  "threshold_rule": "smallest threshold with <= 0.01 gate firings per benign device-hour on 80 h of long simulated sessions (eval.analysis_calibration, seed 4049)"
 }

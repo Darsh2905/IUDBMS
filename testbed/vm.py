@@ -197,7 +197,7 @@ class Guest:
         img, _ = DISTROS[self.distro]
         base = IMAGES / img
         if not base.exists():
-            raise FileNotFoundError(f"{base} missing: run testbed/images/fetch.sh")
+            raise FileNotFoundError(f"{base} missing: run sh testbed/fetch_images.sh")
         self.run_dir.mkdir(parents=True, exist_ok=True)
         disk = self.run_dir / "disk.qcow2"
         if not disk.exists():

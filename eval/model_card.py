@@ -184,9 +184,10 @@ def build() -> dict:
             "seed": 7, "labels": "window y = 1 iff the window ends after the attack onset",
         },
         "decision": {
-            "window_threshold": "the (1 - target_fpr) quantile of Stage-2 scores on validation "
-                                "windows labelled benign (benign sessions and pre-onset windows "
-                                "of attack sessions)",
+            "window_threshold": cfg.get("threshold_rule") or (
+                "the (1 - target_fpr) quantile of Stage-2 scores on validation windows labelled "
+                "benign (benign sessions and pre-onset windows of attack sessions)"),
+            "threshold_history": cfg.get("threshold_history", []),
             "gate": f"alert when {cfg['k']} of the last {cfg['n']} windows of one device are at or "
                     "above the threshold; the alert is timed at the end of the completing window",
             "session_alarm": "a session counts as alarmed if the gate fires at least once",
@@ -241,8 +242,7 @@ def to_markdown(c: dict) -> str:
          "constants. Do not edit by hand.", "",
          f"Contract {c['contract_version']}. Deployed model: `{c['deployed_model']['path']}`, "
          f"trained on {c['deployed_model']['trained_on']}; window threshold "
-         f"{c['deployed_model']['threshold']:.6f} (target window FPR "
-         f"{c['deployed_model']['target_window_fpr']}); gate {c['deployed_model']['gate']['k']}-of-"
+         f"{c['deployed_model']['threshold']:.6f} (rule below); gate {c['deployed_model']['gate']['k']}-of-"
          f"{c['deployed_model']['gate']['n']}.", "",
          "## Terminology", "", "| term | meaning |", "|---|---|"]
     L += [f"| {g['term']} | {g['meaning']} |" for g in c["glossary"]]

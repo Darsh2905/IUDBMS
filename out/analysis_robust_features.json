@@ -1,0 +1,1212 @@
+{
+ "pre_registered": " (fixed before the first run).** The candidate is R_both.\nIt replaces the deployed configuration only if ALL hold:\n\n  (a) keyboard false alarms per device-hour on a FRESH long-session benchmark (seed\n      2027, never used before) are lower than the base model's, one-sided exact\n      conditional Poisson test p < 0.05 at equal exposure;\n  (b) Corpus-C (fresh, seed 2025) detection, mean over training seeds 7/8/9, is not\n      lower than the base model's by more than the larger of the seed spread and one\n      session per profile, and Corpus-C benign FP is not higher by more than that;\n  (c) the held-out real typing capture does not trigger the gate.\n\n",
+ "prior_m": 3.0,
+ "horizon_s": 60.0,
+ "seeds": [
+  7,
+  8,
+  9
+ ],
+ "feature_sets": {
+  "base": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21,
+   22,
+   23,
+   24,
+   25,
+   26,
+   27
+  ],
+  "R_timing": [
+   0,
+   1,
+   2,
+   5,
+   6,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21,
+   22,
+   23,
+   24,
+   25,
+   26,
+   27,
+   31,
+   32
+  ],
+  "R_novelty": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21,
+   23,
+   24,
+   25,
+   26,
+   27,
+   33
+  ],
+  "R_both": [
+   0,
+   1,
+   2,
+   5,
+   6,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21,
+   23,
+   24,
+   25,
+   26,
+   27,
+   31,
+   32,
+   33
+  ]
+ },
+ "benchmark": {
+  "seed": 2027,
+  "keyboard_sessions": 80,
+  "keyboard_duration_s": 3600.0,
+  "other_sessions_per_class": 12,
+  "other_duration_s": 1800.0,
+  "late_n": 20,
+  "late_onset_s": 1200.0
+ },
+ "results": {
+  "base": {
+   "7": {
+    "keyboard": {
+     "sessions": 80,
+     "hours": 80.0,
+     "alarmed_sessions": 14,
+     "alarms_per_hour": 0.175,
+     "windows_over": 0.0008333130791959918
+    },
+    "other": {
+     "mouse": 0,
+     "mass_storage": 0,
+     "webcam": 0,
+     "audio": 0
+    },
+    "other_hours": 24.0,
+    "late": {
+     "hid_injection": {
+      "n": 20,
+      "detected_after_onset": 20,
+      "alarm_before_onset": 0
+     },
+     "mimicry": {
+      "n": 20,
+      "detected_after_onset": 17,
+      "alarm_before_onset": 2
+     },
+     "mimicry_adaptive": {
+      "n": 20,
+      "detected_after_onset": 0,
+      "alarm_before_onset": 2
+     },
+     "class_exfil": {
+      "n": 20,
+      "detected_after_onset": 18,
+      "alarm_before_onset": 2
+     }
+    },
+    "corpus_c": {
+     "detect": 0.8266666666666667,
+     "detect_k": 496,
+     "n_attack": 600,
+     "fp": 0.0006666666666666666,
+     "fp_k": 2,
+     "n_benign": 3000,
+     "median_latency": 3.940880022956046,
+     "per_profile": {
+      "class_exfil": 1.0,
+      "hid_injection": 1.0,
+      "identity_switch": 1.0,
+      "mimicry": 0.95,
+      "mimicry_adaptive": 0.01,
+      "staged_delay": 1.0
+     }
+    },
+    "real_typing": {
+     "gate_fires": false,
+     "first_alert_s": null,
+     "windows_over": 0,
+     "busy_windows": 71,
+     "median_score": 0.3960775136947632
+    },
+    "corpus_b_test": {
+     "detect": 0.8333333333333334,
+     "fp": 0.0,
+     "auc": 0.9842037298460296
+    },
+    "threshold": 0.9943356477737426
+   },
+   "8": {
+    "keyboard": {
+     "sessions": 80,
+     "hours": 80.0,
+     "alarmed_sessions": 29,
+     "alarms_per_hour": 0.3625,
+     "windows_over": 0.002708267507386973
+    },
+    "other": {
+     "mouse": 0,
+     "mass_storage": 0,
+     "webcam": 0,
+     "audio": 0
+    },
+    "other_hours": 24.0,
+    "late": {
+     "hid_injection": {
+      "n": 20,
+      "detected_after_onset": 14,
+      "alarm_before_onset": 6
+     },
+     "mimicry": {
+      "n": 20,
+      "detected_after_onset": 13,
+      "alarm_before_onset": 7
+     },
+     "mimicry_adaptive": {
+      "n": 20,
+      "detected_after_onset": 0,
+      "alarm_before_onset": 5
+     },
+     "class_exfil": {
+      "n": 20,
+      "detected_after_onset": 15,
+      "alarm_before_onset": 5
+     }
+    },
+    "corpus_c": {
+     "detect": 0.8333333333333334,
+     "detect_k": 500,
+     "n_attack": 600,
+     "fp": 0.0,
+     "fp_k": 0,
+     "n_benign": 3000,
+     "median_latency": 3.9391204463797376,
+     "per_profile": {
+      "class_exfil": 1.0,
+      "hid_injection": 1.0,
+      "identity_switch": 1.0,
+      "mimicry": 0.99,
+      "mimicry_adaptive": 0.01,
+      "staged_delay": 1.0
+     }
+    },
+    "real_typing": {
+     "gate_fires": false,
+     "first_alert_s": null,
+     "windows_over": 0,
+     "busy_windows": 71,
+     "median_score": 0.43840399384498596
+    },
+    "corpus_b_test": {
+     "detect": 0.8333333333333334,
+     "fp": 0.0,
+     "auc": 0.9849181101241595
+    },
+    "threshold": 0.9947956772565838
+   },
+   "9": {
+    "keyboard": {
+     "sessions": 80,
+     "hours": 80.0,
+     "alarmed_sessions": 15,
+     "alarms_per_hour": 0.1875,
+     "windows_over": 0.0009617821789053738
+    },
+    "other": {
+     "mouse": 0,
+     "mass_storage": 0,
+     "webcam": 0,
+     "audio": 0
+    },
+    "other_hours": 24.0,
+    "late": {
+     "hid_injection": {
+      "n": 20,
+      "detected_after_onset": 19,
+      "alarm_before_onset": 1
+     },
+     "mimicry": {
+      "n": 20,
+      "detected_after_onset": 18,
+      "alarm_before_onset": 1
+     },
+     "mimicry_adaptive": {
+      "n": 20,
+      "detected_after_onset": 0,
+      "alarm_before_onset": 2
+     },
+     "class_exfil": {
+      "n": 20,
+      "detected_after_onset": 18,
+      "alarm_before_onset": 2
+     }
+    },
+    "corpus_c": {
+     "detect": 0.8266666666666667,
+     "detect_k": 496,
+     "n_attack": 600,
+     "fp": 0.0,
+     "fp_k": 0,
+     "n_benign": 3000,
+     "median_latency": 4.39969529603788,
+     "per_profile": {
+      "class_exfil": 1.0,
+      "hid_injection": 1.0,
+      "identity_switch": 1.0,
+      "mimicry": 0.95,
+      "mimicry_adaptive": 0.01,
+      "staged_delay": 1.0
+     }
+    },
+    "real_typing": {
+     "gate_fires": false,
+     "first_alert_s": null,
+     "windows_over": 0,
+     "busy_windows": 71,
+     "median_score": 0.3451497554779053
+    },
+    "corpus_b_test": {
+     "detect": 0.825,
+     "fp": 0.0056179775280898875,
+     "auc": 0.9829952024312658
+    },
+    "threshold": 0.9972786504983898
+   }
+  },
+  "R_timing": {
+   "7": {
+    "keyboard": {
+     "sessions": 80,
+     "hours": 80.0,
+     "alarmed_sessions": 41,
+     "alarms_per_hour": 0.5125,
+     "windows_over": 0.004166565395979959
+    },
+    "other": {
+     "mouse": 0,
+     "mass_storage": 0,
+     "webcam": 0,
+     "audio": 0
+    },
+    "other_hours": 24.0,
+    "late": {
+     "hid_injection": {
+      "n": 20,
+      "detected_after_onset": 17,
+      "alarm_before_onset": 3
+     },
+     "mimicry": {
+      "n": 20,
+      "detected_after_onset": 15,
+      "alarm_before_onset": 5
+     },
+     "mimicry_adaptive": {
+      "n": 20,
+      "detected_after_onset": 1,
+      "alarm_before_onset": 6
+     },
+     "class_exfil": {
+      "n": 20,
+      "detected_after_onset": 16,
+      "alarm_before_onset": 4
+     }
+    },
+    "corpus_c": {
+     "detect": 0.835,
+     "detect_k": 501,
+     "n_attack": 600,
+     "fp": 0.0003333333333333333,
+     "fp_k": 1,
+     "n_benign": 3000,
+     "median_latency": 3.671293552507825,
+     "per_profile": {
+      "class_exfil": 1.0,
+      "hid_injection": 1.0,
+      "identity_switch": 1.0,
+      "mimicry": 1.0,
+      "mimicry_adaptive": 0.01,
+      "staged_delay": 1.0
+     }
+    },
+    "real_typing": {
+     "gate_fires": false,
+     "first_alert_s": null,
+     "windows_over": 0,
+     "busy_windows": 71,
+     "median_score": 0.39767056703567505
+    },
+    "corpus_b_test": {
+     "detect": 0.8333333333333334,
+     "fp": 0.0056179775280898875,
+     "auc": 0.9856747099843477
+    },
+    "threshold": 0.9659482490777945
+   },
+   "8": {
+    "keyboard": {
+     "sessions": 80,
+     "hours": 80.0,
+     "alarmed_sessions": 33,
+     "alarms_per_hour": 0.4125,
+     "windows_over": 0.0030068713607655367
+    },
+    "other": {
+     "mouse": 0,
+     "mass_storage": 0,
+     "webcam": 0,
+     "audio": 0
+    },
+    "other_hours": 24.0,
+    "late": {
+     "hid_injection": {
+      "n": 20,
+      "detected_after_onset": 17,
+      "alarm_before_onset": 3
+     },
+     "mimicry": {
+      "n": 20,
+      "detected_after_onset": 12,
+      "alarm_before_onset": 8
+     },
+     "mimicry_adaptive": {
+      "n": 20,
+      "detected_after_onset": 0,
+      "alarm_before_onset": 6
+     },
+     "class_exfil": {
+      "n": 20,
+      "detected_after_onset": 17,
+      "alarm_before_onset": 3
+     }
+    },
+    "corpus_c": {
+     "detect": 0.835,
+     "detect_k": 501,
+     "n_attack": 600,
+     "fp": 0.0016666666666666668,
+     "fp_k": 5,
+     "n_benign": 3000,
+     "median_latency": 4.1751223797622234,
+     "per_profile": {
+      "class_exfil": 1.0,
+      "hid_injection": 1.0,
+      "identity_switch": 1.0,
+      "mimicry": 1.0,
+      "mimicry_adaptive": 0.01,
+      "staged_delay": 1.0
+     }
+    },
+    "real_typing": {
+     "gate_fires": false,
+     "first_alert_s": null,
+     "windows_over": 0,
+     "busy_windows": 71,
+     "median_score": 0.41213083267211914
+    },
+    "corpus_b_test": {
+     "detect": 0.8333333333333334,
+     "fp": 0.0056179775280898875,
+     "auc": 0.9860307630925017
+    },
+    "threshold": 0.9963808708667755
+   },
+   "9": {
+    "keyboard": {
+     "sessions": 80,
+     "hours": 80.0,
+     "alarmed_sessions": 22,
+     "alarms_per_hour": 0.275,
+     "windows_over": 0.0017916231202713823
+    },
+    "other": {
+     "mouse": 0,
+     "mass_storage": 0,
+     "webcam": 0,
+     "audio": 0
+    },
+    "other_hours": 24.0,
+    "late": {
+     "hid_injection": {
+      "n": 20,
+      "detected_after_onset": 20,
+      "alarm_before_onset": 0
+     },
+     "mimicry": {
+      "n": 20,
+      "detected_after_onset": 18,
+      "alarm_before_onset": 2
+     },
+     "mimicry_adaptive": {
+      "n": 20,
+      "detected_after_onset": 1,
+      "alarm_before_onset": 2
+     },
+     "class_exfil": {
+      "n": 20,
+      "detected_after_onset": 18,
+      "alarm_before_onset": 2
+     }
+    },
+    "corpus_c": {
+     "detect": 0.8366666666666667,
+     "detect_k": 502,
+     "n_attack": 600,
+     "fp": 0.001,
+     "fp_k": 3,
+     "n_benign": 3000,
+     "median_latency": 3.85445581778155,
+     "per_profile": {
+      "class_exfil": 1.0,
+      "hid_injection": 1.0,
+      "identity_switch": 1.0,
+      "mimicry": 1.0,
+      "mimicry_adaptive": 0.02,
+      "staged_delay": 1.0
+     }
+    },
+    "real_typing": {
+     "gate_fires": false,
+     "first_alert_s": null,
+     "windows_over": 0,
+     "busy_windows": 71,
+     "median_score": 0.5176467299461365
+    },
+    "corpus_b_test": {
+     "detect": 0.8333333333333334,
+     "fp": 0.0,
+     "auc": 0.9853005163601725
+    },
+    "threshold": 0.9925073515653601
+   }
+  },
+  "R_novelty": {
+   "7": {
+    "keyboard": {
+     "sessions": 80,
+     "hours": 80.0,
+     "alarmed_sessions": 19,
+     "alarms_per_hour": 0.2375,
+     "windows_over": 0.0014201043724631694
+    },
+    "other": {
+     "mouse": 0,
+     "mass_storage": 0,
+     "webcam": 0,
+     "audio": 0
+    },
+    "other_hours": 24.0,
+    "late": {
+     "hid_injection": {
+      "n": 20,
+      "detected_after_onset": 18,
+      "alarm_before_onset": 2
+     },
+     "mimicry": {
+      "n": 20,
+      "detected_after_onset": 16,
+      "alarm_before_onset": 3
+     },
+     "mimicry_adaptive": {
+      "n": 20,
+      "detected_after_onset": 0,
+      "alarm_before_onset": 3
+     },
+     "class_exfil": {
+      "n": 20,
+      "detected_after_onset": 19,
+      "alarm_before_onset": 1
+     }
+    },
+    "corpus_c": {
+     "detect": 0.8266666666666667,
+     "detect_k": 496,
+     "n_attack": 600,
+     "fp": 0.0006666666666666666,
+     "fp_k": 2,
+     "n_benign": 3000,
+     "median_latency": 4.556105376573541,
+     "per_profile": {
+      "class_exfil": 1.0,
+      "hid_injection": 1.0,
+      "identity_switch": 1.0,
+      "mimicry": 0.96,
+      "mimicry_adaptive": 0.0,
+      "staged_delay": 1.0
+     }
+    },
+    "real_typing": {
+     "gate_fires": false,
+     "first_alert_s": null,
+     "windows_over": 0,
+     "busy_windows": 71,
+     "median_score": 0.5618951916694641
+    },
+    "corpus_b_test": {
+     "detect": 0.825,
+     "fp": 0.0,
+     "auc": 0.9849287137495703
+    },
+    "threshold": 0.999011005115509
+   },
+   "8": {
+    "keyboard": {
+     "sessions": 80,
+     "hours": 80.0,
+     "alarmed_sessions": 42,
+     "alarms_per_hour": 0.525,
+     "windows_over": 0.004204758912109775
+    },
+    "other": {
+     "mouse": 0,
+     "mass_storage": 0,
+     "webcam": 0,
+     "audio": 0
+    },
+    "other_hours": 24.0,
+    "late": {
+     "hid_injection": {
+      "n": 20,
+      "detected_after_onset": 13,
+      "alarm_before_onset": 7
+     },
+     "mimicry": {
+      "n": 20,
+      "detected_after_onset": 14,
+      "alarm_before_onset": 6
+     },
+     "mimicry_adaptive": {
+      "n": 20,
+      "detected_after_onset": 0,
+      "alarm_before_onset": 6
+     },
+     "class_exfil": {
+      "n": 20,
+      "detected_after_onset": 14,
+      "alarm_before_onset": 6
+     }
+    },
+    "corpus_c": {
+     "detect": 0.84,
+     "detect_k": 504,
+     "n_attack": 600,
+     "fp": 0.005,
+     "fp_k": 15,
+     "n_benign": 3000,
+     "median_latency": 3.8883589342165052,
+     "per_profile": {
+      "class_exfil": 1.0,
+      "hid_injection": 1.0,
+      "identity_switch": 1.0,
+      "mimicry": 1.0,
+      "mimicry_adaptive": 0.04,
+      "staged_delay": 1.0
+     }
+    },
+    "real_typing": {
+     "gate_fires": false,
+     "first_alert_s": null,
+     "windows_over": 0,
+     "busy_windows": 71,
+     "median_score": 0.46657976508140564
+    },
+    "corpus_b_test": {
+     "detect": 0.8416666666666667,
+     "fp": 0.0,
+     "auc": 0.9860232197045715
+    },
+    "threshold": 0.9921282526016233
+   },
+   "9": {
+    "keyboard": {
+     "sessions": 80,
+     "hours": 80.0,
+     "alarmed_sessions": 33,
+     "alarms_per_hour": 0.4125,
+     "windows_over": 0.002742988885686806
+    },
+    "other": {
+     "mouse": 0,
+     "mass_storage": 0,
+     "webcam": 0,
+     "audio": 0
+    },
+    "other_hours": 24.0,
+    "late": {
+     "hid_injection": {
+      "n": 20,
+      "detected_after_onset": 14,
+      "alarm_before_onset": 6
+     },
+     "mimicry": {
+      "n": 20,
+      "detected_after_onset": 15,
+      "alarm_before_onset": 5
+     },
+     "mimicry_adaptive": {
+      "n": 20,
+      "detected_after_onset": 0,
+      "alarm_before_onset": 6
+     },
+     "class_exfil": {
+      "n": 20,
+      "detected_after_onset": 13,
+      "alarm_before_onset": 7
+     }
+    },
+    "corpus_c": {
+     "detect": 0.84,
+     "detect_k": 504,
+     "n_attack": 600,
+     "fp": 0.007666666666666666,
+     "fp_k": 23,
+     "n_benign": 3000,
+     "median_latency": 3.7462430327976817,
+     "per_profile": {
+      "class_exfil": 1.0,
+      "hid_injection": 1.0,
+      "identity_switch": 1.0,
+      "mimicry": 1.0,
+      "mimicry_adaptive": 0.04,
+      "staged_delay": 1.0
+     }
+    },
+    "real_typing": {
+     "gate_fires": false,
+     "first_alert_s": null,
+     "windows_over": 0,
+     "busy_windows": 71,
+     "median_score": 0.517581045627594
+    },
+    "corpus_b_test": {
+     "detect": 0.8333333333333334,
+     "fp": 0.0056179775280898875,
+     "auc": 0.9834232783259871
+    },
+    "threshold": 0.9869991778373715
+   }
+  },
+  "R_both": {
+   "7": {
+    "keyboard": {
+     "sessions": 80,
+     "hours": 80.0,
+     "alarmed_sessions": 27,
+     "alarms_per_hour": 0.3375,
+     "windows_over": 0.004236008152579625
+    },
+    "other": {
+     "mouse": 0,
+     "mass_storage": 0,
+     "webcam": 0,
+     "audio": 0
+    },
+    "other_hours": 24.0,
+    "late": {
+     "hid_injection": {
+      "n": 20,
+      "detected_after_onset": 17,
+      "alarm_before_onset": 3
+     },
+     "mimicry": {
+      "n": 20,
+      "detected_after_onset": 17,
+      "alarm_before_onset": 3
+     },
+     "mimicry_adaptive": {
+      "n": 20,
+      "detected_after_onset": 0,
+      "alarm_before_onset": 3
+     },
+     "class_exfil": {
+      "n": 20,
+      "detected_after_onset": 15,
+      "alarm_before_onset": 5
+     }
+    },
+    "corpus_c": {
+     "detect": 0.835,
+     "detect_k": 501,
+     "n_attack": 600,
+     "fp": 0.0023333333333333335,
+     "fp_k": 7,
+     "n_benign": 3000,
+     "median_latency": 3.659724013616021,
+     "per_profile": {
+      "class_exfil": 1.0,
+      "hid_injection": 1.0,
+      "identity_switch": 1.0,
+      "mimicry": 1.0,
+      "mimicry_adaptive": 0.01,
+      "staged_delay": 1.0
+     }
+    },
+    "real_typing": {
+     "gate_fires": false,
+     "first_alert_s": null,
+     "windows_over": 0,
+     "busy_windows": 71,
+     "median_score": 0.4423321485519409
+    },
+    "corpus_b_test": {
+     "detect": 0.8333333333333334,
+     "fp": 0.0056179775280898875,
+     "auc": 0.9851205211182895
+    },
+    "threshold": 0.9312298699140539
+   },
+   "8": {
+    "keyboard": {
+     "sessions": 80,
+     "hours": 80.0,
+     "alarmed_sessions": 3,
+     "alarms_per_hour": 0.0375,
+     "windows_over": 0.0004166565395979959
+    },
+    "other": {
+     "mouse": 0,
+     "mass_storage": 0,
+     "webcam": 0,
+     "audio": 0
+    },
+    "other_hours": 24.0,
+    "late": {
+     "hid_injection": {
+      "n": 20,
+      "detected_after_onset": 20,
+      "alarm_before_onset": 0
+     },
+     "mimicry": {
+      "n": 20,
+      "detected_after_onset": 19,
+      "alarm_before_onset": 1
+     },
+     "mimicry_adaptive": {
+      "n": 20,
+      "detected_after_onset": 0,
+      "alarm_before_onset": 1
+     },
+     "class_exfil": {
+      "n": 20,
+      "detected_after_onset": 19,
+      "alarm_before_onset": 1
+     }
+    },
+    "corpus_c": {
+     "detect": 0.8333333333333334,
+     "detect_k": 500,
+     "n_attack": 600,
+     "fp": 0.0,
+     "fp_k": 0,
+     "n_benign": 3000,
+     "median_latency": 4.653461574639733,
+     "per_profile": {
+      "class_exfil": 1.0,
+      "hid_injection": 1.0,
+      "identity_switch": 1.0,
+      "mimicry": 1.0,
+      "mimicry_adaptive": 0.0,
+      "staged_delay": 1.0
+     }
+    },
+    "real_typing": {
+     "gate_fires": false,
+     "first_alert_s": null,
+     "windows_over": 0,
+     "busy_windows": 71,
+     "median_score": 0.5543323159217834
+    },
+    "corpus_b_test": {
+     "detect": 0.8333333333333334,
+     "fp": 0.0,
+     "auc": 0.9862391386259249
+    },
+    "threshold": 0.9995374895811081
+   },
+   "9": {
+    "keyboard": {
+     "sessions": 80,
+     "hours": 80.0,
+     "alarmed_sessions": 41,
+     "alarms_per_hour": 0.5125,
+     "windows_over": 0.003486026381303232
+    },
+    "other": {
+     "mouse": 0,
+     "mass_storage": 0,
+     "webcam": 0,
+     "audio": 0
+    },
+    "other_hours": 24.0,
+    "late": {
+     "hid_injection": {
+      "n": 20,
+      "detected_after_onset": 16,
+      "alarm_before_onset": 4
+     },
+     "mimicry": {
+      "n": 20,
+      "detected_after_onset": 15,
+      "alarm_before_onset": 5
+     },
+     "mimicry_adaptive": {
+      "n": 20,
+      "detected_after_onset": 0,
+      "alarm_before_onset": 6
+     },
+     "class_exfil": {
+      "n": 20,
+      "detected_after_onset": 14,
+      "alarm_before_onset": 6
+     }
+    },
+    "corpus_c": {
+     "detect": 0.8366666666666667,
+     "detect_k": 502,
+     "n_attack": 600,
+     "fp": 0.002,
+     "fp_k": 6,
+     "n_benign": 3000,
+     "median_latency": 3.6875293654461956,
+     "per_profile": {
+      "class_exfil": 1.0,
+      "hid_injection": 1.0,
+      "identity_switch": 1.0,
+      "mimicry": 1.0,
+      "mimicry_adaptive": 0.02,
+      "staged_delay": 1.0
+     }
+    },
+    "real_typing": {
+     "gate_fires": false,
+     "first_alert_s": null,
+     "windows_over": 0,
+     "busy_windows": 71,
+     "median_score": 0.3912047743797302
+    },
+    "corpus_b_test": {
+     "detect": 0.8416666666666667,
+     "fp": 0.0056179775280898875,
+     "auc": 0.9860589874483744
+    },
+    "threshold": 0.987032698702811
+   }
+  }
+ },
+ "summary": {
+  "base": {
+   "kbd_alarms_per_hour": [
+    0.24166666666666667,
+    0.0855943274340589,
+    [
+     0.175,
+     0.3625,
+     0.1875
+    ]
+   ],
+   "corpus_c_detect": [
+    0.8288888888888889,
+    0.003142696805273565,
+    [
+     0.8266666666666667,
+     0.8333333333333334,
+     0.8266666666666667
+    ]
+   ],
+   "corpus_c_fp": [
+    0.0002222222222222222,
+    0.00031426968052735446,
+    [
+     0.0006666666666666666,
+     0.0,
+     0.0
+    ]
+   ],
+   "corpus_b_detect": [
+    0.8305555555555556,
+    0.00392837100659197,
+    [
+     0.8333333333333334,
+     0.8333333333333334,
+     0.825
+    ]
+   ],
+   "late": {
+    "hid_injection": [
+     53,
+     7
+    ],
+    "mimicry": [
+     48,
+     10
+    ],
+    "mimicry_adaptive": [
+     0,
+     9
+    ],
+    "class_exfil": [
+     51,
+     9
+    ]
+   }
+  },
+  "R_timing": {
+   "kbd_alarms_per_hour": [
+    0.39999999999999997,
+    0.09736101204623267,
+    [
+     0.5125,
+     0.4125,
+     0.275
+    ]
+   ],
+   "corpus_c_detect": [
+    0.8355555555555556,
+    0.0007856742013184043,
+    [
+     0.835,
+     0.835,
+     0.8366666666666667
+    ]
+   ],
+   "corpus_c_fp": [
+    0.001,
+    0.0005443310539518174,
+    [
+     0.0003333333333333333,
+     0.0016666666666666668,
+     0.001
+    ]
+   ],
+   "corpus_b_detect": [
+    0.8333333333333334,
+    0.0,
+    [
+     0.8333333333333334,
+     0.8333333333333334,
+     0.8333333333333334
+    ]
+   ],
+   "late": {
+    "hid_injection": [
+     54,
+     6
+    ],
+    "mimicry": [
+     45,
+     15
+    ],
+    "mimicry_adaptive": [
+     2,
+     14
+    ],
+    "class_exfil": [
+     51,
+     9
+    ]
+   }
+  },
+  "R_novelty": {
+   "kbd_alarms_per_hour": [
+    0.3916666666666666,
+    0.11829224638815326,
+    [
+     0.2375,
+     0.525,
+     0.4125
+    ]
+   ],
+   "corpus_c_detect": [
+    0.8355555555555555,
+    0.006285393610547077,
+    [
+     0.8266666666666667,
+     0.84,
+     0.84
+    ]
+   ],
+   "corpus_c_fp": [
+    0.0044444444444444444,
+    0.0028846122190549265,
+    [
+     0.0006666666666666666,
+     0.005,
+     0.007666666666666666
+    ]
+   ],
+   "corpus_b_detect": [
+    0.8333333333333334,
+    0.006804138174397738,
+    [
+     0.825,
+     0.8416666666666667,
+     0.8333333333333334
+    ]
+   ],
+   "late": {
+    "hid_injection": [
+     45,
+     15
+    ],
+    "mimicry": [
+     45,
+     14
+    ],
+    "mimicry_adaptive": [
+     0,
+     15
+    ],
+    "class_exfil": [
+     46,
+     14
+    ]
+   }
+  },
+  "R_both": {
+   "kbd_alarms_per_hour": [
+    0.29583333333333334,
+    0.196143371598997,
+    [
+     0.3375,
+     0.0375,
+     0.5125
+    ]
+   ],
+   "corpus_c_detect": [
+    0.835,
+    0.0013608276348795296,
+    [
+     0.835,
+     0.8333333333333334,
+     0.8366666666666667
+    ]
+   ],
+   "corpus_c_fp": [
+    0.0014444444444444444,
+    0.0010304020550550783,
+    [
+     0.0023333333333333335,
+     0.0,
+     0.002
+    ]
+   ],
+   "corpus_b_detect": [
+    0.8361111111111111,
+    0.003928371006591917,
+    [
+     0.8333333333333334,
+     0.8333333333333334,
+     0.8416666666666667
+    ]
+   ],
+   "late": {
+    "hid_injection": [
+     53,
+     7
+    ],
+    "mimicry": [
+     51,
+     9
+    ],
+    "mimicry_adaptive": [
+     0,
+     10
+    ],
+    "class_exfil": [
+     48,
+     12
+    ]
+   }
+  }
+ },
+ "verdict": {
+  "a_kbd_alarms": {
+   "pass": false,
+   "R_both": 71,
+   "base": 58,
+   "p": 0.8912193730802694
+  },
+  "b_detection": {
+   "pass": true,
+   "floor": 0.01
+  },
+  "b_fp": {
+   "pass": false,
+   "floor": 0.0010304020550550783
+  },
+  "c_real_typing": {
+   "pass": true
+  },
+  "adopt": false
+ },
+ "runtime_s": 779.4056398868561
+}

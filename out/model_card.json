@@ -3,7 +3,7 @@
  "deployed_model": {
   "path": "out/models",
   "trained_on": "Corpus B",
-  "threshold": 0.9943356477737426,
+  "threshold": 0.9996482133865358,
   "target_window_fpr": 0.0001,
   "gate": {
    "k": 4,
@@ -320,7 +320,13 @@
   "labels": "window y = 1 iff the window ends after the attack onset"
  },
  "decision": {
-  "window_threshold": "the (1 - target_fpr) quantile of Stage-2 scores on validation windows labelled benign (benign sessions and pre-onset windows of attack sessions)",
+  "window_threshold": "smallest threshold with <= 0.01 gate firings per benign device-hour on 80 h of long simulated sessions (eval.analysis_calibration, seed 4049)",
+  "threshold_history": [
+   {
+    "threshold": 0.9943356477737426,
+    "rule": "per-window FPR 0.0001 on validation benign windows"
+   }
+  ],
   "gate": "alert when 4 of the last 6 windows of one device are at or above the threshold; the alert is timed at the end of the completing window",
   "session_alarm": "a session counts as alarmed if the gate fires at least once",
   "from_window_to_session": "not analytic: windows of one device are strongly autocorrelated (consecutive Stage-2 inputs share 9 of 10 rows), so session-level false alarms are MEASURED on held-out benign sessions and long sessions (out/analysis_session_fp.json)",
