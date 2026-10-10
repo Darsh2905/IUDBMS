@@ -63,10 +63,14 @@ DEFAULT_USBMON_DIR = Path("/sys/kernel/debug/usb/usbmon")
 #: Only "=" means data words follow. "-", "<" and ">" mean not captured.
 _DATA_TAGS = frozenset("=-<>")
 
-#: usbmon timestamps are microseconds in an unsigned 32-bit field, so they wrap
-#: roughly every 71.6 minutes. A backward jump larger than half the range is a
-#: wrap, not reordering.
-_TS_WRAP = 1 << 32
+#: usbmon text timestamps are CLOCK_MONOTONIC with the seconds truncated to 12 bits
+#: (drivers/usb/mon/mon_text.c: ``stamp = (tv_sec & 0xFFF) * USEC_PER_SEC + usec``),
+#: so they wrap every **4096 s**, not at 2^32 us. This constant was 2^32 until the
+#: first hour-long sessions: every event after a wrap then landed 198.97 s in the
+#: future. A wrap happens whenever the monotonic clock crosses a multiple of 4096 s,
+#: so any capture can straddle one, and a running monitor meets one every 68 min.
+#: A backward jump larger than half the range is a wrap, not reordering.
+_TS_WRAP = 4096 * 1_000_000
 _TS_WRAP_GUARD = _TS_WRAP // 2
 
 

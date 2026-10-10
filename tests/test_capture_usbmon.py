@@ -139,17 +139,49 @@ def test_timestamps_rebase_to_first_event():
     assert evs[1].ts == pytest.approx(0.25)
 
 
-def test_microsecond_counter_wrap_does_not_go_backwards():
-    """usbmon timestamps are unsigned 32-bit microseconds and wrap every ~71 min."""
-    wrap = 1 << 32
+def _kernel_stamp(t: float) -> int:
+    """drivers/usb/mon/mon_text.c:mon_get_timestamp, verbatim in Python.
+
+        stamp = now.tv_sec & 0xFFF;  /* 2^32 = 4294967296. Limit to 4096s. */
+        stamp = stamp * USEC_PER_SEC + now.tv_nsec / NSEC_PER_USEC;
+
+    The counter wraps at 4096 s, NOT at 2^32 us. The parser used to undo the wrap
+    by adding 2^32 us, so every event after a wrap landed 198.97 s in the future;
+    the old version of this test fed a value near 2^32 that the kernel never emits.
+    """
+    sec, frac = int(t), t - int(t)
+    return (sec & 0xFFF) * 1_000_000 + int(frac * 1e6)
+
+
+def test_counter_wraps_at_4096_seconds_like_the_kernel():
     p = UsbmonParser()
     ts = [e.ts for e in p.feed([
-        "aaaa 1000000 C Ii:1:003:1 0:8 8 = 0000000000000000",
-        f"aaaa {wrap - 1000000} C Ii:1:003:1 0:8 8 = 0000000000000000",
-        "aaaa 500000 C Ii:1:003:1 0:8 8 = 0000000000000000",
+        f"aaaa {_kernel_stamp(4095.9)} C Ii:1:003:1 0:8 8 = 0000000000000000",
+        f"aaaa {_kernel_stamp(4096.1)} C Ii:1:003:1 0:8 8 = 0000000000000000",
     ])]
-    assert ts == [pytest.approx(0.0), pytest.approx(4292.967296), pytest.approx(4294.467296)]
-    assert all(b >= a for a, b in zip(ts, ts[1:]))
+    assert ts == [pytest.approx(0.0), pytest.approx(0.2)]
+
+
+def test_three_hour_stream_keeps_true_elapsed_time():
+    """A monitor runs for hours; every wrap must be undone exactly, not approximately."""
+    start = 1234.5                       # an arbitrary monotonic clock at capture start
+    true = [i * 0.75 for i in range(int(3 * 3600 / 0.75))]
+    p = UsbmonParser()
+    got = [e.ts for e in p.feed(
+        f"aaaa {_kernel_stamp(start + t)} C Ii:1:003:1 0:8 8 = 0000000000000000" for t in true)]
+    assert len(got) == len(true)
+    assert max(abs(g - t) for g, t in zip(got, true)) < 2e-6
+    assert all(b > a for a, b in zip(got, got[1:]))
+
+
+def test_a_short_capture_can_straddle_a_wrap():
+    """Wraps happen whenever CLOCK_MONOTONIC crosses a multiple of 4096 s, so a
+    20-second capture is affected if it starts at the wrong moment."""
+    p = UsbmonParser()
+    got = [e.ts for e in p.feed(
+        f"aaaa {_kernel_stamp(4090.0 + t)} C Ii:1:003:1 0:8 8 = 0000000000000000"
+        for t in range(20))]
+    assert got == [pytest.approx(float(t)) for t in range(20)]
 
 
 def test_stats_account_for_every_line():

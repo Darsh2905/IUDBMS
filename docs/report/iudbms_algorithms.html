@@ -309,10 +309,11 @@ data tag: <span class="c">=</span> means payload words follow; <span class="c">-
     <h3><span class="n">02</span>Timestamp rebasing and counter wrap</h3>
     <p class="purpose">Convert kernel microsecond stamps into seconds since enumeration.</p>
     <div class="formula">if raw&#8341; &lt; prev&#8341; − 2³¹:   wraps ← wraps + 1     <span class="c">← backward jump = wrap, not reordering</span>
-abs&#8341; := raw&#8341; + wraps · 2³²
+abs&#8341; := raw&#8341; + wraps · 4096·10⁶
 t     := (abs&#8341; − origin&#8341;) / 10⁶</div>
-    <p>usbmon timestamps are microseconds in an unsigned 32-bit field, so they
-      wrap roughly every 71.6 minutes. A backward jump larger than half the range
+    <p>usbmon text timestamps are CLOCK_MONOTONIC with the seconds truncated to
+      12 bits (<code>mon_text.c</code>: <code>(tv_sec &amp; 0xFFF)·10⁶ + µs</code>), so they
+      wrap every 4096 s (68.3 min), not at 2³² µs. A backward jump larger than half the range
       is treated as a wrap; anything smaller is treated as genuine reordering and
       left alone.</p>
   </div>
