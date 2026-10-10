@@ -149,3 +149,16 @@ def test_shipped_models_do_not_flag_idle_keyboards_or_mice(name, kw):
                 flagged += 1
                 break
     assert flagged == 0, f"{flagged} of 12 idle ({name}) keyboards/mice were flagged"
+
+
+def test_deployed_threshold_is_calibrated_per_device_hour():
+    """`make train-deployed` writes a per-window threshold and then recalibrates it per
+    device-hour. Running only the first step ships 0.15-0.36 false alarms per keyboard-
+    hour (eval.analysis_calibration); this fails if that half-finished state is shipped."""
+    import json
+    from pathlib import Path
+    cfg = json.loads((Path(__file__).resolve().parent.parent / "out" / "models"
+                      / "deploy.json").read_text())
+    assert "device-hour" in cfg.get("threshold_rule", ""), \
+        "deploy.json was not recalibrated: run `make train-deployed` (both steps)"
+    assert cfg["threshold"] >= max(h["threshold"] for h in cfg["threshold_history"])

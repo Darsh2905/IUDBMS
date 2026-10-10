@@ -42,8 +42,23 @@ diagrams:  ## architecture + gate diagrams as PNG/PDF (needs `make eval` first)
 	cp out/architecture.png out/architecture.pdf out/architecture_ieee.png out/architecture_ieee.pdf \
 	   out/gate_timeline.png out/gate_timeline.pdf docs/report/
 
-train-deployed:  ## train the DEPLOYED set on the realistic corpus -> out/models/ (~2 min)
+train-deployed:  ## train the DEPLOYED set on Corpus B, then calibrate its threshold per device-hour (~7 min)
 	python3 -m eval.train_deployed
+	python3 -m eval.analysis_calibration --adopt
+
+long-sessions:  ## false alarms per device-hour on sessions up to 60 min (~10 min)
+	python3 -m eval.analysis_long_sessions
+
+model-card:  ## docs/MODEL_CARD.md from the trained artefacts
+	python3 -m eval.model_card
+
+testbed-images:  ## download the four distribution cloud images (~2 GB)
+	sh testbed/fetch_images.sh
+
+testbed:  ## real-kernel testbed: 4 distributions, benign 75 min + attacks 30 min each (~2 h)
+	python3 -m testbed.human_input fetch
+	python3 -m testbed.campaign all --seed 1
+	python3 -m testbed.score
 
 monitor-replay:  ## the monitor loop driven from a recorded capture (any OS); writes out/live.db
 	python3 scripts/live_monitor.py --replay tests/fixtures/usbmon/demo_capture.txt \
