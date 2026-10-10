@@ -41,7 +41,7 @@ import numpy as np
 from ..capture.sysfs import SysfsScanner
 from ..capture.usbmon import DEFAULT_USBMON_DIR, UsbmonSource
 from ..contract import CONTRACT_VERSION, DeviceDescriptor, Endpoint, Interface
-from ..policy import ENFORCEMENT_REVIEWED, PolicyEngine
+from ..policy import ENFORCEMENT_REVIEWED, ModelSupport, PolicyEngine
 from ..stage1 import Stage1
 from ..stage2 import LSTMDetector
 from ..storage import PAYLOAD_MODES, Store, StoreSource, TraceRecorder
@@ -202,6 +202,9 @@ def build_parser() -> argparse.ArgumentParser:
     src.add_argument("--replay-db", type=Path, metavar="DB",
                      help="drive the loop from a run stored in a database's trace")
     src.add_argument("--run-id", type=int, help="the stored run to replay (--replay-db)")
+    src.add_argument("--fast", action="store_true",
+                     help="replay only: close each window as soon as the file has been read "
+                          "past it, instead of at wall-clock pace. Same windows, same scores.")
 
     mdl = ap.add_argument_group("models")
     mdl.add_argument("--models", type=Path,
@@ -243,6 +246,9 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     replaying = args.replay is not None or args.replay_db is not None
+    if args.fast and not replaying:
+        raise SystemExit("--fast applies to --replay / --replay-db only: live capture is "
+                         "paced by the kernel's clock, and an idle bus would stall it")
     if not replaying and platform.system() != "Linux":
         raise SystemExit(f"Live capture needs Linux; this is {platform.system()}.\n"
                          f"Use --replay FILE or --replay-db DB to run the loop here.")
@@ -252,8 +258,11 @@ def main(argv: list[str] | None = None) -> int:
 
     out = Out(args.color == "always" or (args.color == "auto" and sys.stdout.isatty()))
     cfg, s1, s2 = load_models(args.models, allow_stage1_only=args.allow_stage1_only)
+    # Device types the model was trained on (policy.support). A set saved before this
+    # existed has no record and judges every device, as it always did.
+    support = ModelSupport(cfg["support"]) if cfg.get("support") else None
     detector = StreamingDetector(
-        s1, s2, PolicyEngine(threshold=cfg["threshold"], k=cfg["k"], n=cfg["n"]),
+        s1, s2, PolicyEngine(threshold=cfg["threshold"], k=cfg["k"], n=cfg["n"], support=support),
         feature_idx=np.array(cfg["feature_idx"]), seq_len=cfg["seq_len"])
 
     # ---- source ------------------------------------------------------------
@@ -303,7 +312,8 @@ def main(argv: list[str] | None = None) -> int:
         persister = LivePersister(store, recorder=recorder, seq_len=cfg["seq_len"],
                                   window=1.0)
 
-    monitor = LiveMonitor(detector, source, descriptor_for, window=1.0, recorder=recorder)
+    monitor = LiveMonitor(detector, source, descriptor_for, window=1.0, recorder=recorder,
+                          pace="event" if args.fast else "wallclock")
 
     def _stop(*_):
         monitor.stop()
@@ -315,6 +325,11 @@ def main(argv: list[str] | None = None) -> int:
     out.line(f"{out.DIM}threshold {cfg['threshold']:.4f}   gate {cfg['k']}-of-{cfg['n']}   "
              f"{len(cfg['feature_idx'])} features   stage 2 "
              f"{'loaded' if s2 is not None else 'ABSENT (stage-1-only)'}{out.RESET}")
+    out.line(f"{out.DIM}model support: "
+             + (f"interface classes {sorted(support.classes)}; devices declaring others are reported "
+                f"'unmodelled' and never escalated (any HID interface is always judged)"
+                if support is not None else "not recorded in deploy.json; every device is judged")
+             + out.RESET)
     out.line(f"{out.DIM}enforcement is dry-run (ENFORCEMENT_REVIEWED={ENFORCEMENT_REVIEWED}); "
              f"nothing is written to sysfs{out.RESET}")
     if store is None:
@@ -335,7 +350,8 @@ def main(argv: list[str] | None = None) -> int:
     out.line(f"{out.DIM}Ctrl-C (or SIGTERM) to stop.{out.RESET}\n")
 
     # ---- loop --------------------------------------------------------------
-    STATE_COLOUR = {"observe": out.GREEN, "throttled": out.AMBER, "revoked": out.RED}
+    STATE_COLOUR = {"observe": out.GREEN, "throttled": out.AMBER, "revoked": out.RED,
+                    "unmodelled": out.GREY}
     last_state: dict[str, str] = {}
     t_wall = time.monotonic()
     try:
@@ -347,6 +363,11 @@ def main(argv: list[str] | None = None) -> int:
             for v in verdicts:
                 changed = last_state.get(v.device_id) != v.trust_state
                 last_state[v.device_id] = v.trust_state
+                if changed and v.trust_state == "unmodelled":
+                    d = detector.devices[v.device_id].descriptor
+                    out.line(f"{out.GREY}NOTICE device={v.device_id} declares interface types the "
+                             f"model was not trained on {support.uncovered(d)}: scored and stored, "
+                             f"never escalated. Decide its policy by type.{out.RESET}")
                 if args.log == "verbose" and not (
                         args.quiet_devices and v.features[0] == 0 and not changed
                         and not v.action):

@@ -47,7 +47,7 @@ def main() -> int:
     r = run_configuration(fit, val, test, name="IUDBMS (deployed)", feature_idx=idx, seed=SEED,
                           epochs=EPOCHS, seq_len=10, hidden=32, target_fpr=TARGET_FPR,
                           keep_scores=True, verbose=False)
-    dest = save_set(OUT / "models", r, idx, target_fpr=TARGET_FPR)
+    dest = save_set(OUT / "models", r, idx, target_fpr=TARGET_FPR, support_from=fit)
     s = r.session
     print(f"trained in {time.time() - t0:.0f} s  ->  {dest}")
     print(f"  threshold {r.threshold:.4f}   window AUC {r.window['auc']:.4f}")

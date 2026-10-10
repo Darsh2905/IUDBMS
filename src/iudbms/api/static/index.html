@@ -122,6 +122,7 @@ header h1 span { color: var(--text-muted); font-weight: 400; }
 .pill.observe   { color: var(--status-good); }
 .pill.throttled { color: var(--status-warning); }
 .pill.revoked   { color: var(--status-critical); }
+.pill.unmodelled { color: var(--text-muted); }
 
 main { padding: 20px; overflow-y: auto; max-height: calc(100vh - 108px); }
 .card {
@@ -195,7 +196,7 @@ const { useState, useEffect, useMemo, useRef, useCallback } = React;
 const API = "";
 
 const fmt = (n, d = 3) => (n === null || n === undefined ? "—" : Number(n).toFixed(d));
-const STATE_ICON = { observe: "●", throttled: "▲", revoked: "■" };
+const STATE_ICON = { observe: "●", throttled: "▲", revoked: "■", unmodelled: "○" };
 
 function useJSON(url, deps) {
   const [data, setData] = useState(null);
@@ -473,7 +474,7 @@ function App() {
       }),
       h("label", { htmlFor: "st" }, "Trust state"),
       h("select", { id: "st", value: state, onChange: e => setState(e.target.value) },
-        ["all", "observe", "throttled", "revoked"].map(s => h("option", { key: s, value: s }, s))),
+        ["all", "observe", "throttled", "revoked", "unmodelled"].map(s => h("option", { key: s, value: s }, s))),
       h("label", { htmlFor: "gp" }, "Class"),
       h("select", { id: "gp", value: group, onChange: e => setGroup(e.target.value) },
         ["all", ...groups].map(s => h("option", { key: s, value: s }, s))),
