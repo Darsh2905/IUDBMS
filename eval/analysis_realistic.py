@@ -225,7 +225,7 @@ class RealisticSim(DutyCycleSim):
 # corpus + experiment
 # ---------------------------------------------------------------------------
 
-def build(n_benign=600, n_attack=400, seed=SEED):
+def build(n_benign=600, n_attack=400, seed=SEED, extractor_cls=NGramExtractor):
     sim = RealisticSim(seed=seed)
     rng = np.random.default_rng(seed + 99)
     probs = np.array([m[1] for m in IDLE_MIX])
@@ -236,7 +236,7 @@ def build(n_benign=600, n_attack=400, seed=SEED):
         else:
             name, kw = "attack", IDLE_MIX[0][2]
         sim._idle, sim._active, sim._fully_idle = kw["idle"], kw["active"], kw["fully_idle"]
-        sessions.append(featurize(sim.session(sid, profile), sid, profile, NGramExtractor))
+        sessions.append(featurize(sim.session(sid, profile), sid, profile, extractor_cls))
         cond[sid] = name
     return sessions, cond
 

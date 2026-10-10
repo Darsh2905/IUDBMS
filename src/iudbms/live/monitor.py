@@ -60,6 +60,7 @@ class LiveMonitor:
         recorder=None,
         max_defer_windows: int = 30,
         end_grace_windows: int = 3,
+        pace: str = "wallclock",
     ):
         self.detector = detector
         self.source = source
@@ -77,7 +78,18 @@ class LiveMonitor:
         self.window = window
         self.idle_detach_windows = idle_detach_windows
         self._clock = clock
-        self._q: queue.Queue = queue.Queue()
+        #: "wallclock" (live capture): a window closes when the clock passes its end.
+        #: "event" (finite replays only): it closes as soon as the reader has delivered
+        #: an event past its end, or the source has ended -- the same windows, scored
+        #: as fast as the file can be read. Live capture must never use it: a quiet
+        #: bus would stall the clock instead of producing idle windows.
+        if pace not in ("wallclock", "event"):
+            raise ValueError(f"pace must be 'wallclock' or 'event', not {pace!r}")
+        self.pace = pace
+        # Bounded only when event-paced: the reader of a file races ahead, and an
+        # unbounded queue would hold the whole capture in memory. A live reader must
+        # never block, so its queue stays unbounded.
+        self._q: queue.Queue = queue.Queue(maxsize=50_000 if pace == "event" else 0)
         self._stop = threading.Event()
         self._reader: threading.Thread | None = None
         self._idle: dict[str, int] = {}
@@ -223,6 +235,23 @@ class LiveMonitor:
         self._last_window = w
         return verdicts
 
+    def _fill_until(self, t_end: float) -> None:
+        """Event pacing: block until an event at or past ``t_end`` (or the end) is held.
+
+        The source delivers events in time order, so once one at or past the window's
+        end has arrived, every event belonging to the window has too.
+        """
+        while not self._stop.is_set() and not self._ended:
+            last = self._pending[-1] if self._pending else False
+            if last is None or isinstance(last, Exception) or (
+                    last is not False and last.ts >= t_end):
+                return
+            try:
+                item = self._q.get(timeout=0.05)
+            except queue.Empty:
+                continue
+            self._pending.append(item)
+
     def _await_origin(self) -> float | None:
         """Block until the first event arrives and return the window clock origin.
 
@@ -262,12 +291,15 @@ class LiveMonitor:
                 return
             self.time_origin = t0
             while max_windows is None or w < max_windows:
-                deadline = t0 + (w + 1) * self.window
-                while True:
-                    remaining = deadline - self._clock()
-                    if remaining <= 0:
-                        break
-                    time.sleep(min(remaining, 0.05))
+                if self.pace == "event":
+                    self._fill_until((w + 1) * self.window)
+                else:
+                    deadline = t0 + (w + 1) * self.window
+                    while True:
+                        remaining = deadline - self._clock()
+                        if remaining <= 0:
+                            break
+                        time.sleep(min(remaining, 0.05))
                 alive = self._drain(w)
                 yield self._close_window(w)
                 w += 1

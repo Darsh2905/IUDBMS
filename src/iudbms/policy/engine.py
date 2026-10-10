@@ -51,7 +51,9 @@ __all__ = [
     "ENFORCEMENT_REVIEWED", "KILL_SWITCH_ENV", "EnforcementBlocked",
 ]
 
-TrustState = Literal["observe", "throttled", "revoked"]
+#: "unmodelled": the device declares an interface type the model was never trained on
+#: (policy.support). It is scored and stored but never escalated.
+TrustState = Literal["observe", "throttled", "revoked", "unmodelled"]
 
 #: MUST remain False until a human has reviewed the safety interlocks.
 #: Flipping this is what allows a real write to /sys/bus/usb/.../authorized.
@@ -99,6 +101,7 @@ class PolicyEngine:
         *,
         dry_run: bool = True,
         allowlist: set[str] | None = None,
+        support=None,
     ):
         if not 0 < k <= n:
             raise ValueError(f"need 0 < k <= n, got k={k}, n={n}")
@@ -108,6 +111,9 @@ class PolicyEngine:
         # Devices that must never be throttled or revoked, whatever the model
         # says. The boot keyboard belongs here on every real deployment.
         self.allowlist: set[str] = set(allowlist or ())
+        #: policy.support.ModelSupport, or None to judge every device (the evaluation
+        #: harness, whose simulated devices are all inside the training support).
+        self.support = support
 
     def new_device(self, device_id: str) -> DeviceContext:
         return DeviceContext(device_id=device_id, history=deque(maxlen=self.n))
@@ -127,6 +133,9 @@ class PolicyEngine:
     ) -> Action | None:
         """Advance one window. Returns an Action when the ladder escalates."""
         ctx.history.append(1 if stage2 >= self.threshold else 0)
+        if self.support is not None and not self.support.covers(descriptor):
+            ctx.state = "unmodelled"          # outside the model's competence: never escalate
+            return None
         if ctx.hits_in_window < self.k:
             return None
 

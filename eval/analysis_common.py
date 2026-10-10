@@ -31,7 +31,7 @@ OUT = ROOT / "out"
 sys.path.insert(0, str(ROOT / "src"))
 
 from iudbms.contract import CONTRACT_VERSION  # noqa: E402
-from iudbms.policy import PolicyEngine  # noqa: E402
+from iudbms.policy import ModelSupport, PolicyEngine  # noqa: E402
 from iudbms.stage1 import Stage1  # noqa: E402
 from iudbms.stage2 import LSTMDetector, build_sequences  # noqa: E402
 
@@ -67,7 +67,7 @@ def deployed(models: Path | None = None):
 
 
 def save_set(dest: Path, result, idx, *, target_fpr: float, seq_len: int = 10,
-             k: int = GATE_K, n: int = GATE_N) -> Path:
+             k: int = GATE_K, n: int = GATE_N, support_from=None) -> Path:
     """Write a trained configuration as a loadable, canary-stamped model set.
 
     Experiments keep their checkpoints under out/analysis_models/, never in
@@ -82,7 +82,11 @@ def save_set(dest: Path, result, idx, *, target_fpr: float, seq_len: int = 10,
         "feature_idx": [int(i) for i in idx], "threshold": result.threshold,
         "target_fpr": target_fpr, "seq_len": seq_len, "k": k, "n": n,
         "contract_version": CONTRACT_VERSION,
-        "canary": {"stage1": s1m.canary(), "stage2": s2m.canary(seq_len)}}, indent=2))
+        "canary": {"stage1": s1m.canary(), "stage2": s2m.canary(seq_len)},
+        # interface types of the benign training devices (policy.support)
+        **({"support": ModelSupport.from_descriptors(
+            s.descriptor for s in support_from if s.label == 0).to_json()}
+           if support_from is not None else {})}, indent=2))
     return dest
 
 

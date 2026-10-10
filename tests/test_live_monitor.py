@@ -373,3 +373,58 @@ def test_run_ends_when_the_source_ends(detector_factory):
     mon = LiveMonitor(detector_factory(), src, lambda k: DESC, clock=_fast_clock())
     batches = list(mon.run())          # no max_windows: must terminate on its own
     assert batches
+
+
+# --------------------------------------------------------------------------
+# event-paced replay (--fast)
+# --------------------------------------------------------------------------
+
+def _verdicts(mon):
+    return [(v.device_id, v.t_start, round(float(v.stage1), 9))
+            for vs in mon.run() for v in vs]
+
+
+def test_event_pacing_scores_the_same_windows_as_clock_pacing(detector_factory):
+    evs = [ev(t / 10) for t in range(0, 95, 3)] + [ev(12.5), ev(14.05, dev=4)]
+    a = LiveMonitor(detector_factory(), FakeSource(evs), lambda k: DESC, clock=_fast_clock())
+    b = LiveMonitor(detector_factory(), FakeSource(evs), lambda k: DESC, pace="event")
+    va, vb = _verdicts(a), _verdicts(b)
+    assert va == vb and len(vb) > 10
+    assert b.events_late == 0
+
+
+def test_event_pacing_never_drops_events_however_far_the_reader_runs_ahead(detector_factory):
+    # 6 000 events over 120 s: the bounded queue makes the reader block, not drop
+    evs = [ev(i * 0.02) for i in range(6000)]
+    mon = LiveMonitor(detector_factory(), FakeSource(evs), lambda k: DESC, pace="event")
+    n = sum(int(v.features[0]) for vs in mon.run() for v in vs)       # column 0: n_events
+    assert n == 6000 and mon.events_late == 0
+
+
+def test_unknown_pace_is_refused(detector_factory):
+    with pytest.raises(ValueError):
+        LiveMonitor(detector_factory(), FakeSource([]), lambda k: DESC, pace="turbo")
+
+
+def test_fast_is_refused_for_live_capture():
+    from iudbms.live import cli
+    with pytest.raises(SystemExit, match="replay"):
+        cli.main(["--fast", "--bus", "0", "--no-persist"])
+
+
+@pytest.mark.slow
+def test_event_paced_replay_matches_wall_clock_replay_on_real_kernel_output(detector_factory):
+    """The real QEMU capture, replayed both ways through the deployed loop's code."""
+    from pathlib import Path
+
+    from iudbms.capture.usbmon import UsbmonSource
+    from iudbms.live.cli import _load_descriptor_snapshot
+    fx = Path(__file__).parent / "fixtures" / "usbmon"
+    desc = _load_descriptor_snapshot(fx / "real_qemu_vm_descriptors.json")
+    runs = []
+    for pace in ("wallclock", "event"):
+        src = UsbmonSource(path=fx / "real_qemu_vm_capture.txt")
+        mon = LiveMonitor(detector_factory(), src, desc.get, pace=pace)
+        runs.append((_verdicts(mon), mon.events_late, mon.events_undescribed))
+    assert runs[0] == runs[1]
+    assert len(runs[1][0]) > 20
