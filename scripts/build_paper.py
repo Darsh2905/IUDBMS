@@ -67,6 +67,8 @@ EBPF_BUSY = load("ebpf/busy.json")
 LIVE_O = load("live_original.json")
 LIVE_R = load("live_retrained.json")
 DIAG = load("analysis_diagnostics.json")
+RULEJ = load("analysis_rules.json")
+BASEJ = load("analysis_baseline.json")
 
 doc = docx.Document()
 
@@ -139,6 +141,8 @@ make_style("IEEE Ref", 8, align=J, first=-0.3, left=0.3, after=2, spacing=0.95)
 
 
 def run(par, text, *, italic=None, bold=None, small_caps=None, size=None):
+    # a hyphen before a digit that does not follow a word character is a minus sign
+    text = re.sub(r"(?<![\w\-])-(?=\d)", "\u2212", text)
     r = par.add_run(text)
     force_fonts(r._r.get_or_add_rPr())
     r.font.color.rgb = BLACK
@@ -153,9 +157,39 @@ def run(par, text, *, italic=None, bold=None, small_caps=None, size=None):
     return r
 
 
+#: Source ids (the numbers used while writing) -> reference keys. The numbers actually
+#: printed are assigned in order of FIRST CITATION, as IEEE requires. The text used to be
+#: numbered by hand, and cited [5] before [3] and [4].
+OLD2KEY = {1: "shen", 2: "bintang", 3: "kosto", 4: "rajurkar", 5: "song", 6: "baek",
+           7: "hnamte", 8: "saini", 9: "raja", 10: "anwar", 11: "shannon", 12: "nohl",
+           13: "goodusb", 14: "usbfilter", 15: "usblock", 16: "huang", 17: "iforest",
+           18: "lstm"}
+REF_NO: dict[str, int] = {}
+
+
+def _cite_no(old):
+    key = OLD2KEY[old]
+    if key not in REF_NO:
+        REF_NO[key] = len(REF_NO) + 1
+    return REF_NO[key]
+
+
+def number_cites(text):
+    """Rewrite [n] and [a]–[b] as final numbers; compress consecutive runs of three or more."""
+    def sub(m):
+        a = int(m.group(1))
+        b = int(m.group(2)) if m.group(2) else a
+        nums = [_cite_no(i) for i in range(a, b + 1)]
+        if len(nums) >= 3 and nums == list(range(nums[0], nums[0] + len(nums))):
+            return f"[{nums[0]}]–[{nums[-1]}]"
+        return ", ".join(f"[{n}]" for n in nums)
+    return re.sub(r"\[(\d+)\](?:–\[(\d+)\])?", sub, text)
+
+
 def rich(par, text, **base):
     italic = False
     code = False
+    text = number_cites(text)
     for tok in re.split(r"(</?i>|</?code>)", text):
         if tok == "<i>":
             italic = True
@@ -209,7 +243,7 @@ _TABLE_N = [0]
 ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII"]
 #: Tables in the order they appear. Text refers to them by key through ``tref`` and
 #: ``table`` asserts the order, so a "Table V" in the prose cannot point at the wrong table.
-TABLE_ORDER = ["families", "headline", "perclass", "n1", "n2", "realism", "parser",
+TABLE_ORDER = ["families", "headline", "perclass", "n1", "n2", "realism", "rules", "parser",
                "keyboard", "live", "unseen", "perturb", "ebpf"]
 
 
@@ -371,25 +405,22 @@ if EBPF_IDLE and EBPF_BUSY:
 # ---------------------------------------------------------------- abstract
 ABSTRACT = (
     "USB hosts accept a peripheral’s self-reported identity, and BadUSB attacks exploit "
-    "that trust to inject keystrokes within seconds. Identity checks made at connection "
-    "time say nothing about what a device does afterwards. We present IUDBMS, a monitor "
-    "that trusts a device by its observed behaviour. It reads USB request blocks from the "
-    "Linux kernel, condenses each second into a feature vector, scores it with an Isolation "
-    "Forest and a per-device baseline, and passes that score to an LSTM that reads "
-    "ten-second sequences. A persistence gate drives a throttle-then-deauthorise policy, "
-    "run here in dry-run only. On a simulated corpus the system detects "
-    f"{pct(det)} of attack sessions with {pct(fp)} benign false positives; without its "
-    f"temporal stage it detects {pct(s1_det)}. We then stress that result. Once benign "
-    f"devices go idle and keyboards send key-release reports, the original model flags "
-    f"{pct(orig_fp)} of benign sessions. A model retrained on realistic traffic detects "
-    f"{pct(seen_mean)} of attacks at {fp_fresh:.2%} false positives on 3,600 fresh "
-    f"sessions, but only {pct(unseen_mean)} of attack families it never saw. Watching a "
-    "real keyboard live on a Linux guest, the original model revoked it and the "
-    "retrained model, now deployed, raised no alert. Two of four novelty claims were "
-    "not supported."
+    "that trust to inject keystrokes within seconds. Identity checks at connection time "
+    "cannot judge what a device does afterwards. We present IUDBMS, which trusts a device by "
+    "its observed behaviour. It reads USB request blocks from the Linux kernel, condenses "
+    "each second into a feature vector, scores it with an Isolation Forest and a per-device "
+    "baseline, and feeds that score to an LSTM over ten-second sequences. Enforcement runs "
+    f"in dry-run only. On a simulated corpus it detects {pct(det)} of attack sessions with "
+    f"{pct(fp)} benign false positives, but that corpus had no idle devices: once they idle, "
+    f"the model flags {pct(orig_fp)} of benign sessions. Retrained on realistic traffic it "
+    f"detects {pct(seen_mean)} of attacks at {fp_fresh:.2%} false positives on 3,600 fresh "
+    f"sessions, against {pct(RULEJ['all three rules']['mean'])} at none for three "
+    f"hand-written rules, and only {pct(unseen_mean)} of families it never saw. On a live "
+    "Linux guest the original model revoked a typing keyboard and the retrained one did not. "
+    "Of four novelty claims, one is supported, one partly, one not, and one untested."
 )
 n_words = len(re.findall(r"\S+", ABSTRACT))
-assert 185 <= n_words <= 199, f"abstract is {n_words} words; IEEE allows at most 200"
+assert n_words <= 199, f"abstract is {n_words} words; IEEE allows at most 200"
 print(f"  abstract: {n_words} words")
 
 p = doc.add_paragraph(style="IEEE Abstract")
@@ -408,7 +439,7 @@ body("USB has been the standard way to attach peripherals since 1996, and plug-a
      "device says about itself. During enumeration a device reports its Vendor ID (VID), "
      "Product ID (PID) and interface descriptors, and the host accepts them with no "
      "cryptographic attestation.")
-body("BadUSB attacks exploit this. Altered firmware lets a flash drive or a charging cable "
+body("BadUSB attacks [12] exploit this. Altered firmware lets a flash drive or a charging cable "
      "declare itself a Human Interface Device (HID) keyboard and type a stored payload the "
      "moment it is plugged in. Hosts trust HID input by default, so the payload gets past "
      "file-based antivirus and runs within seconds.")
@@ -419,11 +450,11 @@ body("Most defences check identity at connection time. They allowlist VID/PID pa
 body("IUDBMS (Intelligent USB Device Behaviour Monitoring System) moves the decision from "
      "connection time to run time. It captures USB Request Blocks (URBs) at the kernel "
      "boundary, turns each device’s traffic into one feature vector per second, and scores "
-     "those vectors in two stages. An unsupervised detector asks whether this second looks "
-     "normal for the device class. An LSTM asks whether the last ten seconds look like an "
+     "those vectors in two stages. An unsupervised Isolation Forest [17] asks whether this "
+     "second looks normal for the device class. An LSTM [18] asks whether the last ten seconds look like an "
      "attack unfolding. A graduated policy then rate-limits or revokes the device when the "
      "evidence persists.")
-body("This paper makes five contributions.")
+body("This paper makes six contributions.")
 item("1)", "A complete behavioural pipeline from usbmon capture to a dry-run enforcement "
            "policy, with every stage tested.")
 item("2)", "Four novelty claims, each given a purpose-built experiment with its pass "
@@ -432,10 +463,14 @@ item("2)", "Four novelty claims, each given a purpose-built experiment with its 
 item("3)", "A realism stress test. Our first corpus had benign devices that never went idle. "
            "That inflated the headline result and taught the model to flag any quiet "
            "keyboard. We rebuild the corpus, retrain, and report what survives.")
-item("4)", "A leave-one-family-out test of how the system handles attacks it was not trained "
+item("4)", "A baseline of three hand-written rules with no learning. They detect "
+           f"{pct(RULEJ['all three rules']['mean'])} of attacks at no false positives, so the "
+           f"learned system’s measured gain over them is {100 * (seen_mean - RULEJ['all three rules']['mean']):.0f} "
+           "points, all of it in one attack family.")
+item("5)", "A leave-one-family-out test of how the system handles attacks it was not trained "
            f"on: detection falls from {pct(seen_mean)} to {pct(unseen_mean)}.")
-item("5)", "Validation against real kernel output, including an eBPF capture prototype. "
-           "It exposed defects that 385 simulator-driven tests had missed.")
+item("6)", "Validation against real kernel output, including an eBPF capture prototype. "
+           "It exposed defects that the 385 simulator-driven tests then in the suite had missed.")
 body("Sections II to IV review the literature, derive the research gap and novelty, and "
      "state the objectives. Section V describes the architecture and the experimental "
      "setup. Section VI reports the results, and Section VII states what they do not show.")
@@ -460,10 +495,20 @@ body("Bintang et al. [2] proposed SafeUSB, a Windows keystroke monitor that comb
      "authors also report a delay of about one second between HID connection and the "
      "start of monitoring, long enough for a short payload to finish, and they suggest "
      "compiled, kernel-level hooks as future work. That is the direction IUDBMS takes.")
-body("Read together, [1] and [2] show the gap. WMUD’s tamper-resistant policy is bound to "
-     "identity, and SafeUSB’s behavioural analysis is held back by its place in userspace "
-     "and its activation delay. Neither learns a model of each device, and neither "
-     "enforces at the kernel or driver boundary.")
+body("Host-side work goes beyond allowlisting inside the Linux kernel. GoodUSB [13] mediates "
+     "the USB stack and grants a device only the functions the user expects of it. USBFILTER "
+     "[14] instruments the stack between the drivers and the host controller and filters "
+     "packets by rule, at a cost of a few microseconds per packet. USBlock [15] is the "
+     "closest to our setting: it detects keystroke-injection devices from the temporal "
+     "characteristics of the packets they generate. Huang et al. [16] look higher up and "
+     "identify HID-based attacks from the process events on the host. We know these works "
+     "from their published descriptions, and as far as we can tell none of them learns a "
+     "model of each device or models a device’s behaviour over a sequence of windows.")
+body("Read together, [1] and [2] show part of the gap. WMUD’s tamper-resistant policy is bound "
+     "to identity, and SafeUSB’s behavioural analysis is held back by its place in userspace "
+     "and its activation delay. USBFILTER [14] shows that kernel-level USB filtering is "
+     "already established, and USBlock [15] shows that packet timing alone exposes many "
+     "injection devices, a point our own rule baseline in Section VI-F supports.")
 
 h2("B", "eBPF for Kernel-Level Observability and Enforcement")
 body("eBPF lets verified bytecode run inside the Linux kernel, which gives "
@@ -481,9 +526,9 @@ body("Kostopoulos et al. [3] presented eIDPS, a real-time eBPF and machine-learn
 body("Together [3]–[5] establish eBPF as a proven substrate for sub-microsecond observation "
      "and enforcement, and the kernel-extract, userspace-infer split as the accepted way to "
      "pair kernel speed with ML expressiveness. But this work is about <i>network</i> "
-     "intrusion detection. Applying the pattern to the <i>USB</i> subsystem, with URBs as "
-     "the unit of observation and driver binding as the enforcement point, has not been "
-     "done.")
+     "intrusion detection. To our knowledge, applying the pattern to the <i>USB</i> subsystem, "
+     "with URBs as the unit of observation and driver binding as the enforcement point, "
+     "has not been done.")
 
 h2("C", "Deep Learning for Behavioural and Temporal Anomaly Detection")
 body("LSTM networks suit anomalies whose signal lies in temporal structure rather than in any "
@@ -504,8 +549,8 @@ body("Two further works target novel and slow-developing attacks. Chithik Raja a
      "Forest, Logistic Regression and 1D-CNN baselines at low latency.")
 body("Collectively, [6]–[10] show that LSTM-based temporal models catch multi-stage and "
      "zero-day behaviour within real-time budgets, and that layered designs balance recall "
-     "against discrimination. None of them applies temporal modelling to the event stream "
-     "of a single USB peripheral, which is what IUDBMS does.")
+     "against discrimination. As far as we found, none of them applies a learned temporal "
+     "model to the event stream of a single USB peripheral, which is what IUDBMS does.")
 
 # ---------------------------------------------------------------- III
 h1("III", "Inferences from the Literature")
@@ -538,9 +583,10 @@ item("2)", "<i>Userspace activation latency.</i> SafeUSB [2] shows that runtime 
 item("3)", "<i>Network-only kernel intelligence.</i> The eBPF-plus-ML pattern (eIDPS [3]; "
            "Rajurkar and Deshmukh [4]) is mature for networks and unapplied to USB, where "
            "the natural unit is the URB and the natural enforcement point is driver binding.")
-item("4)", "<i>No temporal model of USB behaviour.</i> LSTM and attention models [6]–[10] "
-           "catch staged and zero-day attacks in network and IIoT settings, but no USB "
-           "defence models a device’s event sequence over time.")
+item("4)", "<i>No learned temporal model of USB behaviour.</i> LSTM and attention models "
+           "[6]–[10] catch staged and zero-day attacks in network and IIoT settings. The USB "
+           "defences we found use rules or timing analysis [2], [14], [15], not a learned "
+           "model of a device’s event sequence over time.")
 item("5)", "<i>Open enforcement loop.</i> Existing behavioural detectors alert or block from "
            "userspace after a round trip. None closes the loop inside the kernel.")
 
@@ -548,9 +594,13 @@ h2("C", "Novelty of IUDBMS")
 body("The underlying techniques already exist: eBPF capture [3]–[5], unsupervised anomaly "
      "scoring, and LSTM temporal modelling [6]–[10]. The novelty of IUDBMS is their "
      "<i>combination and application</i>, a single per-device, closed-loop pipeline aimed at "
-     "the USB subsystem, which no reviewed eBPF-ML or LSTM-anomaly work addresses and no "
-     "reviewed USB defence implements. Each element below answers a gap from Section III-B "
-     "and is tested in Section VI-C. The numbering follows §3.3 of the Review 1 submission.")
+     "the USB subsystem, which to our knowledge no eBPF-ML or LSTM-anomaly work addresses "
+     "and no USB defence implements in this form. Two neighbours narrow the claim. USBFILTER "
+     "[14] already enforces inside the USB stack, and USBlock [15] already detects injection "
+     "from packet timing, so what is new is the learned per-device scoring and sequence model "
+     "that would drive a verdict, not kernel-level filtering or timing analysis as such. Each "
+     "element below answers a gap from Section III-B and is tested in Section VI-C. The "
+     "numbering follows §3.3 of the Review 1 submission.")
 item("N1)", "<i>Multi-modal feature fusion at the kernel/driver boundary.</i> Event timing, "
             "traffic volume and descriptor changes are fused into one feature stream. This "
             "carries the eBPF-ML pattern [3], [4] into USB and answers the network-only gap.")
@@ -619,7 +669,9 @@ body("Fig. 1 shows the whole pipeline, from kernel capture to enforcement. URB t
      "does not touch any later stage. A parser turns raw event text into typed records. A "
      "stateful, per-device extractor then compresses each non-overlapping one-second window "
      "into a vector over four behavioural modalities: timing, payload, protocol and "
-     "identity.")
+     "identity. Raw payloads are not kept in clear by default. The trace store replaces each "
+     "report with a keyed, length-preserving pseudonym, so features can compare reports for "
+     "equality and nothing more.")
 
 new_section(1)
 p = doc.add_paragraph(style="IEEE Figure")
@@ -708,6 +760,11 @@ body("<i>Real kernel traffic.</i> For the real-traffic checks we ran Ubuntu 24.0
      "used for training or tuning. A later live run watched the guest with both the "
      "original and the retrained model at once. Development used Python 3.12, "
      "scikit-learn and PyTorch on macOS/arm64.")
+body("<i>Reproducibility.</i> Every number in this paper is read from a result file written by a "
+     "seeded script in the project repository (<code>make eval</code>, "
+     "<code>make train-deployed</code> and the analysis scripts), and this document is "
+     "generated from those files. The recorded keyboard session is not published, because "
+     "keycodes in a recording can be decoded.")
 
 # ---------------------------------------------------------------- VI
 h1("VI", "Results")
@@ -725,16 +782,21 @@ for key, label in (("full_system", "IUDBMS (Stage 1 + Stage 2)"),
                  pct(w.get("precision"), 1) if w.get("precision") is not None else "—",
                  pct(w.get("recall"), 1) if w.get("recall") is not None else "—",
                  pct(se.get("attack_detect")), pct(se.get("benign_fp"))])
-table("Detection on the held-out test split of Corpus A",
+table("Detection on the held-out test split of Corpus A. AUC, precision and recall are per window; Detect and FP are per session",
       ["Model", "ROC-AUC", "Prec.", "Rec.", "Detect", "FP"], rows, key="headline")
 lat = M["full_system"]["session"].get("median_latency")
 body(f"{tref('headline')} compares the system with two baselines on Corpus A. The identity "
      "whitelist is a USBGuard-style control. Every attack in the corpus presents a VID/PID "
      "from the same pool as benign devices, so the whitelist detects none of them, which is "
      "the premise the project set out to test. Removing the temporal stage costs "
-     f"{100 * (det - s1_det):.1f} points of session detection, the largest single effect "
-     f"in this work. The median time from attack onset to the first enforcement action is "
-     f"{lat:.1f} s. These figures come from the corpus the project started with. "
+     f"{round(100 * det, 1) - round(100 * s1_det, 1):.1f} points of session detection, the largest "
+     f"single effect among the ablations. Detection is {BASEJ['headline']['detect_k']} of "
+     f"{BASEJ['headline']['n_attack']} attack sessions (95% interval "
+     f"{pct(BASEJ['headline']['detect_ci'][0], 0)} to {pct(BASEJ['headline']['detect_ci'][1], 0)}), "
+     f"and no false alarm in {BASEJ['headline']['n_benign']} benign sessions bounds the "
+     f"false-positive rate below {pct(BASEJ['headline']['fp_ci'][1])}. The median time from "
+     f"attack onset to the first enforcement action is {lat:.1f} s. These figures come from "
+     "the corpus the project started with. "
      "Sections VI-E to VI-I show how much of them survives a more realistic one.")
 
 h2("B", "Per-Family Detection and the Single-Shot Bound")
@@ -824,7 +886,10 @@ body("<i>N4, temporal sequence modelling: strongly supported.</i> Without its se
      f"against {pct(seen_mean)} for the full system. A model-family comparison shows the "
      "gain belongs to <i>sequence</i> and not to recurrence in particular. A GRU and a "
      "dilated 1-D CNN match the LSTM within noise, and a supervised model given one window "
-     "does markedly worse. We keep the LSTM because no challenger clears the noise floor.")
+     "does markedly worse. We keep the LSTM because no challenger clears the noise floor. "
+     "The claim is strong against Stage 1 and weaker against simple rules: Section VI-F shows "
+     "that three hand-written rules already match the learned system on four of the six "
+     "families, so the sequence model’s measured contribution is one family.")
 
 h2("D", "Does Host Context Help?")
 cm = CROSS["per_profile"]["mimicry_adaptive"]
@@ -861,7 +926,7 @@ body("The generator behind Corpus A has a property real devices lack. Every beni
      "40% detection. Its only tell was sustained typing followed by silence, which an "
      "ordinary idle keyboard also produces.")
 
-h2("F", "Retraining on Realistic Traffic")
+h2("F", "Retraining on Realistic Traffic, and a Rule Baseline")
 n = RB["benign_n"]
 an = RB["attack_n"]
 rows = [["Benign false positives", "", ""]]
@@ -884,7 +949,9 @@ table("Original and retrained models on the test split of Corpus B",
       ["", "Original", "Retrained"], rows, key="realism")
 body(f"We retrained the same architecture on Corpus B with the same seed, epochs, "
      f"calibration rule and gate. {tref('realism')} compares both models on Corpus B’s test "
-     f"split. The original model flags {pct(orig_fp)} of benign sessions and every keyboard. "
+     f"split. The original model flags {pct(orig_fp)} of benign sessions and every keyboard, and "
+     f"even its always-active devices {pct(RB['benign']['active']['original'])} of the time, "
+     "because Corpus B’s keyboards also differ from Corpus A’s in HID structure. "
      "Its 100% attack detection (marked † in the table) is not detection, because it alarms "
      "on every keyboard-class session whether or not an attack is under way. The retrained model flags no benign "
      f"session. Overall detection is {pct(RB['overall']['realistic']['detect'])}, with the "
@@ -894,6 +961,43 @@ body(f"We retrained the same architecture on Corpus B with the same seed, epochs
      f"retrained model detects {pct(seen_mean)} of attacks on average (per family: "
      + ", ".join(f"{pct(LOPO[f]['full'][0], 0)}" for f in FAMS) + f") with {fp_fresh:.2%} "
      f"benign false positives, which is {round(fp_fresh * 3000)} alarms in 3,000 sessions.")
+
+R = RULEJ
+rl = ["speed (HID only)", "class", "late", "all three rules", "learned model"]
+rows = []
+for f in FAMS:
+    rows.append([f] + [pct(R[c][f][0], 0) for c in rl])
+rows.append(["Mean"] + [pct(R[c]["mean"]) for c in rl])
+rows.append(["Benign FP"] + [pct(R[c]["benign_fp"][0], 2) for c in rl])
+table("Three hand-written rules and the learned model on Corpus C (100 sessions per family)",
+      ["Family", "Speed", "Class", "Late iface", "All three", "Learned"], rows, key="rules")
+RA = R["all three rules"]
+body("A fair question is how much of this needs learning at all. The only baseline so far is an "
+     "identity whitelist, which scores zero by construction. We therefore wrote three rules "
+     "with no learned parameters and fixed their thresholds from the protocol before looking "
+     "at detection results. <i>Speed</i> flags an HID device whose window of at least 20 "
+     "events has a mean inter-arrival under 5 ms, below the fastest human cadence in the "
+     "recorded session. <i>Class</i> flags a device whose events are at least 25% of a "
+     "transfer type its declared classes do not use. <i>Late interface</i> flags a device "
+     "that grew an interface after enumeration and is sending. Each uses the same 4-of-6 gate "
+     f"as the model. Together they detect {pct(RA['mean'])} of attacks with "
+     f"{pct(RA['benign_fp'][0], 2)} false positives ({tref('rules')}), against "
+     f"{pct(R['learned model']['mean'])} at {pct(R['learned model']['benign_fp'][0], 2)} for "
+     "the learned system. On four of six families the rules match it at 100%. The learned "
+     f"system’s whole advantage is the replay loop ({pct(R['learned model']['mimicry'][0], 0)} "
+     f"against {pct(RA['mimicry'][0], 0)}), which is the result that swings from 97% to 1% "
+     "with one attacker choice (Section VI-I). The first version of the speed rule applied "
+     f"to every device and flagged {pct(R['speed (any dev.)']['benign_fp'][0], 0)} of benign "
+     "sessions, since webcams, audio devices and drives legitimately emit events faster than "
+     "5 ms. That was a design error and not a finding, so the rule is restricted to HID "
+     "devices, and both versions are in the result file. A fourth rule for replayed scripts, "
+     "added after seeing the others miss that family, reached "
+     f"{pct(R['replay (explor.)']['mimicry'][0], 0)} on it with "
+     f"{pct(R['replay (explor.)']['benign_fp'][0], 2)} false positives and flags "
+     f"{R['real_capture']['replay']} windows of the real typing, so it is not adopted. "
+     "These rules encode the attack families we wrote, so their score is not a claim that "
+     "they would catch an unknown one. It is a statement of how much of the headline a few "
+     "lines of code can reach.")
 
 h2("G", "Validation Against Real Kernel Traffic")
 body("Everything so far is measured on simulated sessions. To check the pipeline against "
@@ -915,8 +1019,8 @@ body(f"The parser lost none of the {rc['lines_seen']} real lines against a targe
      "0.1%, a criterion that could not be measured before this capture existed. Every "
      "event satisfied the data contract, and every real control submission carried the "
      "SETUP packet that the first prototype had silently dropped.")
-body("Running the live monitor, and not only parsing offline, exposed two defects that the "
-     "simulator cannot show. First, the window clock started when the service started, "
+body("Checking the real system, and not only the simulated corpus, exposed two defects that "
+     "the simulator cannot show. First, the window clock started when the service started, "
      "not at the first observed event. Any delay before the first USB event left every "
      "window out of phase with the traffic, and the service scored nothing while 385 "
      "simulator-driven tests passed, because a simulated source delivers its first event "
@@ -944,8 +1048,9 @@ body(f"One person typed into the guest’s virtual keyboard for about 100 s. {tr
      "shows how the recording differs from Corpus A’s keyboard. A real keyboard reports "
      "key-releases as well as key-presses, repeats about a third of its payloads, and "
      "sends reports roughly ten times faster than the simulator, though the speed gap "
-     "mostly reflects the task, since continuous key-mashing is not prose. Corpus B closes "
-     "the structural gap. We then scored the recording offline with named weights. "
+     "mostly reflects the task, since continuous key-mashing is not prose. Corpus B narrows "
+     "the structural gap but does not close it, since its release share is still about "
+     "three times the recording’s. We then scored the recording offline with named weights. "
      f"The original model put {real_o['at_or_above_threshold']} of {real_o['busy']} windows "
      f"containing keystrokes at or above its threshold, and its gate fired "
      f"{real_o['first_alert_s']:.0f} s into the capture. The retrained model put "
@@ -1011,8 +1116,10 @@ body("Stage 2 is supervised, so it is trained on the families we can write down,
      f"{pct(LOPO['identity_switch']['stage1'][0], 0)} of <i>identity_switch</i> sessions that "
      "the trained Stage 2 scores at 0%, so Stage 2 shadows a detector that already works. "
      f"Keeping Stage 1 as an independent alarm path recovers part of the gap, from "
-     f"{pct(unseen_mean)} to {pct(or_mean)} mean detection, at the cost of raising false "
-     f"positives from {fp_unseen:.2%} to {fp_or:.2%}.")
+     f"{pct(unseen_mean)} to {pct(or_mean)} mean detection at no measurable extra "
+     f"false-positive cost ({fp_unseen:.2%} without it, {fp_or:.2%} with it). The "
+     f"{fp_unseen:.2%} is higher than the {fp_fresh:.2%} of the full model because the "
+     "models trained without a family calibrate their thresholds on less data.")
 
 h2("I", "What Did Not Help, and What the Results Depend On")
 g = GATES["rules"][0]["rows"]
@@ -1121,7 +1228,7 @@ body(f"Agreement is exact across a {ebpf_ratio}-fold difference in traffic volum
      "the literature’s sub-microsecond claim [3]–[5] is not measured.")
 
 # ---------------------------------------------------------------- VII
-h1("VII", "Limitations")
+h1("VII", "Limitations and Threats to Validity")
 item("1)", "<i>No real attack traffic.</i> Every detection figure is measured on simulated "
            "attacks. The real-traffic checks cover the capture machinery and benign typing "
            "on a virtual keyboard, scored offline and live. They cannot validate "
@@ -1138,10 +1245,21 @@ item("4)", "<i>False-positive rate is not established at deployment scale.</i> "
            f"minute each is roughly one alarm per {62.5 / 3600 / fp_fresh:.0f} device-hours. "
            "Many devices running continuously need a rate orders of magnitude lower, "
            "which simulation cannot certify.")
-item("5)", "<i>Enforcement has never executed,</i> and eBPF is a counting prototype. N3 is "
-           "closed in software only.")
-item("6)", "<i>Two novelty claims are unsupported.</i> N1 holds only non-uniformly and N2 "
-           "not at all. Both stay in the architecture and are reported as measured.")
+item("5)", "<i>The enforcement loop is a userspace one, and slower than the work it "
+           "improves on.</i> Enforcement has never executed. Even if it did, the policy engine "
+           "runs in userspace and writes to sysfs, so the claim that verdicts execute without a "
+           "userspace round trip (N3) is not realised, and eBPF is a counting prototype. The "
+           "median time to the first alert is 3.8 to 4.3 s, longer than the one-second "
+           "activation delay [2] reports for SafeUSB, so a short payload would already have "
+           "run. A single-window threshold alerts after 0.9 s at the same detection in "
+           "Section VI-I and is the better operating point for that goal.")
+item("6)", "<i>Novelty is narrower than first claimed.</i> N4 is supported, N1 only "
+           "non-uniformly, N2 not at all, and N3 untested. Kernel-level filtering [14] and "
+           "timing-based injection detection [15] exist, and three hand-written rules reach "
+           f"{pct(RULEJ['all three rules']['mean'])} detection. What the learned system adds "
+           "is the replay-loop family, under an assumption we could not check against real "
+           "attack hardware. The related work is also short, and we read the USB defences "
+           "[13]–[16] through their published descriptions.")
 item("7)", "<i>The live evidence is thin.</i> The live comparison is one keyboard, one typist "
            "and one seven-minute session on a virtual device, with no attack traffic. It shows "
            "that the deployed model leaves a typing keyboard alone and that the original did "
@@ -1163,9 +1281,12 @@ body("IUDBMS poses USB trust as a question about behaviour over time and not abo
 body("That number was too kind. Giving benign devices idle periods and realistic HID "
      f"behaviour made the original model flag {pct(orig_fp)} of benign sessions. Retraining "
      f"restored zero false positives at {pct(seen_mean)} detection on fresh data, and "
-     f"detection of unseen families is only {pct(unseen_mean)}. Two of four novelty claims "
-     "failed their tests. Running the system against a real kernel found a timing defect, "
-     "a mismatched checkpoint and a scanner defect that 385 simulator-driven tests had not. "
+     f"detection of unseen families is only {pct(unseen_mean)}. Three hand-written rules reach "
+     f"{pct(RULEJ['all three rules']['mean'])} with no false positives, so the learned system’s "
+     "measured gain is one attack family. Of four novelty claims, one is supported, one partly, "
+     "one not, and one untested. Running the system against a real kernel found a timing defect, "
+     "a mismatched checkpoint and a scanner defect that the 385 simulator-driven tests then in "
+     "the suite had not. "
      "The retrained model is now the deployed one, and on a live guest it left a typing "
      "keyboard alone where the original revoked it. The next steps "
      "follow directly: capture real attack hardware and a longer record of ordinary use, "
@@ -1176,24 +1297,47 @@ body("That number was too kind. Giving benign devices idle periods and realistic
 p = doc.add_paragraph(style="IEEE H1")
 run(p, "References", small_caps=True)
 
-REFS = [
-    "X. Shen, N. Li, C. Liu, and M. Cai, “WMUD: A Whitelist Method of USB Devices Redirection for Virtual Desktop,” in 2019 IEEE 21st Int. Conf. on High Performance Computing and Communications; IEEE 17th Int. Conf. on Smart City; IEEE 5th Int. Conf. on Data Science and Systems (HPCC/SmartCity/DSS), 2019, pp. 527–533, doi: 10.1109/HPCC/SmartCity/DSS.2019.00083.",
-    "R. M. G. S. Bintang, Arizal, R. Purwoko, M. Syahral, S. S. Zen, I. G. M. Putra, and R. A. Wijayanti, “SafeUSB: Implementation of Keystroke Monitoring System to Prevent BadUSB HID Injection Attack,” in 2025 IEEE 2nd Int. Conf. on Cryptography, Informatics, and Cybersecurity (ICoCICs), 2025, pp. 286–291, doi: 10.1109/ICOCICS68032.2025.11383963.",
-    "S. Kostopoulos, D. Papatsaroucha, I. Kefaloukos, and E. K. Markakis, “eIDPS: A real-time eBPF-based and Machine Learning-powered Network Intrusion Detection and Prevention Solution,” in 2025 6th Int. Conf. in Electronic Engineering & Information Technology (EEITE), 2025, doi: 10.1109/EEITE65381.2025.11165804.",
-    "R. Rajurkar and N. Deshmukh, “From Packets to Defense: Architectural Patterns in eBPF-Based Intrusion Detection,” in 2025 Int. Conf. on Intelligent Computing and Next Generation Networks (ICNGN), 2025, doi: 10.1109/ICNGN67480.2025.11413805.",
-    "L. Song, “eBPF: Pioneering Kernel Programmability and System Observability – Past, Present, and Future Insights,” in 2024 3rd Int. Conf. on Artificial Intelligence and Computer Information Technology (AICIT), 2024, doi: 10.1109/AICIT62434.2024.10730620.",
-    "M. S. Baek and Y.-A. Jung, “A Two-Stage Deep Learning-based Framework for High-Accuracy Network Intrusion Detection,” in 2025 16th Int. Conf. on Information and Communication Technology Convergence (ICTC), 2025, doi: 10.1109/ICTC66702.2025.11388157.",
-    "V. Hnamte, H. Nhung-Nguyen, J. Hussain, and Y. Hwa-Kim, “A Novel Two-Stage Deep Learning Model for Network Intrusion Detection: LSTM-AE,” IEEE Access, vol. 11, pp. 37131–37148, 2023, doi: 10.1109/ACCESS.2023.3266979.",
-    "A. Saini, T. K. Jaiswal, Parteek, A. Thakur, A. Rai, and S. Saini, “Hybrid CNN–LSTM Architecture for Cybersecurity Threat Detection in Network Traffic,” in 2026 Int. Conf. on Signal, Systems, and Computing for Next-Gen Automation (ICSSCNA), 2026, doi: 10.1109/ICSSCNA68616.2026.11546877.",
-    "M. Chithik Raja and M. M. B. Al Mahri, “Behavioral Anomaly Detection in Big Data Streams: An Attention-Enhanced LSTM Approach for Privacy-Aware Zero-Day Attack Detection,” in 2025 7th Int. Conf. on Innovative Data Communication Technologies and Application (ICIDCA), 2025, doi: 10.1109/ICIDCA66325.2025.11280566.",
-    "A. Mohamed Anwar, D. Vikram, Thiraviaselvi G, and S. Ganapathy, “LSTM-Powered Anomaly Detection for Securing IIoT Systems Against DDoS, Spoofing, and Ransomware Attacks,” in 2025 Int. Conf. on Emerging Research in Computational Science (ICERCS), 2025, doi: 10.1109/ICERCS65898.2025.11580832.",
-    "C. E. Shannon, “Prediction and Entropy of Printed English,” Bell Syst. Tech. J., vol. 30, no. 1, pp. 50–64, Jan. 1951, doi: 10.1002/j.1538-7305.1951.tb01366.x.",
-]
+REFS = {
+    "shen": "X. Shen, N. Li, C. Liu, and M. Cai, “WMUD: A Whitelist Method of USB Devices Redirection for Virtual Desktop,” in 2019 IEEE 21st Int. Conf. on High Performance Computing and Communications; IEEE 17th Int. Conf. on Smart City; IEEE 5th Int. Conf. on Data Science and Systems (HPCC/SmartCity/DSS), 2019, pp. 527–533, doi: 10.1109/HPCC/SmartCity/DSS.2019.00083.",
+    "bintang": "R. M. G. S. Bintang, Arizal, R. Purwoko, M. Syahral, S. S. Zen, I. G. M. Putra, and R. A. Wijayanti, “SafeUSB: Implementation of Keystroke Monitoring System to Prevent BadUSB HID Injection Attack,” in 2025 IEEE 2nd Int. Conf. on Cryptography, Informatics, and Cybersecurity (ICoCICs), 2025, pp. 286–291, doi: 10.1109/ICOCICS68032.2025.11383963.",
+    "kosto": "S. Kostopoulos, D. Papatsaroucha, I. Kefaloukos, and E. K. Markakis, “eIDPS: A real-time eBPF-based and Machine Learning-powered Network Intrusion Detection and Prevention Solution,” in 2025 6th Int. Conf. in Electronic Engineering & Information Technology (EEITE), 2025, doi: 10.1109/EEITE65381.2025.11165804.",
+    "rajurkar": "R. Rajurkar and N. Deshmukh, “From Packets to Defense: Architectural Patterns in eBPF-Based Intrusion Detection,” in 2025 Int. Conf. on Intelligent Computing and Next Generation Networks (ICNGN), 2025, doi: 10.1109/ICNGN67480.2025.11413805.",
+    "song": "L. Song, “eBPF: Pioneering Kernel Programmability and System Observability – Past, Present, and Future Insights,” in 2024 3rd Int. Conf. on Artificial Intelligence and Computer Information Technology (AICIT), 2024, doi: 10.1109/AICIT62434.2024.10730620.",
+    "baek": "M. S. Baek and Y.-A. Jung, “A Two-Stage Deep Learning-based Framework for High-Accuracy Network Intrusion Detection,” in 2025 16th Int. Conf. on Information and Communication Technology Convergence (ICTC), 2025, doi: 10.1109/ICTC66702.2025.11388157.",
+    "hnamte": "V. Hnamte, H. Nhung-Nguyen, J. Hussain, and Y. Hwa-Kim, “A Novel Two-Stage Deep Learning Model for Network Intrusion Detection: LSTM-AE,” IEEE Access, vol. 11, pp. 37131–37148, 2023, doi: 10.1109/ACCESS.2023.3266979.",
+    "saini": "A. Saini, T. K. Jaiswal, Parteek, A. Thakur, A. Rai, and S. Saini, “Hybrid CNN–LSTM Architecture for Cybersecurity Threat Detection in Network Traffic,” in 2026 Int. Conf. on Signal, Systems, and Computing for Next-Gen Automation (ICSSCNA), 2026, doi: 10.1109/ICSSCNA68616.2026.11546877.",
+    "raja": "M. Chithik Raja and M. M. B. Al Mahri, “Behavioral Anomaly Detection in Big Data Streams: An Attention-Enhanced LSTM Approach for Privacy-Aware Zero-Day Attack Detection,” in 2025 7th Int. Conf. on Innovative Data Communication Technologies and Application (ICIDCA), 2025, doi: 10.1109/ICIDCA66325.2025.11280566.",
+    "anwar": "A. Mohamed Anwar, D. Vikram, Thiraviaselvi G, and S. Ganapathy, “LSTM-Powered Anomaly Detection for Securing IIoT Systems Against DDoS, Spoofing, and Ransomware Attacks,” in 2025 Int. Conf. on Emerging Research in Computational Science (ICERCS), 2025, doi: 10.1109/ICERCS65898.2025.11580832.",
+    "shannon": "C. E. Shannon, “Prediction and Entropy of Printed English,” Bell Syst. Tech. J., vol. 30, no. 1, pp. 50–64, Jan. 1951, doi: 10.1002/j.1538-7305.1951.tb01366.x.",
+    # added after the audit; each was checked against the publisher or proceedings page
+    "nohl": ("K. Nohl and J. Lell, “BadUSB—On accessories that turn evil,” presented at ",
+             "Black Hat USA", ", Las Vegas, NV, USA, Aug. 2014."),
+    "goodusb": ("D. Tian, A. Bates, and K. Butler, “Defending against malicious USB firmware with GoodUSB,” in ",
+                "Proc. 31st Annu. Comput. Security Appl. Conf. (ACSAC)",
+                ", Los Angeles, CA, USA, Dec. 2015, pp. 261–270."),
+    "usbfilter": ("D. Tian, N. Scaife, A. Bates, K. Butler, and P. Traynor, “Making USB great again with USBFILTER,” in ",
+                  "Proc. 25th USENIX Security Symp.", ", Austin, TX, USA, Aug. 2016."),
+    "usblock": ("S. Neuner, A. G. Voyiatzis, S. Fotopoulos, C. Mulliner, and E. R. Weippl, “USBlock: Blocking USB-based keypress injection attacks,” in ",
+                "Proc. 32nd Annu. IFIP WG 11.3 Conf. Data Appl. Security Privacy (DBSec)",
+                ", Bergamo, Italy, Jul. 2018, Lecture Notes in Computer Science, vol. 10980."),
+    "huang": ("C.-Y. Huang, H.-M. Lee, J.-C. Wang, and C.-H. Mao, “Identifying HID-based attacks through process event graph using guilt-by-association analysis,” in ",
+              "Proc. 3rd Int. Conf. Cryptography, Security Privacy (ICCSP)", ", Jan. 2019."),
+    "iforest": ("F. T. Liu, K. M. Ting, and Z.-H. Zhou, “Isolation forest,” in ",
+                "Proc. 8th IEEE Int. Conf. Data Mining (ICDM)", ", 2008, pp. 413–422."),
+    "lstm": ("S. Hochreiter and J. Schmidhuber, “Long short-term memory,” ", "Neural Comput.",
+             ", vol. 9, no. 8, pp. 1735–1780, 1997."),
+}
 
-for n, ref in enumerate(REFS, 1):
+missing = [k for k in REFS if k not in REF_NO]
+assert not missing, f"references never cited: {missing}"
+for key, n in sorted(REF_NO.items(), key=lambda kv: kv[1]):
+    ref = REFS[key]
     p = doc.add_paragraph(style="IEEE Ref")
     p.paragraph_format.tab_stops.add_tab_stop(Inches(0.3), WD_TAB_ALIGNMENT.LEFT)
     run(p, f"[{n}]\t")
+    if isinstance(ref, tuple):
+        run(p, ref[0]); run(p, ref[1], italic=True); run(p, ref[2])
+        continue
     m = re.search(r"” in (.+?), (20\d\d)(?=[,.])", ref)
     if m:
         run(p, ref[:m.start(1)])

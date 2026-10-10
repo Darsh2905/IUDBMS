@@ -44,7 +44,7 @@ import numpy as np
 
 from iudbms.capture.simulator import ATTACK_PROFILES, INTR, DevicePersona
 
-from .analysis_common import (OUT, deployed, featurize, per_profile, run_gate, save_set,
+from .analysis_common import (ORIGINAL, OUT, deployed, featurize, per_profile, run_gate, save_set,
                               score_with, session_rates)
 from .analysis_idle import DutyCycleSim
 from .analysis_ngram import NGramExtractor
@@ -296,7 +296,7 @@ def main() -> int:
     save_set(OUT / "analysis_models" / "realistic_v2", r, idx, target_fpr=0.0001)
 
     # three models, one test split
-    sets = {"original": OUT / "models", "idle-aware": OUT / "analysis_models" / "idle_aware",
+    sets = {"original": ORIGINAL, "idle-aware": OUT / "analysis_models" / "idle_aware",
             "realistic": OUT / "analysis_models" / "realistic_v2"}
     first, win_auc = {}, {}
     from sklearn.metrics import roc_auc_score

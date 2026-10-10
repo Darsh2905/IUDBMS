@@ -28,7 +28,7 @@ import numpy as np
 
 from iudbms.capture.simulator import Simulator
 from .analysis_common import (OUT, deployed, featurize, per_profile, run_gate, save_set,
-                              score_with, session_rates)
+                              score_with, session_rates, ORIGINAL)
 from .analysis_idle import DutyCycleSim
 from .corpus import Corpus, SessionData, load_corpus, save_corpus, stratified_split
 from .pipeline import deployed_features, run_configuration
@@ -87,7 +87,7 @@ def main() -> int:
     save_set(OUT / "analysis_models" / "idle_aware", r, idx, target_fpr=0.0001)
 
     # the original model, scored on the same test split
-    cfg, s1o, lstmo = deployed()
+    cfg, s1o, lstmo = deployed(ORIGINAL)
     S2o = score_with(s1o, lstmo, test, np.array(cfg["feature_idx"]), cfg["seq_len"])[1]
     first_o = run_gate(S2o, test, cfg["threshold"], cfg["k"], cfg["n"])
     first_n = run_gate(r.stage2, test, r.threshold, 4, 6)

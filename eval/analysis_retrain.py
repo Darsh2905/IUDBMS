@@ -23,7 +23,7 @@ import time
 
 import numpy as np
 
-from .analysis_common import MODELS, OUT, deployed, load_splits, run_gate, score_with, session_rates
+from .analysis_common import ORIGINAL, MODELS, OUT, deployed, load_splits, run_gate, score_with, session_rates
 from .pipeline import deployed_features, run_configuration
 
 DEST = OUT / "analysis_models"
@@ -58,7 +58,7 @@ def main() -> int:
         "target_fpr": TARGET_FPR, "seq_len": SEQ_LEN, "k": 4, "n": 6}, indent=2))
 
     # ---- the shipped checkpoint, scored the same way ----------------------
-    cfg, s1, lstm = deployed()
+    cfg, s1, lstm = deployed(ORIGINAL)
     S1, S2, _ = score_with(s1, lstm, test, np.array(cfg["feature_idx"]), SEQ_LEN)
     first = run_gate(S2, test, cfg["threshold"])
     sh = session_rates(first, test)
