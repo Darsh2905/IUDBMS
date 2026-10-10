@@ -22,7 +22,7 @@ import json
 
 import numpy as np
 
-from .analysis_common import (OUT, deployed, featurize, run_gate, score_with, wilson)
+from .analysis_common import (OUT, deployed, featurize, run_gate, score_with, wilson, ORIGINAL)
 from iudbms.capture.simulator import Simulator
 
 
@@ -67,7 +67,7 @@ N = 60
 
 
 def main() -> int:
-    cfg, s1, lstm = deployed()
+    cfg, s1, lstm = deployed(ORIGINAL)
     idx = np.array(cfg["feature_idx"])
     thr = cfg["threshold"]
     print(f"evaluated model, threshold {thr:.4f}, {cfg['k']}-of-{cfg['n']} gate; {N} sessions per cell\n")

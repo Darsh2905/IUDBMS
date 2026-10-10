@@ -38,7 +38,12 @@ from iudbms.stage2 import LSTMDetector, build_sequences  # noqa: E402
 from .corpus import SessionData, load_corpus, stratified_split  # noqa: E402
 
 CACHE = OUT / "corpus_cache.npz"
-MODELS = OUT / "models"
+MODELS = OUT / "models"                 # the DEPLOYED set (trained on Corpus B)
+#: The Corpus-A model set that the paper calls "the original model": what `make eval`
+#: writes. Experiments that compare against it must read THIS, not MODELS -- they read
+#: MODELS before the deployment was switched to the retrained model, and would otherwise
+#: now compare the retrained model with itself without any error.
+ORIGINAL = OUT / "models_corpus_a"
 GATE_K, GATE_N = 4, 6
 
 
@@ -54,6 +59,9 @@ def load_splits(seed: int = 7):
 def deployed(models: Path | None = None):
     """A checkpoint set: (config, Stage1, LSTMDetector). Default is the deployment's."""
     d = Path(models) if models is not None else MODELS
+    if not (d / "deploy.json").exists():
+        raise SystemExit(f"no model set at {d}. out/models_corpus_a is written by `make eval`; "
+                         f"out/models by `make train-deployed`.")
     cfg = json.loads((d / "deploy.json").read_text())
     return cfg, Stage1.load(d / "stage1.pkl"), LSTMDetector.load(d / "stage2.pt")
 

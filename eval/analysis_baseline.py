@@ -25,12 +25,12 @@ import json
 import numpy as np
 
 from .analysis_common import (OUT, deployed, load_splits, per_profile, run_gate,
-                              score_with, session_rates)
+                              score_with, session_rates, ORIGINAL)
 
 
 def main() -> int:
     _, _, _, test = load_splits()
-    cfg, s1, lstm = deployed()
+    cfg, s1, lstm = deployed(ORIGINAL)
     idx = np.array(cfg["feature_idx"])
     thr = cfg["threshold"]
 
