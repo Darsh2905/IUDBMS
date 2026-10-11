@@ -35,8 +35,8 @@ SEED = 2025
 
 
 def build(per_profile: int = 100, benign_multiple: int = 6, seed: int = SEED,
-          extractor_cls=NGramExtractor):
-    sim = RealisticSim(seed=seed)
+          extractor_cls=NGramExtractor, poll_limited: bool = False):
+    sim = RealisticSim(seed=seed, poll_limited=poll_limited)
     rng = np.random.default_rng(seed + 99)
     probs = np.array([m[1] for m in IDLE_MIX])
     plan = sim.plan_balanced(per_profile, benign_profiles=BENIGN_PROFILES,

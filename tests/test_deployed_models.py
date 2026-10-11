@@ -162,3 +162,13 @@ def test_deployed_threshold_is_calibrated_per_device_hour():
     assert "device-hour" in cfg.get("threshold_rule", ""), \
         "deploy.json was not recalibrated: run `make train-deployed` (both steps)"
     assert cfg["threshold"] >= max(h["threshold"] for h in cfg["threshold_history"])
+
+
+def test_deployed_set_carries_the_capability_rule():
+    import json
+    from pathlib import Path
+
+    from eval.analysis_hybrid import CAPABILITY_RULE
+    cfg = json.loads((Path(__file__).resolve().parent.parent / "out" / "models"
+                      / "deploy.json").read_text())
+    assert cfg.get("capability_rule") == CAPABILITY_RULE

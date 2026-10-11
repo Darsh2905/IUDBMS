@@ -113,6 +113,7 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--models", type=Path, default=MODELS)
     ap.add_argument("--adopt", action="store_true")
+    ap.add_argument("--out", type=Path, default=OUT / "analysis_calibration.json")
     a = ap.parse_args(argv)
     t0 = time.time()
     cfg, s1, lstm = deployed(a.models)
@@ -202,8 +203,8 @@ def main(argv=None) -> int:
                            "upper95_at_chosen": poisson_upper(k_c, h_c), "curve": curve},
            "fresh_before": before, "fresh_after": after, "fresh_tradeoff": trade,
            "runtime_s": time.time() - t0}
-    (OUT / "analysis_calibration.json").write_text(json.dumps(out, indent=1, default=float))
-    print(f"\nwrote out/analysis_calibration.json  ({time.time() - t0:.0f} s)")
+    a.out.write_text(json.dumps(out, indent=1, default=float))
+    print(f"\nwrote {a.out}  ({time.time() - t0:.0f} s)")
 
     if a.adopt:
         p = a.models / "deploy.json"
