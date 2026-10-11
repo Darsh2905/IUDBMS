@@ -42,8 +42,14 @@ def main() -> int:
         dd["pointer_events"] += r["pointer_events"] or 0
         for key, d in dep["devices"].items():
             if d["label"] == 1:
+                o = d.get("onset")
+                off = {k: (v is not None and o is not None and v >= o)
+                       for k, v in d["offline_first_alarm"].items()}
                 attacks.append({"run": name, "distro": r["distro"], "device": key,
                                 "episode": d["role"], "detected": d.get("detected"),
+                                "model_only_calibrated": off.get("deployed"),
+                                "model_only_previous_threshold": any(
+                                    v for k, v in off.items() if k.startswith("previous")),
                                 "latency_s": d.get("latency_s"),
                                 "alert_before_onset": d.get("alert_before_onset"),
                                 "rule_detected": d.get("rule_detected"),
@@ -78,17 +84,24 @@ def main() -> int:
               f"{int(b['judging_all_alarmed']):10d} {int(b['previous_threshold_alarmed']):9d} "
               f"{int(b['rule_alarmed']):5d} {int(b['corpus_a_alarmed']):9d}")
     print("\nATTACK EPISODES (real kernels, emulated keyboards, innocuous text)")
-    det = defaultdict(lambda: [0, 0, 0])
+    det = defaultdict(lambda: [0] * 6)
     for x in attacks:
         c = det[x["episode"]]
         c[0] += 1
         c[1] += bool(x["detected"])
-        c[2] += bool(x["rule_detected"])
-    for ep, (n, k, r) in sorted(det.items()):
+        c[2] += bool(x["model_only_calibrated"])
+        c[3] += bool(x["model_only_previous_threshold"])
+        c[4] += bool(x["rule_detected"])
+        c[5] += bool(x["corpus_a_detected"])
+    print(f"  {'episode':20s} {'deployed':>9s} {'model@cal':>10s} {'model@prev':>11s} {'rule':>6s} "
+          f"{'corpus-A':>9s}  median latency (deployed)")
+    for ep, (n, k, mc, mp, r, ca) in sorted(det.items()):
         lat = sorted(x["latency_s"] for x in attacks if x["episode"] == ep and x["latency_s"] is not None)
         med = lat[len(lat) // 2] if lat else None
-        print(f"  {ep:20s} model {k}/{n}  rule {r}/{n}  median latency "
-              f"{(f'{med:.1f} s' if med is not None else '-')}")
+        print(f"  {ep:20s} {k:>4d}/{n:<4d} {mc:>5d}/{n:<4d} {mp:>6d}/{n:<4d} {r:>2d}/{n:<3d} "
+              f"{ca:>4d}/{n:<4d}  {(f'{med:.1f} s' if med is not None else '-')}")
+    out["attack_summary"] = {ep: dict(zip(("n", "deployed", "model_calibrated", "model_previous",
+                                           "rule", "corpus_a"), v)) for ep, v in det.items()}
     REPORT.write_text(json.dumps(out, indent=1, default=float))
     print(f"\nwrote {REPORT}")
     return 0
