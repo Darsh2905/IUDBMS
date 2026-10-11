@@ -53,11 +53,16 @@ Working notes and every finding: [`CLAUDE.md`](CLAUDE.md).
 | Keyboard false alarms on fresh long sessions | **0.013 per hour** (1 in 80 h); 0.225 before calibration | same |
 | Attack families never seen in training (leave-one-out) | **68.2%** with the capability rule; 34.8% model alone | `eval/analysis_hybrid.py` |
 | Hand-written rules alone | 66.7% at 0/3000 FP | `eval/analysis_rules.py` |
-| Real-kernel testbed | see `out/testbed/report.json` (`python3 -m testbed.report`) | `testbed/` |
+| Real kernels (4 distributions, 9 h): benign devices alarmed | **0 of 114** device-sessions (41.4 device-hours) | `testbed/` |
+| Real kernels: attacks detected | injection-speed **24/24** (median 2.6–2.9 s); human-speed mimicry **0/16** | `python3 -m testbed.report` |
 
-What the learned model adds over the rules is one attack family — a device replaying a
-keystroke loop at human speed — and calibrating for a quiet working day halves that
-(95% → 48%). Neither the model nor the rules detect a payload typed once at human speed.
+**Read the real-kernel row carefully.** Those detections are the capability rule's. The
+learned model alone, at its calibrated threshold, caught 1 of 40 real-kernel attacks; at
+the old per-window threshold it caught the 24 but alarmed on 6 of 12 human-typed
+keyboards. In simulation, what the model adds over the rules is one family — a device
+replaying a keystroke loop at human speed — and calibrating for a quiet working day
+halves that (95% → 48%); on real kernels it caught none of them. Nothing here detects a
+payload typed once at human speed.
 
 ## Reproduce
 
