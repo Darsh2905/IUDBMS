@@ -30,6 +30,20 @@ module into `src/iudbms/` and should not be extended in place.
 date comes from the simulator. This is the principal limitation and bounds every
 claim below.
 
+### Where things stand (11 Oct) — read before anything below
+
+* **Deployed decision rule** (`out/models/deploy.json`): Corpus-B weights; threshold
+  calibrated to <= 0.01 false alarms per device-hour (finding 39); model support and
+  keystroke capability decide what is judged (finding 37); the human-capability rule
+  as its own gate (finding 40). `make train-deployed` reproduces all of it.
+* **Real kernels** (`testbed/`, finding 37): 4 distributions x 135 min, 40 attack
+  episodes, 114 benign device-sessions. Deployed path: 0/114 benign alarmed, 24/24
+  injection-speed attacks, 0/16 mimicry. **Those detections are the rule's; the learned
+  model alone caught 1/40 at its calibrated threshold** (finding 40).
+* **Not adopted** (pre-registered and failed): robust timing features (36),
+  polling-limited retraining (40). Keep them as negative results.
+* Reviewer comments of 10 Oct drove this round; the paper still needs rewriting to match.
+
 ### Novelty scorecard (current, 05 Oct)
 
 Each pillar now has an experiment built to falsify it, with its acceptance
