@@ -90,5 +90,12 @@
       "rule": "per-window FPR 0.0001 on validation benign windows"
     }
   ],
-  "threshold_rule": "smallest threshold with <= 0.01 gate firings per benign device-hour on 80 h of long simulated sessions (eval.analysis_calibration, seed 4049)"
+  "threshold_rule": "smallest threshold with <= 0.01 gate firings per benign device-hour on 80 h of long simulated sessions (eval.analysis_calibration, seed 4049)",
+  "capability_rule": {
+    "human_max_rps": 30,
+    "applies_to": "keyboards: a HID interface whose report descriptor declares the Keyboard/Keypad page (0x07), or the boot-keyboard protocol when the descriptor is unknown",
+    "gate": "its own k-of-n, OR-ed with the model's",
+    "basis": "fastest sustained rate (4 of any 6 s) of 1,972 real typists (Aalto 136M Keystrokes) is 26 reports/s; p99.9 is 25",
+    "adopted": "eval/analysis_hybrid.py pre-registered criteria: zero rule alarms on 3,000 Corpus-C benign sessions, 80 fresh keyboard-hours and every benign real-kernel testbed device; leave-one-family-out detection 34.8% -> 68.2%"
+  }
 }

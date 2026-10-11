@@ -51,6 +51,19 @@ from .corpus import load_corpus, stratified_split
 from .pipeline import deployed_features, run_configuration
 
 HUMAN_MAX_RPS = 30
+#: What deploy.json records when the rule is adopted (eval.train_deployed writes it).
+CAPABILITY_RULE = {
+    "human_max_rps": HUMAN_MAX_RPS,
+    "applies_to": "keyboards: a HID interface whose report descriptor declares the "
+                  "Keyboard/Keypad page (0x07), or the boot-keyboard protocol when the "
+                  "descriptor is unknown",
+    "gate": "its own k-of-n, OR-ed with the model's",
+    "basis": "fastest sustained rate (4 of any 6 s) of 1,972 real typists (Aalto 136M "
+             "Keystrokes) is 26 reports/s; p99.9 is 25",
+    "adopted": "eval/analysis_hybrid.py pre-registered criteria: zero rule alarms on "
+               "3,000 Corpus-C benign sessions, 80 fresh keyboard-hours and every benign "
+               "real-kernel testbed device; leave-one-family-out detection 34.8% -> 68.2%",
+}
 N_EVENTS = 0                     # contract column 0
 SEED, EPOCHS = 7, 14
 LONG_SEED, LONG_N, LONG_DUR = 2031, 80, 3600.0

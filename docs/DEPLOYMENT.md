@@ -17,6 +17,19 @@ out of distribution. What a deployment demonstrates today is that capture,
 scoring, persistence and the operator path run end to end on real kernel output,
 not that its verdicts are calibrated for real devices.
 
+## What the monitor decides, and what it declines to decide
+
+| Mechanism | Where it is set | What it does |
+|---|---|---|
+| Alarm threshold | `deploy.json` `threshold`, `threshold_rule` | Chosen so that benign devices raise at most 0.01 alarms per device-hour on 80 h of long simulated sessions (`eval/analysis_calibration.py`). The earlier per-window rule raised ~0.2 per keyboard-hour. |
+| 4-of-6 gate | `deploy.json` `k`, `n` | A device alarms when 4 of its last 6 one-second windows are over the threshold. |
+| Model support | `deploy.json` `support` | Interface classes of the benign training devices. A device that declares any other class -- a USB network adapter, a serial converter, a smart-card reader -- is shown as **unmodelled**: scored and stored, never escalated. |
+| Keystroke capability | read from each HID interface's report descriptor | A HID device that may send keystrokes (Keyboard or Consumer usage page, or descriptor unreadable) is **always** judged. A pure pointer (mouse, tablet, pen) cannot inject keystrokes and is shown as unmodelled. |
+| Capability rule | `deploy.json` `capability_rule` (if present) | A keyboard sending at least 30 reports/s in 4 of 6 seconds alarms on its own gate: faster than any of 1,972 real typists sustained. Absent from a model set that has not adopted it. |
+
+"Unmodelled" is a statement about the model, not a clean bill of health: decide
+those device types by policy (allow or deny by class), as you would without IUDBMS.
+
 ## Requirements
 
 - Linux with `CONFIG_USB_MON` (every mainstream distribution kernel) and debugfs at

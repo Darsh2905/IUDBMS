@@ -100,9 +100,21 @@ def build_markov(seed: int = 0, target_bits: float = SHANNON_DIGRAM_BITS) -> np.
 class RealisticSim(DutyCycleSim):
     """Duty cycles + HID key-release/rollover + language-like keys + speed range."""
 
+    #: Interrupt polling intervals (ms) an injecting device may declare. A HID device
+    #: can deliver at most one report per poll, so its keystroke rate is bounded by the
+    #: interval its own endpoint declares: full-speed allows 1-255 ms, keyboards commonly
+    #: declare 8-10, and keystroke-injection tools declare 1 to type as fast as possible.
+    POLL_INTERVALS_MS = (1, 2, 4, 8, 10)
+
     def __init__(self, *a, markov_seed: int = 0, text: str = "words",
-                 mimicry_hold: str = "short", **k):
+                 mimicry_hold: str = "short", poll_limited: bool = False, **k):
         super().__init__(*a, device_variation=True, **k)
+        #: False reproduces Corpus B exactly: injection at a fixed 4.5 ms per report, which
+        #: silently assumes a 1-4 ms polling interval. On a real kernel an emulated
+        #: keyboard polled every 10 ms injects at ~93 reports/s and the model trained on
+        #: that assumption scored it below the calibrated threshold (finding 40).
+        self._poll_limited = poll_limited
+        self._poll = 0.0
         #: "short": the replaying device presses and releases without overlap (what a
         #: script does). "human": it also imitates human key overlap (rollover), which
         #: makes every cycle's reports differ. The detection result hinges on this.
@@ -205,7 +217,13 @@ class RealisticSim(DutyCycleSim):
                           t, dur, bus, dev, lines, ep)
 
     def _injected_typing(self, t, dur, bus, dev, lines, ep=1, mean_iat=0.0045, jitter=0.14):
-        self._script_hold = max(0.0005, 0.45 * mean_iat)
+        if self._poll_limited:
+            # press on one poll, release on the next, next press no sooner than a poll later
+            self._poll = self.rng.choice(self.POLL_INTERVALS_MS) / 1000.0
+            mean_iat = max(mean_iat, 2.0 * self._poll)
+            self._script_hold = self._poll
+        else:
+            self._script_hold = max(0.0005, 0.45 * mean_iat)
         return self._with("script", "script", super()._injected_typing,
                           t, dur, bus, dev, lines, ep, mean_iat, jitter)
 
@@ -225,8 +243,9 @@ class RealisticSim(DutyCycleSim):
 # corpus + experiment
 # ---------------------------------------------------------------------------
 
-def build(n_benign=600, n_attack=400, seed=SEED, extractor_cls=NGramExtractor):
-    sim = RealisticSim(seed=seed)
+def build(n_benign=600, n_attack=400, seed=SEED, extractor_cls=NGramExtractor,
+          poll_limited: bool = False):
+    sim = RealisticSim(seed=seed, poll_limited=poll_limited)
     rng = np.random.default_rng(seed + 99)
     probs = np.array([m[1] for m in IDLE_MIX])
     sessions, cond = [], {}

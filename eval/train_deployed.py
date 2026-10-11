@@ -48,6 +48,11 @@ def main() -> int:
                           epochs=EPOCHS, seq_len=10, hidden=32, target_fpr=TARGET_FPR,
                           keep_scores=True, verbose=False)
     dest = save_set(OUT / "models", r, idx, target_fpr=TARGET_FPR, support_from=fit)
+    # the human-capability rule (eval.analysis_hybrid) is part of the deployed decision rule
+    from .analysis_hybrid import CAPABILITY_RULE
+    cfg = json.loads((dest / "deploy.json").read_text())
+    cfg["capability_rule"] = CAPABILITY_RULE
+    (dest / "deploy.json").write_text(json.dumps(cfg, indent=2))
     s = r.session
     print(f"trained in {time.time() - t0:.0f} s  ->  {dest}")
     print(f"  threshold {r.threshold:.4f}   window AUC {r.window['auc']:.4f}")
