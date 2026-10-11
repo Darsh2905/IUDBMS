@@ -1276,6 +1276,45 @@ the rules did not. Deployed threshold 0.994336 -> 0.999648, weights untouched,
 history kept in deploy.json; `make train-deployed` now recalibrates, and a test
 refuses an uncalibrated deployed threshold.
 
+### Finding 40 — on real kernels the detections are the capability rule's, not the model's (11 Oct)
+
+`eval/analysis_hybrid.py`: a keyboard (HID report descriptor declares the Keyboard
+page; boot protocol when unknown) sending >= 30 reports/s in 4 of 6 windows alarms on
+its own gate, OR-ed with the model's. 30 sits above the fastest sustained rate of
+1,972 real typists (26; `eval/analysis_human_timing.py`). Pre-registered and passed:
+zero rule alarms on 3,000 Corpus-C benign sessions, 80 fresh keyboard-hours and every
+real-kernel benign device; leave-one-family-out mean detection 34.8% -> 68.2%
+(identity_switch and class_exfil 0% -> 100%). Adopted into deploy.json.
+
+The testbed (finding 37), 2 seeds x 4 distributions, 40 attack episodes, 114 benign
+device-sessions over 41.4 device-hours (`python3 -m testbed.report`):
+
+| | benign alarmed | injection-speed (24) | mimicry (16) |
+|---|---|---|---|
+| deployed path (calibrated + support + rule) | **0/114** | **24/24**, median 2.6-2.9 s | 0/16 |
+| model alone, calibrated threshold | -- | 1/24 | 0/16 |
+| model, old per-window threshold, all devices | 41/114 (6 of 12 keyboards) | 24/24 | 0/16 |
+| rule alone | 0/114 | 24/24 | 0/16 |
+| original Corpus-A model | 82/114 | 24/24 | 16/16 |
+
+Real injection through a keyboard polled every 10 ms runs at ~93 reports/s, not the
+simulator's ~390; Stage 2 peaked at 0.9997 too briefly for 4 of 6 windows. Training on
+polling-limited injection (`eval/analysis_polling.py`, intervals {1,2,4,8,10} ms) failed
+its pre-registration twice over: Corpus-C mimicry 48% -> 29%, and 1 of 40 real attacks.
+**The learned component did not transfer to real kernel traffic at a usable operating
+point; a physically grounded bound did.** Say so in every summary.
+
+### Finding 41 — why unseen families fail (11 Oct)
+
+`eval/analysis_transfer.py` trains on benign + ONE family and tests all six. The four
+injection-speed families (hid_injection, staged_delay, identity_switch, class_exfil)
+transfer among themselves almost completely; the two human-speed mimicry families
+transfer to and from nothing. Overlap of strongly separating features (KS D >= 0.8)
+predicts transfer (Spearman +0.61; added after the pre-stated top-5 version failed at
+-0.22 because many features tie at D = 1.00). The mimicry families have **no** feature
+with D >= 0.8 against benign keyboards (best 0.45): there is nothing strong to learn
+and nothing for another family to carry. That is the 82.7% -> 34.8% drop.
+
 ### Live monitoring — wired 10 Sep, never yet run on real traffic
 
 Until now **nothing called `UsbmonSource.live()`.** It existed and was
