@@ -15,22 +15,27 @@ and stored, but the policy engine never escalates on it and reports its state as
 ``unmodelled`` so an operator can apply policy (allow or deny the device type).
 
 **Abstention must never remove coverage of a threat the model handles.** Every
-attack family it is trained on needs a HID interface -- keystroke injection is
-impossible without one, and a HID report descriptor can declare a keyboard on any
-HID interface, boot protocol or not. So a device with ANY HID interface is always
-scored, whatever else it declares. A BadUSB cannot hide behind an extra network
-interface; a network-adapter attack with no HID interface (e.g. traffic
-hijacking) was never in the model's scope, and is now reported as such instead of
-being "detected" by accident.
+attack family it is trained on sends keystrokes, and keystrokes reach the host only
+through a HID interface whose report descriptor declares the Keyboard/Keypad usage
+page (consumer controls can launch applications, so they count too; capture.hid).
+So a device that MAY send keystrokes is always judged, whatever else it declares --
+and "may" is conservative: a HID interface whose report descriptor is unknown counts.
+A BadUSB cannot hide behind an extra network interface. A pure pointer (mouse,
+tablet, pen) whose descriptor declares no keyboard or consumer usage cannot inject
+keystrokes and is outside this threat model; on a real kernel a VM tablet's 6-byte
+absolute reports, a shape the training set never contained, alarmed in every session
+(finding 37). A network-adapter attack with no HID interface was never in scope, and
+is now reported as such instead of being "detected" by accident.
 """
 
 from __future__ import annotations
 
 from typing import Iterable
 
+from ..capture.hid import KEYSTROKE_PAGES
 from ..contract import CLASS_HID, DeviceDescriptor
 
-__all__ = ["ModelSupport", "interface_triples"]
+__all__ = ["ModelSupport", "interface_triples", "may_send_keystrokes", "is_keyboard"]
 
 Triple = tuple[int, int, int]
 
@@ -39,6 +44,31 @@ def interface_triples(descriptor: DeviceDescriptor) -> set[Triple]:
     """Every interface the device declares, at enumeration or later."""
     return {(i.bInterfaceClass, i.bInterfaceSubClass, i.bInterfaceProtocol)
             for i in descriptor.interfaces}
+
+
+def may_send_keystrokes(descriptor: DeviceDescriptor) -> bool:
+    """A HID interface that declares keyboard/consumer usages, or whose descriptor is unknown."""
+    return any(i.bInterfaceClass == CLASS_HID and (
+        i.hid_usage_pages is None or bool(set(i.hid_usage_pages) & KEYSTROKE_PAGES))
+        for i in descriptor.interfaces)
+
+
+def is_keyboard(descriptor: DeviceDescriptor) -> bool:
+    """Declares the Keyboard/Keypad page, or (descriptor unknown) the boot-keyboard protocol.
+
+    What the human-typing bound (live.detector, eval.analysis_hybrid) applies to. Using
+    the report descriptor covers report-protocol keyboards, which the boot-protocol test
+    alone missed.
+    """
+    for i in descriptor.interfaces:
+        if i.bInterfaceClass != CLASS_HID:
+            continue
+        if i.hid_usage_pages is not None:
+            if 0x07 in i.hid_usage_pages:
+                return True
+        elif i.bInterfaceProtocol == 1:
+            return True
+    return False
 
 
 class ModelSupport:
@@ -68,13 +98,23 @@ class ModelSupport:
         return cls(out)
 
     def covers(self, descriptor: DeviceDescriptor) -> bool:
-        classes = {c for c, _, _ in interface_triples(descriptor)}
-        if classes & self.ALWAYS_SCORED:
-            return True
-        return bool(classes) and classes <= self.classes
+        if may_send_keystrokes(descriptor):
+            return True                                     # never abstain on keystrokes
+        other = {i.bInterfaceClass for i in descriptor.interfaces
+                 if i.bInterfaceClass not in self.ALWAYS_SCORED}
+        return bool(other) and other <= self.classes
 
     def uncovered(self, descriptor: DeviceDescriptor) -> list[Triple]:
-        return sorted(t for t in interface_triples(descriptor) if t[0] not in self.classes)
+        return sorted(t for t in interface_triples(descriptor)
+                      if t[0] not in self.classes and t[0] not in self.ALWAYS_SCORED)
+
+    def reason(self, descriptor: DeviceDescriptor) -> str:
+        """Why a device is not judged (for the operator notice)."""
+        bad = self.uncovered(descriptor)
+        if bad:
+            return f"declares interface types the model was not trained on {bad}"
+        return ("a pointing device: its HID report descriptor declares no keyboard or "
+                "consumer usages, so it cannot inject keystrokes")
 
     def to_json(self) -> list[list[int]]:
         return [list(t) for t in sorted(self.triples)]

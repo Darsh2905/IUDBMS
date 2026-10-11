@@ -23,6 +23,7 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
+from .hid import usage_pages
 from ..contract import DeviceDescriptor, Endpoint, Interface, TransferType
 
 __all__ = ["SYSFS_USB_DEVICES", "SysfsScanner", "scan_once"]
@@ -48,6 +49,16 @@ def _read_int(base: Path, name: str, radix: int = 16) -> int | None:
         return int(raw, radix)
     except ValueError:
         return None
+
+
+def _hid_pages(iface_dir: Path) -> tuple[int, ...] | None:
+    """Usage pages from the HID report descriptor the kernel exposes, or None."""
+    for rd in sorted(iface_dir.glob("*:*:*.*/report_descriptor")):
+        try:
+            return usage_pages(rd.read_bytes())
+        except OSError:
+            return None
+    return None
 
 
 def _endpoints(iface_dir: Path) -> tuple[Endpoint, ...]:
@@ -133,6 +144,7 @@ class SysfsScanner:
                     bInterfaceProtocol=_read_int(iface_dir, "bInterfaceProtocol") or 0,
                     endpoints=_endpoints(iface_dir),
                     first_seen_ts=first,
+                    hid_usage_pages=_hid_pages(iface_dir) if cls == 0x03 else None,
                 ))
 
             desc = DeviceDescriptor(

@@ -33,7 +33,7 @@ import numpy as np
 
 from ..contract import FEATURE_NAMES, DeviceDescriptor, URBEvent
 from ..features.extractor import WindowFeatureExtractor
-from ..policy import Action, DeviceContext, PolicyEngine
+from ..policy import Action, DeviceContext, PolicyEngine, is_keyboard
 from ..stage1 import DeviceBaseline, Stage1, class_group
 from ..stage2 import SEQ_LEN, LSTMDetector
 
@@ -87,6 +87,7 @@ class StreamingDetector:
         *,
         feature_idx: np.ndarray | None = None,
         seq_len: int = SEQ_LEN,
+        human_max_rps: float | None = None,
     ):
         self.stage1 = stage1
         self.stage2 = stage2
@@ -95,6 +96,10 @@ class StreamingDetector:
         self.feature_idx = (np.arange(len(FEATURE_NAMES)) if feature_idx is None
                             else np.asarray(feature_idx))
         self.devices: dict[str, DeviceState] = {}
+        #: Human-capability rule (eval.analysis_hybrid): a boot-protocol keyboard sending
+        #: at least this many completed URBs in a 1 s window is faster than any of 1,972
+        #: real typists sustained. None disables it (a model set that did not adopt it).
+        self.human_max_rps = human_max_rps
 
     # ------------------------------------------------------------------
 
@@ -133,7 +138,10 @@ class StreamingDetector:
         st.history.append(np.append(x, s1))
         s2 = self._stage2_score(st) if self.stage2 is not None else s1
 
-        action = self.policy.step(st.ctx, t_start, s1, s2, evidence, st.descriptor)
+        rule_hit = (self.human_max_rps is not None and is_keyboard(st.descriptor)
+                    and x_full[0] >= self.human_max_rps)            # column 0: n_events
+        action = self.policy.step(st.ctx, t_start, s1, s2, evidence, st.descriptor,
+                                  rule_hit=bool(rule_hit))
         st.n_windows += 1
 
         return WindowVerdict(

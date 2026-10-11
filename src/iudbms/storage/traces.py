@@ -177,6 +177,8 @@ def descriptor_from_json(s: str) -> DeviceDescriptor:
             bInterfaceProtocol=i.get("bInterfaceProtocol", 0),
             endpoints=tuple(Endpoint(**e) for e in i.get("endpoints", ())),
             first_seen_ts=i.get("first_seen_ts", 0.0),
+            hid_usage_pages=(tuple(i["hid_usage_pages"]) if i.get("hid_usage_pages") is not None
+                             else None),
         )
         for i in raw.get("interfaces", ())
     )

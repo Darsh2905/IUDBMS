@@ -1,0 +1,754 @@
+{
+ "signatures": {
+  "hid_injection": {
+   "class_group": "hid",
+   "top": [
+    [
+     "bytes_in_rate",
+     0.9978262100582066
+    ],
+    [
+     "n_events",
+     0.9954140673823318
+    ],
+    [
+     "ev_rate",
+     0.9954140673823318
+    ],
+    [
+     "mean_iat",
+     0.994823318655122
+    ],
+    [
+     "p10_iat",
+     0.9878407123657593
+    ]
+   ],
+   "direction": {
+    "bytes_in_rate": 3128.0,
+    "n_events": 391.0,
+    "ev_rate": 391.0,
+    "mean_iat": -0.9974724054336548,
+    "p10_iat": -0.9980469942092896
+   }
+  },
+  "identity_switch": {
+   "class_group": "storage",
+   "top": [
+    [
+     "frac_intr",
+     1.0
+    ],
+    [
+     "n_interfaces",
+     1.0
+    ],
+    [
+     "has_hid",
+     1.0
+    ],
+    [
+     "late_iface_flag",
+     1.0
+    ],
+    [
+     "payload_seq_novelty",
+     0.9993646759847522
+    ]
+   ],
+   "direction": {
+    "frac_intr": 1.0,
+    "n_interfaces": 1.0,
+    "has_hid": 1.0,
+    "late_iface_flag": 1.0,
+    "payload_seq_novelty": -1.0
+   }
+  },
+  "staged_delay": {
+   "class_group": "hid",
+   "top": [
+    [
+     "bytes_in_rate",
+     0.9982921639165645
+    ],
+    [
+     "n_events",
+     0.996949245402922
+    ],
+    [
+     "ev_rate",
+     0.996949245402922
+    ],
+    [
+     "mean_iat",
+     0.9948764917496936
+    ],
+    [
+     "min_iat",
+     0.9945115741799008
+    ]
+   ],
+   "direction": {
+    "bytes_in_rate": 3432.0,
+    "n_events": 429.0,
+    "ev_rate": 429.0,
+    "mean_iat": -0.9977331161499023,
+    "min_iat": -0.9999529719352722
+   }
+  },
+  "class_exfil": {
+   "class_group": "hid",
+   "top": [
+    [
+     "mean_len",
+     0.9995640802092415
+    ],
+    [
+     "max_len",
+     0.9995640802092415
+    ],
+    [
+     "bytes_out_rate",
+     0.9995640802092415
+    ],
+    [
+     "frac_bulk",
+     0.9995640802092415
+    ],
+    [
+     "class_behaviour_mismatch",
+     0.9995640802092415
+    ]
+   ],
+   "direction": {
+    "mean_len": 2048.0,
+    "max_len": 2048.0,
+    "bytes_out_rate": 585728.0,
+    "frac_bulk": 1.0,
+    "class_behaviour_mismatch": 1.0
+   }
+  },
+  "mimicry": {
+   "class_group": "hid",
+   "top": [
+    [
+     "repeat_ratio",
+     0.45398761404296695
+    ],
+    [
+     "mean_len",
+     0.41046873446324383
+    ],
+    [
+     "max_len",
+     0.4030068213116219
+    ],
+    [
+     "payload_seq_novelty",
+     0.34954123210631693
+    ],
+    [
+     "std_iat",
+     0.3030149618516401
+    ]
+   ],
+   "direction": {
+    "repeat_ratio": 0.5,
+    "mean_len": 8.0,
+    "max_len": 8.0,
+    "payload_seq_novelty": -0.1666666865348816,
+    "std_iat": 0.004180590622127056
+   }
+  },
+  "mimicry_adaptive": {
+   "class_group": "hid",
+   "top": [
+    [
+     "mean_len",
+     0.36305398899396846
+    ],
+    [
+     "max_len",
+     0.35559207584234653
+    ],
+    [
+     "payload_seq_novelty",
+     0.3399357403341996
+    ],
+    [
+     "repeat_ratio",
+     0.332060298307651
+    ],
+    [
+     "std_iat",
+     0.280820849169632
+    ]
+   ],
+   "direction": {
+    "mean_len": 8.0,
+    "max_len": 8.0,
+    "payload_seq_novelty": -0.07692307233810425,
+    "repeat_ratio": 0.2222222238779068,
+    "std_iat": 0.0
+   }
+  }
+ },
+ "matrix": {
+  "hid_injection": {
+   "hid_injection": {
+    "rate": 1.0,
+    "k": 100,
+    "n": 100,
+    "ci": [
+     0.9630051925239981,
+     0.9999999999999999
+    ]
+   },
+   "identity_switch": {
+    "rate": 1.0,
+    "k": 100,
+    "n": 100,
+    "ci": [
+     0.9630051925239981,
+     0.9999999999999999
+    ]
+   },
+   "staged_delay": {
+    "rate": 1.0,
+    "k": 100,
+    "n": 100,
+    "ci": [
+     0.9630051925239981,
+     0.9999999999999999
+    ]
+   },
+   "class_exfil": {
+    "rate": 1.0,
+    "k": 100,
+    "n": 100,
+    "ci": [
+     0.9630051925239981,
+     0.9999999999999999
+    ]
+   },
+   "mimicry": {
+    "rate": 0.0,
+    "k": 0,
+    "n": 100,
+    "ci": [
+     0.0,
+     0.03699480747600191
+    ]
+   },
+   "mimicry_adaptive": {
+    "rate": 0.0,
+    "k": 0,
+    "n": 100,
+    "ci": [
+     0.0,
+     0.03699480747600191
+    ]
+   }
+  },
+  "identity_switch": {
+   "hid_injection": {
+    "rate": 1.0,
+    "k": 100,
+    "n": 100,
+    "ci": [
+     0.9630051925239981,
+     0.9999999999999999
+    ]
+   },
+   "identity_switch": {
+    "rate": 1.0,
+    "k": 100,
+    "n": 100,
+    "ci": [
+     0.9630051925239981,
+     0.9999999999999999
+    ]
+   },
+   "staged_delay": {
+    "rate": 1.0,
+    "k": 100,
+    "n": 100,
+    "ci": [
+     0.9630051925239981,
+     0.9999999999999999
+    ]
+   },
+   "class_exfil": {
+    "rate": 1.0,
+    "k": 100,
+    "n": 100,
+    "ci": [
+     0.9630051925239981,
+     0.9999999999999999
+    ]
+   },
+   "mimicry": {
+    "rate": 0.0,
+    "k": 0,
+    "n": 100,
+    "ci": [
+     0.0,
+     0.03699480747600191
+    ]
+   },
+   "mimicry_adaptive": {
+    "rate": 0.0,
+    "k": 0,
+    "n": 100,
+    "ci": [
+     0.0,
+     0.03699480747600191
+    ]
+   }
+  },
+  "staged_delay": {
+   "hid_injection": {
+    "rate": 1.0,
+    "k": 100,
+    "n": 100,
+    "ci": [
+     0.9630051925239981,
+     0.9999999999999999
+    ]
+   },
+   "identity_switch": {
+    "rate": 1.0,
+    "k": 100,
+    "n": 100,
+    "ci": [
+     0.9630051925239981,
+     0.9999999999999999
+    ]
+   },
+   "staged_delay": {
+    "rate": 1.0,
+    "k": 100,
+    "n": 100,
+    "ci": [
+     0.9630051925239981,
+     0.9999999999999999
+    ]
+   },
+   "class_exfil": {
+    "rate": 1.0,
+    "k": 100,
+    "n": 100,
+    "ci": [
+     0.9630051925239981,
+     0.9999999999999999
+    ]
+   },
+   "mimicry": {
+    "rate": 0.08,
+    "k": 8,
+    "n": 100,
+    "ci": [
+     0.04109296948581091,
+     0.14998266879403072
+    ]
+   },
+   "mimicry_adaptive": {
+    "rate": 0.0,
+    "k": 0,
+    "n": 100,
+    "ci": [
+     0.0,
+     0.03699480747600191
+    ]
+   }
+  },
+  "class_exfil": {
+   "hid_injection": {
+    "rate": 0.0,
+    "k": 0,
+    "n": 100,
+    "ci": [
+     0.0,
+     0.03699480747600191
+    ]
+   },
+   "identity_switch": {
+    "rate": 1.0,
+    "k": 100,
+    "n": 100,
+    "ci": [
+     0.9630051925239981,
+     0.9999999999999999
+    ]
+   },
+   "staged_delay": {
+    "rate": 0.0,
+    "k": 0,
+    "n": 100,
+    "ci": [
+     0.0,
+     0.03699480747600191
+    ]
+   },
+   "class_exfil": {
+    "rate": 1.0,
+    "k": 100,
+    "n": 100,
+    "ci": [
+     0.9630051925239981,
+     0.9999999999999999
+    ]
+   },
+   "mimicry": {
+    "rate": 0.0,
+    "k": 0,
+    "n": 100,
+    "ci": [
+     0.0,
+     0.03699480747600191
+    ]
+   },
+   "mimicry_adaptive": {
+    "rate": 0.0,
+    "k": 0,
+    "n": 100,
+    "ci": [
+     0.0,
+     0.03699480747600191
+    ]
+   }
+  },
+  "mimicry": {
+   "hid_injection": {
+    "rate": 1.0,
+    "k": 100,
+    "n": 100,
+    "ci": [
+     0.9630051925239981,
+     0.9999999999999999
+    ]
+   },
+   "identity_switch": {
+    "rate": 0.0,
+    "k": 0,
+    "n": 100,
+    "ci": [
+     0.0,
+     0.03699480747600191
+    ]
+   },
+   "staged_delay": {
+    "rate": 1.0,
+    "k": 100,
+    "n": 100,
+    "ci": [
+     0.9630051925239981,
+     0.9999999999999999
+    ]
+   },
+   "class_exfil": {
+    "rate": 0.0,
+    "k": 0,
+    "n": 100,
+    "ci": [
+     0.0,
+     0.03699480747600191
+    ]
+   },
+   "mimicry": {
+    "rate": 1.0,
+    "k": 100,
+    "n": 100,
+    "ci": [
+     0.9630051925239981,
+     0.9999999999999999
+    ]
+   },
+   "mimicry_adaptive": {
+    "rate": 0.02,
+    "k": 2,
+    "n": 100,
+    "ci": [
+     0.005501852234968185,
+     0.07001316294199365
+    ]
+   }
+  },
+  "mimicry_adaptive": {
+   "hid_injection": {
+    "rate": 0.0,
+    "k": 0,
+    "n": 100,
+    "ci": [
+     0.0,
+     0.03699480747600191
+    ]
+   },
+   "identity_switch": {
+    "rate": 0.0,
+    "k": 0,
+    "n": 100,
+    "ci": [
+     0.0,
+     0.03699480747600191
+    ]
+   },
+   "staged_delay": {
+    "rate": 0.01,
+    "k": 1,
+    "n": 100,
+    "ci": [
+     0.0017673865655472645,
+     0.0544875247609346
+    ]
+   },
+   "class_exfil": {
+    "rate": 0.0,
+    "k": 0,
+    "n": 100,
+    "ci": [
+     0.0,
+     0.03699480747600191
+    ]
+   },
+   "mimicry": {
+    "rate": 0.0,
+    "k": 0,
+    "n": 100,
+    "ci": [
+     0.0,
+     0.03699480747600191
+    ]
+   },
+   "mimicry_adaptive": {
+    "rate": 0.04,
+    "k": 4,
+    "n": 100,
+    "ci": [
+     0.015663050551848016,
+     0.09837217232607373
+    ]
+   }
+  }
+ },
+ "benign_fp": {
+  "hid_injection": {
+   "k": 0,
+   "n": 3000,
+   "rate": 0.0
+  },
+  "identity_switch": {
+   "k": 1,
+   "n": 3000,
+   "rate": 0.0003333333333333333
+  },
+  "staged_delay": {
+   "k": 2,
+   "n": 3000,
+   "rate": 0.0006666666666666666
+  },
+  "class_exfil": {
+   "k": 2,
+   "n": 3000,
+   "rate": 0.0006666666666666666
+  },
+  "mimicry": {
+   "k": 8,
+   "n": 3000,
+   "rate": 0.0026666666666666666
+  },
+  "mimicry_adaptive": {
+   "k": 13,
+   "n": 3000,
+   "rate": 0.004333333333333333
+  }
+ },
+ "overlap_vs_transfer": {
+  "pairs": [
+   [
+    "hid_injection",
+    "identity_switch",
+    0.0,
+    1.0
+   ],
+   [
+    "hid_injection",
+    "staged_delay",
+    0.6666666666666666,
+    1.0
+   ],
+   [
+    "hid_injection",
+    "class_exfil",
+    0.0,
+    1.0
+   ],
+   [
+    "hid_injection",
+    "mimicry",
+    0.0,
+    0.0
+   ],
+   [
+    "hid_injection",
+    "mimicry_adaptive",
+    0.0,
+    0.0
+   ],
+   [
+    "identity_switch",
+    "hid_injection",
+    0.0,
+    1.0
+   ],
+   [
+    "identity_switch",
+    "staged_delay",
+    0.0,
+    1.0
+   ],
+   [
+    "identity_switch",
+    "class_exfil",
+    0.0,
+    1.0
+   ],
+   [
+    "identity_switch",
+    "mimicry",
+    0.1111111111111111,
+    0.0
+   ],
+   [
+    "identity_switch",
+    "mimicry_adaptive",
+    0.1111111111111111,
+    0.0
+   ],
+   [
+    "staged_delay",
+    "hid_injection",
+    0.6666666666666666,
+    1.0
+   ],
+   [
+    "staged_delay",
+    "identity_switch",
+    0.0,
+    1.0
+   ],
+   [
+    "staged_delay",
+    "class_exfil",
+    0.0,
+    1.0
+   ],
+   [
+    "staged_delay",
+    "mimicry",
+    0.0,
+    0.08
+   ],
+   [
+    "staged_delay",
+    "mimicry_adaptive",
+    0.0,
+    0.0
+   ],
+   [
+    "class_exfil",
+    "hid_injection",
+    0.0,
+    0.0
+   ],
+   [
+    "class_exfil",
+    "identity_switch",
+    0.0,
+    1.0
+   ],
+   [
+    "class_exfil",
+    "staged_delay",
+    0.0,
+    0.0
+   ],
+   [
+    "class_exfil",
+    "mimicry",
+    0.25,
+    0.0
+   ],
+   [
+    "class_exfil",
+    "mimicry_adaptive",
+    0.25,
+    0.0
+   ],
+   [
+    "mimicry",
+    "hid_injection",
+    0.0,
+    1.0
+   ],
+   [
+    "mimicry",
+    "identity_switch",
+    0.1111111111111111,
+    0.0
+   ],
+   [
+    "mimicry",
+    "staged_delay",
+    0.0,
+    1.0
+   ],
+   [
+    "mimicry",
+    "class_exfil",
+    0.25,
+    0.0
+   ],
+   [
+    "mimicry",
+    "mimicry_adaptive",
+    1.0,
+    0.02
+   ],
+   [
+    "mimicry_adaptive",
+    "hid_injection",
+    0.0,
+    0.0
+   ],
+   [
+    "mimicry_adaptive",
+    "identity_switch",
+    0.1111111111111111,
+    0.0
+   ],
+   [
+    "mimicry_adaptive",
+    "staged_delay",
+    0.0,
+    0.01
+   ],
+   [
+    "mimicry_adaptive",
+    "class_exfil",
+    0.25,
+    0.0
+   ],
+   [
+    "mimicry_adaptive",
+    "mimicry",
+    1.0,
+    0.0
+   ]
+  ],
+  "spearman": -0.22491657397107895,
+  "mean_transfer_high_overlap": 0.505,
+  "mean_transfer_low_overlap": 0.3880769230769231
+ },
+ "runtime_s": 205.26434683799744
+}

@@ -1,0 +1,263 @@
+{
+ "human_max_rps": 30,
+ "threshold": 0.9996482133865358,
+ "corpus_c": {
+  "model": {
+   "detect": 0.7466666666666667,
+   "detect_k": 448,
+   "n_attack": 600,
+   "fp": 0.0,
+   "fp_k": 0,
+   "n_benign": 3000,
+   "per_profile": {
+    "class_exfil": {
+     "rate": 1.0,
+     "k": 100,
+     "n": 100,
+     "ci": [
+      0.9630051925239981,
+      0.9999999999999999
+     ]
+    },
+    "hid_injection": {
+     "rate": 1.0,
+     "k": 100,
+     "n": 100,
+     "ci": [
+      0.9630051925239981,
+      0.9999999999999999
+     ]
+    },
+    "identity_switch": {
+     "rate": 1.0,
+     "k": 100,
+     "n": 100,
+     "ci": [
+      0.9630051925239981,
+      0.9999999999999999
+     ]
+    },
+    "mimicry": {
+     "rate": 0.48,
+     "k": 48,
+     "n": 100,
+     "ci": [
+      0.38464384320080547,
+      0.5768359490982345
+     ]
+    },
+    "mimicry_adaptive": {
+     "rate": 0.0,
+     "k": 0,
+     "n": 100,
+     "ci": [
+      0.0,
+      0.03699480747600191
+     ]
+    },
+    "staged_delay": {
+     "rate": 1.0,
+     "k": 100,
+     "n": 100,
+     "ci": [
+      0.9630051925239981,
+      0.9999999999999999
+     ]
+    }
+   }
+  },
+  "rule": {
+   "detect": 0.6666666666666666,
+   "detect_k": 400,
+   "n_attack": 600,
+   "fp": 0.0,
+   "fp_k": 0,
+   "n_benign": 3000,
+   "per_profile": {
+    "class_exfil": {
+     "rate": 1.0,
+     "k": 100,
+     "n": 100,
+     "ci": [
+      0.9630051925239981,
+      0.9999999999999999
+     ]
+    },
+    "hid_injection": {
+     "rate": 1.0,
+     "k": 100,
+     "n": 100,
+     "ci": [
+      0.9630051925239981,
+      0.9999999999999999
+     ]
+    },
+    "identity_switch": {
+     "rate": 1.0,
+     "k": 100,
+     "n": 100,
+     "ci": [
+      0.9630051925239981,
+      0.9999999999999999
+     ]
+    },
+    "mimicry": {
+     "rate": 0.0,
+     "k": 0,
+     "n": 100,
+     "ci": [
+      0.0,
+      0.03699480747600191
+     ]
+    },
+    "mimicry_adaptive": {
+     "rate": 0.0,
+     "k": 0,
+     "n": 100,
+     "ci": [
+      0.0,
+      0.03699480747600191
+     ]
+    },
+    "staged_delay": {
+     "rate": 1.0,
+     "k": 100,
+     "n": 100,
+     "ci": [
+      0.9630051925239981,
+      0.9999999999999999
+     ]
+    }
+   }
+  },
+  "hybrid": {
+   "detect": 0.7466666666666667,
+   "detect_k": 448,
+   "n_attack": 600,
+   "fp": 0.0,
+   "fp_k": 0,
+   "n_benign": 3000,
+   "per_profile": {
+    "class_exfil": {
+     "rate": 1.0,
+     "k": 100,
+     "n": 100,
+     "ci": [
+      0.9630051925239981,
+      0.9999999999999999
+     ]
+    },
+    "hid_injection": {
+     "rate": 1.0,
+     "k": 100,
+     "n": 100,
+     "ci": [
+      0.9630051925239981,
+      0.9999999999999999
+     ]
+    },
+    "identity_switch": {
+     "rate": 1.0,
+     "k": 100,
+     "n": 100,
+     "ci": [
+      0.9630051925239981,
+      0.9999999999999999
+     ]
+    },
+    "mimicry": {
+     "rate": 0.48,
+     "k": 48,
+     "n": 100,
+     "ci": [
+      0.38464384320080547,
+      0.5768359490982345
+     ]
+    },
+    "mimicry_adaptive": {
+     "rate": 0.0,
+     "k": 0,
+     "n": 100,
+     "ci": [
+      0.0,
+      0.03699480747600191
+     ]
+    },
+    "staged_delay": {
+     "rate": 1.0,
+     "k": 100,
+     "n": 100,
+     "ci": [
+      0.9630051925239981,
+      0.9999999999999999
+     ]
+    }
+   }
+  }
+ },
+ "long_keyboards": {
+  "hours": 80.0,
+  "rule_alarms": 0,
+  "max_reports_in_a_window": 26.0
+ },
+ "lopo": {
+  "hid_injection": {
+   "unseen_model": 1.0,
+   "unseen_hybrid": 1.0,
+   "rule_alone": 1.0,
+   "fp_model": 8,
+   "fp_hybrid": 8,
+   "n_benign": 3000
+  },
+  "identity_switch": {
+   "unseen_model": 0.0,
+   "unseen_hybrid": 1.0,
+   "rule_alone": 1.0,
+   "fp_model": 22,
+   "fp_hybrid": 22,
+   "n_benign": 3000
+  },
+  "staged_delay": {
+   "unseen_model": 1.0,
+   "unseen_hybrid": 1.0,
+   "rule_alone": 1.0,
+   "fp_model": 7,
+   "fp_hybrid": 7,
+   "n_benign": 3000
+  },
+  "class_exfil": {
+   "unseen_model": 0.0,
+   "unseen_hybrid": 1.0,
+   "rule_alone": 1.0,
+   "fp_model": 4,
+   "fp_hybrid": 4,
+   "n_benign": 3000
+  },
+  "mimicry": {
+   "unseen_model": 0.09,
+   "unseen_hybrid": 0.09,
+   "rule_alone": 0.0,
+   "fp_model": 15,
+   "fp_hybrid": 15,
+   "n_benign": 3000
+  },
+  "mimicry_adaptive": {
+   "unseen_model": 0.0,
+   "unseen_hybrid": 0.0,
+   "rule_alone": 0.0,
+   "fp_model": 0,
+   "fp_hybrid": 0,
+   "n_benign": 3000
+  }
+ },
+ "lopo_mean": {
+  "model": 0.34833333333333333,
+  "hybrid": 0.6816666666666666
+ },
+ "verdict": {
+  "i_rule_silent_on_benign_simulated": true,
+  "ii_unseen_rises": true,
+  "testbed_check": "pending: testbed.score --rule",
+  "adopt_if_testbed_also_silent": true
+ }
+}
