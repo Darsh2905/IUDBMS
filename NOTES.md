@@ -1329,6 +1329,21 @@ predicts transfer (Spearman +0.61; added after the pre-stated top-5 version fail
 with D >= 0.8 against benign keyboards (best 0.45): there is nothing strong to learn
 and nothing for another family to carry. That is the 82.7% -> 34.8% drop.
 
+### Finding 42 — monitoring overhead measured: below resolution, eBPF <= 3.8 us per URB (11 Oct)
+
+`testbed/overhead.py` on Debian 13 (6.12): a USB storage stick driven with 4 KiB direct
+I/Os (three URBs per I/O, the worst case for a per-URB monitor), five conditions (none,
+usbmon, eBPF counting, eBPF per-event, both), 15 repetitions in random order, each
+condition PAIRED with the unmonitored run of the same repetition. A first version with
+1 MiB I/Os was useless and is not reported: 20% run-to-run spread and a steady drift
+across repetitions larger than any difference between conditions. Result: 7 of 8
+paired 95% intervals for throughput change contain zero (the eighth says reads got
+faster, which no monitor can cause); resolution is only +/-10-30% because the device is
+emulated, so report an upper bound, not a zero. The kernel's BPF statistics put the
+probe at <= 3.8 us per URB completion in this guest, identical for counting and
+per-event output (the statistics' own timing dominates). `bpftool` lives in /usr/sbin:
+check for it with sudo.
+
 ### Live monitoring — wired 10 Sep, never yet run on real traffic
 
 Until now **nothing called `UsbmonSource.live()`.** It existed and was

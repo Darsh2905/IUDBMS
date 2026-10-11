@@ -1,5 +1,5 @@
 {
- "contract_version": "3.0.0",
+ "contract_version": "3.1.0",
  "deployed_model": {
   "path": "out/models",
   "trained_on": "Corpus B",

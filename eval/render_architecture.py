@@ -346,13 +346,13 @@ def architecture_paper(d: dict, path: Path) -> Path:
         box(ax, x + 1.2, 33.4, x + W - 1.2, 38.2, lw=0.9, ec=MUTE)
         txt(ax, x + W / 2, 35.8, "usbmon (deployed)", size=B)
         box(ax, x + 1.2, 27.6, x + W - 1.2, 32.4, lw=0.9, ec=CRIT, ls=(0, (3, 2)))
-        txt(ax, x + W / 2, 30.0, "eBPF (designed only)", size=B, color=CRIT)
+        txt(ax, x + W / 2, 30.0, "eBPF (counting prototype)", size=B, color=CRIT)
 
         blk(xs[1], R1, "L1  Parser",
             ["text line to typed", "URBEvent (completions", "and errors only)"])
         blk(xs[2], R1, "L2  Feature extractor",
             ["1 s tumbling window,", "stateful per device:",
-             f"{len(FEATURE_SCHEMA) - 1} features per second"])
+             f"{len(FEATURE_SCHEMA)} features, 28 used"])
         blk(xs[3], R1, "Stage 1",
             ["Isolation Forest (0.55)", "+ EWMA baseline (0.45)", "gives anomaly score s1"], lw=1.3)
 
@@ -384,9 +384,12 @@ def architecture_paper(d: dict, path: Path) -> Path:
 
         blk(xs[2], R2, "Stage 2  (LSTM)",
             ["reads all 10 rows in order", "outputs P(malicious)", "for the newest second"], lw=1.3)
+        # the deployed decision rule, read from the deployed set, not the Corpus-A run
+        dep = json.loads((OUT / "models" / "deploy.json").read_text())
         blk(xs[1], R2, "L4  Policy engine",
-            [f"P >= {h['threshold']:.4f}: a hit", "4 hits in last 6: THROTTLE",
-             "8 qualifying: DEAUTHORIZE"])
+            [f"P >= {dep['threshold']:.5f} (0.01/dev-h)",
+             f"or keyboard >= {(dep.get('capability_rule') or {}).get('human_max_rps', 30)} reports/s",
+             "4 of 6: throttle; 8: revoke", "unmodelled: never escalated"])
 
         x = xs[0]
         box(ax, x, 9.8, x + W, R2[1], lw=1.0)
