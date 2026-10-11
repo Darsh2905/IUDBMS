@@ -1,0 +1,41 @@
+{
+ "aalto": {
+  "sessions": 1972,
+  "keystrokes": 1440009,
+  "iki_median_ms": 165.99999999999682,
+  "iki_p10_ms": 83.99999999999963,
+  "iki_p90_ms": 519.9999999999995,
+  "hold_median_ms": 103.00000000000864,
+  "rollover_share": 0.22675321442057675,
+  "gaps_over_1s_share": 0.03728025491438296,
+  "reports_per_s_peak_max": 34,
+  "reports_per_s_sustained_max": 26,
+  "reports_per_s_sustained_p99": 22.0
+ },
+ "cmu": {
+  "sessions": 408,
+  "keystrokes": 224400,
+  "iki_median_ms": 206.7000000000121,
+  "iki_p10_ms": 97.09999999999752,
+  "iki_p90_ms": 988.8699999999989,
+  "hold_median_ms": 86.10000000000184,
+  "rollover_share": 0.0987445980213579,
+  "gaps_over_1s_share": 0.011174506232365442,
+  "reports_per_s_peak_max": 20,
+  "reports_per_s_sustained_max": 11,
+  "reports_per_s_sustained_p99": 11.0
+ },
+ "simulator": {
+  "sessions": 200,
+  "keystrokes": 51392,
+  "iki_median_ms": 149.24050000000048,
+  "iki_p10_ms": 52.42210000000043,
+  "iki_p90_ms": 1621.2209000000003,
+  "hold_median_ms": 90.61200000000014,
+  "rollover_share": 0.2931903422409752,
+  "gaps_over_1s_share": 0.14330364119393654,
+  "reports_per_s_peak_max": 22,
+  "reports_per_s_sustained_max": 15,
+  "reports_per_s_sustained_p99": 12.019999999999982
+ }
+}
