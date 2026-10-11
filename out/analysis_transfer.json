@@ -24,6 +24,36 @@
      0.9878407123657593
     ]
    ],
+   "D": {
+    "n_events": 0.9954140673823318,
+    "ev_rate": 0.9954140673823318,
+    "mean_iat": 0.994823318655122,
+    "std_iat": 0.5697663005096085,
+    "cv_iat": 0.8026414276933918,
+    "min_iat": 0.9753031541578244,
+    "p10_iat": 0.9878407123657593,
+    "iat_entropy": 0.5831018828100761,
+    "burstiness_fano": 0.629449016833296,
+    "mean_len": 0.7839154316509482,
+    "std_len": 0.015856565447196602,
+    "max_len": 0.7764535184993263,
+    "bytes_in_rate": 0.9978262100582066,
+    "bytes_out_rate": 0.0,
+    "n_endpoints": 0.5231630220748265,
+    "frac_intr": 0.5390195875220231,
+    "frac_bulk": 0.0,
+    "frac_iso": 0.0,
+    "frac_ctrl": 0.015856565447196602,
+    "frac_in": 0.5390195875220231,
+    "payload_novelty": 0.5231630220748265,
+    "repeat_ratio": 0.8871437663699111,
+    "payload_seq_novelty": 0.9463158197417847,
+    "n_interfaces": 0.0,
+    "has_hid": 0.0,
+    "has_storage": 0.0,
+    "class_behaviour_mismatch": 0.0,
+    "late_iface_flag": 0.0
+   },
    "direction": {
     "bytes_in_rate": 3128.0,
     "n_events": 391.0,
@@ -56,6 +86,36 @@
      0.9993646759847522
     ]
    ],
+   "D": {
+    "n_events": 0.9925882153314339,
+    "ev_rate": 0.9925882153314339,
+    "mean_iat": 0.6944992515541104,
+    "std_iat": 0.8129102312158496,
+    "cv_iat": 0.8129102312158496,
+    "min_iat": 0.6853002070393375,
+    "p10_iat": 0.6853002070393375,
+    "iat_entropy": 0.6842883581806846,
+    "burstiness_fano": 0.6853002070393375,
+    "mean_len": 0.6842650103519669,
+    "std_len": 0.3118996977278288,
+    "max_len": 0.6842650103519669,
+    "bytes_in_rate": 0.6849236821959324,
+    "bytes_out_rate": 0.3106057018686156,
+    "n_endpoints": 0.6842650103519669,
+    "frac_intr": 1.0,
+    "frac_bulk": 0.3146997929606625,
+    "frac_iso": 0.0,
+    "frac_ctrl": 0.015786749482401663,
+    "frac_in": 0.9971765569384485,
+    "payload_novelty": 0.6842650103519669,
+    "repeat_ratio": 0.9980706801255389,
+    "payload_seq_novelty": 0.9993646759847522,
+    "n_interfaces": 1.0,
+    "has_hid": 1.0,
+    "has_storage": 0.0,
+    "class_behaviour_mismatch": 0.0,
+    "late_iface_flag": 1.0
+   },
    "direction": {
     "frac_intr": 1.0,
     "n_interfaces": 1.0,
@@ -88,6 +148,36 @@
      0.9945115741799008
     ]
    ],
+   "D": {
+    "n_events": 0.996949245402922,
+    "ev_rate": 0.996949245402922,
+    "mean_iat": 0.9948764917496936,
+    "std_iat": 0.5710436314644004,
+    "cv_iat": 0.8853208970542673,
+    "min_iat": 0.9945115741799008,
+    "p10_iat": 0.9931599129443466,
+    "iat_entropy": 0.5899596942305867,
+    "burstiness_fano": 0.6479631006136116,
+    "mean_len": 0.7839154316509482,
+    "std_len": 0.015856565447196602,
+    "max_len": 0.7764535184993263,
+    "bytes_in_rate": 0.9982921639165645,
+    "bytes_out_rate": 0.0,
+    "n_endpoints": 0.5231630220748265,
+    "frac_intr": 0.5390195875220231,
+    "frac_bulk": 0.0,
+    "frac_iso": 0.0,
+    "frac_ctrl": 0.015856565447196602,
+    "frac_in": 0.5390195875220231,
+    "payload_novelty": 0.5231630220748265,
+    "repeat_ratio": 0.8863138334813828,
+    "payload_seq_novelty": 0.9383618069821926,
+    "n_interfaces": 0.0,
+    "has_hid": 0.0,
+    "has_storage": 0.0,
+    "class_behaviour_mismatch": 0.0,
+    "late_iface_flag": 0.0
+   },
    "direction": {
     "bytes_in_rate": 3432.0,
     "n_events": 429.0,
@@ -120,6 +210,36 @@
      0.9995640802092415
     ]
    ],
+   "D": {
+    "n_events": 0.9891020052310375,
+    "ev_rate": 0.9891020052310375,
+    "mean_iat": 0.9950008145542364,
+    "std_iat": 0.5706290807337548,
+    "cv_iat": 0.5761614084171328,
+    "min_iat": 0.8354169446978663,
+    "p10_iat": 0.9717859736380793,
+    "iat_entropy": 0.5813828230525264,
+    "burstiness_fano": 0.541506891905897,
+    "mean_len": 0.9995640802092415,
+    "std_len": 0.008282476024411456,
+    "max_len": 0.9995640802092415,
+    "bytes_in_rate": 0.46811858211000357,
+    "bytes_out_rate": 0.9995640802092415,
+    "n_endpoints": 0.5231630220748265,
+    "frac_intr": 0.4739960223730897,
+    "frac_bulk": 0.9995640802092415,
+    "frac_iso": 0.0,
+    "frac_ctrl": 0.015856565447196602,
+    "frac_in": 0.476401058134415,
+    "payload_novelty": 0.6699748802858267,
+    "repeat_ratio": 0.5231630220748265,
+    "payload_seq_novelty": 0.16248251735298697,
+    "n_interfaces": 0.0,
+    "has_hid": 0.0,
+    "has_storage": 0.0,
+    "class_behaviour_mismatch": 0.9995640802092415,
+    "late_iface_flag": 0.0
+   },
    "direction": {
     "mean_len": 2048.0,
     "max_len": 2048.0,
@@ -152,6 +272,36 @@
      0.3030149618516401
     ]
    ],
+   "D": {
+    "n_events": 0.18735083443246436,
+    "ev_rate": 0.18735083443246436,
+    "mean_iat": 0.24083587688494,
+    "std_iat": 0.3030149618516401,
+    "cv_iat": 0.28258654441261055,
+    "min_iat": 0.23238605057125777,
+    "p10_iat": 0.2546469367812169,
+    "iat_entropy": 0.18722598118755762,
+    "burstiness_fano": 0.24759347403882825,
+    "mean_len": 0.41046873446324383,
+    "std_len": 0.015856565447196602,
+    "max_len": 0.4030068213116219,
+    "bytes_in_rate": 0.15362141174858196,
+    "bytes_out_rate": 0.0,
+    "n_endpoints": 0.14971632488712205,
+    "frac_intr": 0.16557289033431866,
+    "frac_bulk": 0.0,
+    "frac_iso": 0.0,
+    "frac_ctrl": 0.015856565447196602,
+    "frac_in": 0.16557289033431866,
+    "payload_novelty": 0.22500791516703256,
+    "repeat_ratio": 0.45398761404296695,
+    "payload_seq_novelty": 0.34954123210631693,
+    "n_interfaces": 0.0,
+    "has_hid": 0.0,
+    "has_storage": 0.0,
+    "class_behaviour_mismatch": 0.0,
+    "late_iface_flag": 0.0
+   },
    "direction": {
     "repeat_ratio": 0.5,
     "mean_len": 8.0,
@@ -184,6 +334,36 @@
      0.280820849169632
     ]
    ],
+   "D": {
+    "n_events": 0.18424295254346068,
+    "ev_rate": 0.18424295254346068,
+    "mean_iat": 0.2492403443911926,
+    "std_iat": 0.280820849169632,
+    "cv_iat": 0.19431672891291807,
+    "min_iat": 0.1574552199966623,
+    "p10_iat": 0.2179836603119252,
+    "iat_entropy": 0.1254332735476028,
+    "burstiness_fano": 0.2569155564786916,
+    "mean_len": 0.36305398899396846,
+    "std_len": 0.015856565447196602,
+    "max_len": 0.35559207584234653,
+    "bytes_in_rate": 0.10468524611905916,
+    "bytes_out_rate": 0.0,
+    "n_endpoints": 0.10230157941784668,
+    "frac_intr": 0.11815814486504328,
+    "frac_bulk": 0.0,
+    "frac_iso": 0.0,
+    "frac_ctrl": 0.015856565447196602,
+    "frac_in": 0.11815814486504328,
+    "payload_novelty": 0.1470048629038031,
+    "repeat_ratio": 0.332060298307651,
+    "payload_seq_novelty": 0.3399357403341996,
+    "n_interfaces": 0.0,
+    "has_hid": 0.0,
+    "has_storage": 0.0,
+    "class_behaviour_mismatch": 0.0,
+    "late_iface_flag": 0.0
+   },
    "direction": {
     "mean_len": 8.0,
     "max_len": 8.0,
@@ -750,5 +930,455 @@
   "mean_transfer_high_overlap": 0.505,
   "mean_transfer_low_overlap": 0.3880769230769231
  },
- "runtime_s": 205.26434683799744
+ "runtime_s": 205.26434683799744,
+ "overlap": {
+  "top5": {
+   "spearman_jaccard": -0.22491657397107895,
+   "spearman_coverage": -0.22491657397107895,
+   "set_sizes": {
+    "hid_injection": 5,
+    "identity_switch": 5,
+    "staged_delay": 5,
+    "class_exfil": 5,
+    "mimicry": 5,
+    "mimicry_adaptive": 5
+   },
+   "pairs": [
+    [
+     "hid_injection",
+     "identity_switch",
+     0.0,
+     0.0,
+     1.0
+    ],
+    [
+     "hid_injection",
+     "staged_delay",
+     0.6666666666666666,
+     0.8,
+     1.0
+    ],
+    [
+     "hid_injection",
+     "class_exfil",
+     0.0,
+     0.0,
+     1.0
+    ],
+    [
+     "hid_injection",
+     "mimicry",
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     "hid_injection",
+     "mimicry_adaptive",
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     "identity_switch",
+     "hid_injection",
+     0.0,
+     0.0,
+     1.0
+    ],
+    [
+     "identity_switch",
+     "staged_delay",
+     0.0,
+     0.0,
+     1.0
+    ],
+    [
+     "identity_switch",
+     "class_exfil",
+     0.0,
+     0.0,
+     1.0
+    ],
+    [
+     "identity_switch",
+     "mimicry",
+     0.1111111111111111,
+     0.2,
+     0.0
+    ],
+    [
+     "identity_switch",
+     "mimicry_adaptive",
+     0.1111111111111111,
+     0.2,
+     0.0
+    ],
+    [
+     "staged_delay",
+     "hid_injection",
+     0.6666666666666666,
+     0.8,
+     1.0
+    ],
+    [
+     "staged_delay",
+     "identity_switch",
+     0.0,
+     0.0,
+     1.0
+    ],
+    [
+     "staged_delay",
+     "class_exfil",
+     0.0,
+     0.0,
+     1.0
+    ],
+    [
+     "staged_delay",
+     "mimicry",
+     0.0,
+     0.0,
+     0.08
+    ],
+    [
+     "staged_delay",
+     "mimicry_adaptive",
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     "class_exfil",
+     "hid_injection",
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     "class_exfil",
+     "identity_switch",
+     0.0,
+     0.0,
+     1.0
+    ],
+    [
+     "class_exfil",
+     "staged_delay",
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     "class_exfil",
+     "mimicry",
+     0.25,
+     0.4,
+     0.0
+    ],
+    [
+     "class_exfil",
+     "mimicry_adaptive",
+     0.25,
+     0.4,
+     0.0
+    ],
+    [
+     "mimicry",
+     "hid_injection",
+     0.0,
+     0.0,
+     1.0
+    ],
+    [
+     "mimicry",
+     "identity_switch",
+     0.1111111111111111,
+     0.2,
+     0.0
+    ],
+    [
+     "mimicry",
+     "staged_delay",
+     0.0,
+     0.0,
+     1.0
+    ],
+    [
+     "mimicry",
+     "class_exfil",
+     0.25,
+     0.4,
+     0.0
+    ],
+    [
+     "mimicry",
+     "mimicry_adaptive",
+     1.0,
+     1.0,
+     0.02
+    ],
+    [
+     "mimicry_adaptive",
+     "hid_injection",
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     "mimicry_adaptive",
+     "identity_switch",
+     0.1111111111111111,
+     0.2,
+     0.0
+    ],
+    [
+     "mimicry_adaptive",
+     "staged_delay",
+     0.0,
+     0.0,
+     0.01
+    ],
+    [
+     "mimicry_adaptive",
+     "class_exfil",
+     0.25,
+     0.4,
+     0.0
+    ],
+    [
+     "mimicry_adaptive",
+     "mimicry",
+     1.0,
+     1.0,
+     0.0
+    ]
+   ]
+  },
+  "strong": {
+   "spearman_jaccard": 0.6106785317018909,
+   "spearman_coverage": 0.6057842046718577,
+   "set_sizes": {
+    "hid_injection": 9,
+    "identity_switch": 11,
+    "staged_delay": 9,
+    "class_exfil": 10,
+    "mimicry": 0,
+    "mimicry_adaptive": 0
+   },
+   "pairs": [
+    [
+     "hid_injection",
+     "identity_switch",
+     0.3333333333333333,
+     0.45454545454545453,
+     1.0
+    ],
+    [
+     "hid_injection",
+     "staged_delay",
+     1.0,
+     1.0,
+     1.0
+    ],
+    [
+     "hid_injection",
+     "class_exfil",
+     0.35714285714285715,
+     0.5,
+     1.0
+    ],
+    [
+     "hid_injection",
+     "mimicry",
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     "hid_injection",
+     "mimicry_adaptive",
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     "identity_switch",
+     "hid_injection",
+     0.3333333333333333,
+     0.5555555555555556,
+     1.0
+    ],
+    [
+     "identity_switch",
+     "staged_delay",
+     0.3333333333333333,
+     0.5555555555555556,
+     1.0
+    ],
+    [
+     "identity_switch",
+     "class_exfil",
+     0.10526315789473684,
+     0.2,
+     1.0
+    ],
+    [
+     "identity_switch",
+     "mimicry",
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     "identity_switch",
+     "mimicry_adaptive",
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     "staged_delay",
+     "hid_injection",
+     1.0,
+     1.0,
+     1.0
+    ],
+    [
+     "staged_delay",
+     "identity_switch",
+     0.3333333333333333,
+     0.45454545454545453,
+     1.0
+    ],
+    [
+     "staged_delay",
+     "class_exfil",
+     0.35714285714285715,
+     0.5,
+     1.0
+    ],
+    [
+     "staged_delay",
+     "mimicry",
+     0.0,
+     0.0,
+     0.08
+    ],
+    [
+     "staged_delay",
+     "mimicry_adaptive",
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     "class_exfil",
+     "hid_injection",
+     0.35714285714285715,
+     0.5555555555555556,
+     0.0
+    ],
+    [
+     "class_exfil",
+     "identity_switch",
+     0.10526315789473684,
+     0.18181818181818182,
+     1.0
+    ],
+    [
+     "class_exfil",
+     "staged_delay",
+     0.35714285714285715,
+     0.5555555555555556,
+     0.0
+    ],
+    [
+     "class_exfil",
+     "mimicry",
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     "class_exfil",
+     "mimicry_adaptive",
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     "mimicry",
+     "hid_injection",
+     0.0,
+     0.0,
+     1.0
+    ],
+    [
+     "mimicry",
+     "identity_switch",
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     "mimicry",
+     "staged_delay",
+     0.0,
+     0.0,
+     1.0
+    ],
+    [
+     "mimicry",
+     "class_exfil",
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     "mimicry",
+     "mimicry_adaptive",
+     0.0,
+     0.0,
+     0.02
+    ],
+    [
+     "mimicry_adaptive",
+     "hid_injection",
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     "mimicry_adaptive",
+     "identity_switch",
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     "mimicry_adaptive",
+     "staged_delay",
+     0.0,
+     0.0,
+     0.01
+    ],
+    [
+     "mimicry_adaptive",
+     "class_exfil",
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     "mimicry_adaptive",
+     "mimicry",
+     0.0,
+     0.0,
+     0.0
+    ]
+   ]
+  }
+ }
 }

@@ -58,14 +58,57 @@ def signatures(fit, idx) -> dict:
         ben = np.vstack([s.X for s in fit if s.label == 0 and class_group(s.descriptor) == grp])
         d = {FEATURE_NAMES[i]: ks(atk[:, i], ben[:, i]) for i in idx}
         top = sorted(d.items(), key=lambda kv: -kv[1])[:TOP]
-        out[fam] = {"class_group": grp, "top": top,
+        out[fam] = {"class_group": grp, "top": top, "D": d,
                     "direction": {n: float(np.median(atk[:, FEATURE_NAMES.index(n)])
                                            - np.median(ben[:, FEATURE_NAMES.index(n)]))
                                   for n, _ in top}}
     return out
 
 
+STRONG = 0.8        # a feature "separates" a family from benign when KS D >= this
+
+
+def overlap_analysis(sig: dict, matrix: dict, fams: list) -> dict:
+    """Does sharing separating features predict transfer? Two set definitions:
+    the pre-stated top-5 (ties at D = 1.00 make it arbitrary), and every feature
+    with D >= STRONG, added after the top-5 test failed and reported as such."""
+    def ranks(v):
+        return np.argsort(np.argsort(v))
+    out = {}
+    for name, fn in (("top5", lambda f: {n for n, _ in sig[f]["top"]}),
+                     ("strong", lambda f: {n for n, d in sig[f]["D"].items() if d >= STRONG})):
+        pairs = []
+        for F in fams:
+            for G in fams:
+                if F != G:
+                    a, b = fn(F), fn(G)
+                    j = len(a & b) / len(a | b) if a | b else 0.0
+                    # directional: how much of G's signature the model trained on F has seen
+                    c = len(a & b) / len(b) if b else 0.0
+                    pairs.append((F, G, j, c, matrix[F][G]["rate"]))
+        jj = np.array([x[2] for x in pairs])
+        cc = np.array([x[3] for x in pairs])
+        tt = np.array([x[4] for x in pairs])
+        out[name] = {"spearman_jaccard": float(np.corrcoef(ranks(jj), ranks(tt))[0, 1]),
+                     "spearman_coverage": float(np.corrcoef(ranks(cc), ranks(tt))[0, 1]),
+                     "set_sizes": {f: len(fn(f)) for f in fams}, "pairs": pairs}
+    return out
+
+
 def main() -> int:
+    import sys
+    if "--reuse" in sys.argv:          # recompute signatures/overlap; keep the trained matrix
+        prev = json.loads((OUT / "analysis_transfer.json").read_text())
+        B = load_corpus(TRAIN_CACHE).sessions
+        fit, _, _ = stratified_split(B, seed=SEED)
+        sig = signatures(fit, deployed_features(fit, verbose=False))
+        ov = overlap_analysis(sig, prev["matrix"], list(ATTACK_PROFILES))
+        prev.update({"signatures": sig, "overlap": ov})
+        (OUT / "analysis_transfer.json").write_text(json.dumps(prev, indent=1, default=float))
+        for k, v in ov.items():
+            print(f"{k:7s} sets {v['set_sizes']}\n        Spearman: Jaccard {v['spearman_jaccard']:+.2f}, "
+                  f"coverage of the tested family's signature {v['spearman_coverage']:+.2f}")
+        return 0
     t0 = time.time()
     B = load_corpus(TRAIN_CACHE).sessions
     fit, val, test = stratified_split(B, seed=SEED)
