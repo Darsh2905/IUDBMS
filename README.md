@@ -1,126 +1,86 @@
 # IUDBMS — Intelligent USB Device Behaviour Monitoring System
 
-Trust USB peripherals based on **observed runtime behaviour**, not declared
-VID/PID/class descriptors. A BadUSB device presents a valid keyboard
-descriptor, so identity-based defences (USBGuard whitelists, GoodUSB profiles)
-authorise it before any malicious behaviour exists to observe. IUDBMS scores
-behaviour continuously and revokes authorisation mid-session.
+Watch what a USB device *does*, not only what it *declares*. A BadUSB presents a
+valid keyboard descriptor, so identity-based defences (USBGuard allowlists, GoodUSB
+profiles) authorise it before any malicious behaviour exists. IUDBMS reads the
+kernel's `usbmon` stream, scores every device once a second, and raises an alarm
+when a keyboard's behaviour is not a person's.
 
-Architectural ancestor: **LBM** (Tian et al., IEEE S&P 2019) — eBPF kernel
-mediation with static, administrator-written rules. We extend it along four
-axes:
+**What this is:** a working Linux monitor (systemd services, dashboard, raw-trace
+store) and a simulation-based study of how far behavioural detection goes, with a
+real-kernel testbed. **What it is not:** a validated security product. The models
+are trained on simulated traffic; no physical BadUSB has been tested; enforcement
+is generated but deliberately not applied (dry-run).
 
-| | Pillar | Evidence |
-|---|---|---|
-| N1 | Multi-modal feature fusion (28-dim, four modalities) | per-modality ablation |
-| N2 | Per-device adaptive baselines (online EWMA + class-conditioned models) | cold-start / drift tests |
-| N3 | LSTM temporal modelling over window sequences | Stage-1-only ablation |
-| N4 | Closed-loop **learned** enforcement | end-to-end revocation latency |
+Specification: [`docs/IUDBMS_Implementation_Plan.md`](docs/IUDBMS_Implementation_Plan.md).
+Model card (features, units, settings, data, splits): [`docs/MODEL_CARD.md`](docs/MODEL_CARD.md).
+Working notes and every finding: [`CLAUDE.md`](CLAUDE.md).
 
-Full specification: [`docs/IUDBMS_Implementation_Plan.md`](docs/IUDBMS_Implementation_Plan.md).
-Working notes and decisions: [`CLAUDE.md`](CLAUDE.md).
-Report documents (standalone HTML, print to PDF): [`docs/report/`](docs/report/).
+## How a device is judged
+
+1. **Capture** — `usbmon` text from debugfs, parsed losslessly (0 unparsed lines across
+   every real-kernel capture), cut into 1-second windows per device.
+2. **Features** — 30 per window (timing, payload, protocol, identity, host); the deployed
+   model uses 28 ([model card](docs/MODEL_CARD.md)).
+3. **Stage 1** — class-conditioned Isolation Forests plus a per-device EWMA baseline,
+   trained on benign traffic only.
+4. **Stage 2** — a one-layer LSTM over the last 10 windows, trained on labelled simulated
+   attacks.
+5. **Decision** — a device alarms when 4 of its last 6 windows are over a threshold that
+   is **calibrated in false alarms per device-hour** (≤ 0.01 on long benign sessions), or
+   when a keyboard sustains ≥ 30 reports/s — faster than any of 1,972 real typists.
+6. **Competence** — devices of a class the model never saw, and pure pointing devices
+   (by their HID report descriptor), are reported *unmodelled*: scored, never escalated.
+   A device that may send keystrokes is always judged.
 
 ## Status
 
-| # | Milestone | State |
-|---|-----------|-------|
-| 1 | Repo skeleton + frozen data contract | **done** |
-| 2 | `usbmon` reader (debugfs) | **done** (fixture-validated; live capture pending VM) |
-| 3 | Feature extractor (28-dim) | **done** |
-| 4 | Stage 1 — iForest + per-device EWMA baseline | **done** |
-| 5 | Stage 2 — PyTorch LSTM | **done** |
-| 6 | Policy engine — k-of-n gate, escalation, safety interlocks | **done** |
-| 7 | SQLite storage + FastAPI | **done** — plus the raw URB trace (plan §5), pseudonymised by default |
-| 8 | eBPF capture path | deferred (plan §7 W11 — designated sacrifice) |
-| 9 | React dashboard | **done** (`iudbms-api` → http://127.0.0.1:8000) |
-| 10 | Evaluation harness + ablations | **done** |
-| — | Deployment: systemd services, install/verify/uninstall | **built**; verified off-repo from a wheel on macOS, systemd side pending the Linux VM — [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) |
+| Component | State |
+|---|---|
+| usbmon reader, features, Stage 1, Stage 2, policy, storage, API, dashboard | done |
+| systemd deployment | done; verified on a real Ubuntu 24.04 kernel ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)) |
+| Real-kernel testbed (4 distributions, 11 device types, replayed human input) | done — `testbed/` |
+| Real users on physical devices | tooling done (`scripts/field_capture.py`, [`docs/FIELD_CAPTURE.md`](docs/FIELD_CAPTURE.md)); no contributions yet |
+| Enforcement (THROTTLE / DEAUTHORIZE) | generated and logged; **not applied** (`ENFORCEMENT_REVIEWED = False`) |
+| eBPF capture | hook points verified (exact agreement with usbmon); not a capture backend |
 
-`prototype/` holds the Sprint-0 vertical slice (NumPy LSTM, synthetic data,
-dry-run enforcement) that milestone work is ported from and measured against.
-Its numbers are in [`out/metrics.json`](out/metrics.json) and are **not**
-project results — see the caveats in plan §10 and the defect list in
-`CLAUDE.md`.
+## Results (all regenerable; every number comes from a seeded script)
 
-## Quick start
+| Question | Answer | Script |
+|---|---|---|
+| Fresh simulated attacks detected (Corpus C, 600 sessions) | **74.7%** (448/600) at **0/3000** benign FP | `eval/analysis_calibration.py` |
+| ... before per-device-hour calibration | 82.7% (496/600) at 2/3000 FP | same |
+| Keyboard false alarms on fresh long sessions | **0.013 per hour** (1 in 80 h); 0.225 before calibration | same |
+| Attack families never seen in training (leave-one-out) | **68.2%** with the capability rule; 34.8% model alone | `eval/analysis_hybrid.py` |
+| Hand-written rules alone | 66.7% at 0/3000 FP | `eval/analysis_rules.py` |
+| Real-kernel testbed | see `out/testbed/report.json` (`python3 -m testbed.report`) | `testbed/` |
+
+What the learned model adds over the rules is one attack family — a device replaying a
+keystroke loop at human speed — and calibrating for a quiet working day halves that
+(95% → 48%). Neither the model nor the rules detect a payload typed once at human speed.
+
+## Reproduce
 
 ```bash
-make install                              # editable install + dev extras
-make test                                 # 371 tests
-make eval                                 # regenerate the Corpus-A numbers (~5 min cold)
-make train-deployed                       # train the deployed model set on realistic traffic
-python3 -m eval.leakage_audit             # plan §5 mandatory leakage audit
-python3 -m eval.run_eval --persist        # also populate out/iudbms.db
-make dashboard                            # operator dashboard on :8000 (evaluation DB)
-make demo                                 # replay: watch the loop close (any OS)
-make monitor-replay                       # the real monitor on a recorded capture -> out/live.db
-sudo iudbms-monitor                       # LIVE capture (Linux + root only)
-sudo ./deploy/install.sh --enable         # install as systemd services (docs/DEPLOYMENT.md)
-make demo-hard                            # the same, on the mimicry adversary
-make baseline                             # re-run the Sprint-0 prototype for comparison
+make install && make test                  # editable install; the test suite
+make eval                                  # Corpus-A numbers (the original study)
+make train-deployed                        # deployed model on Corpus B, calibrated per device-hour
+python3 -m eval.analysis_powered           # Corpus C (fresh, seed 2025)
+python3 -m eval.analysis_calibration       # operating point and threshold curve
+python3 -m eval.analysis_hybrid            # capability rule, leave-one-family-out
+python3 -m eval.analysis_transfer          # why unseen families fail (transfer matrix)
+python3 -m eval.model_card                 # docs/MODEL_CARD.md
+make testbed-images && make testbed        # real-kernel testbed (~2 h, needs QEMU)
+sudo ./deploy/install.sh --enable          # install on a Linux host
 ```
 
-## Measured results
+## Caveats that bound every claim
 
-Regenerate with `make eval` (seeded, ~115 s). Corpus: 1000 synthetic sessions,
-11,367,542 usbmon lines, 62,791 windows. Split by session, stratified
-by profile: fit=562 / val=140 / test=298. Deployed model uses
-28 of 29 features, K=10 window horizon.
-
-| model | window ROC-AUC | precision | recall | session detection |
-|---|---|---|---|---|
-| IUDBMS (Stage 1 + Stage 2) | 0.9762 | 0.999 | 0.749 | **89.2%** |
-| Stage 1 only (no temporal model) | 0.8847 | 0.985 | 0.145 | 15.8% |
-| Identity whitelist (USBGuard-style) | — | — | — | 0.0% |
-
-0.0% benign session false positives across 178
-benign test sessions; median latency 4.3 s.
-
-| attack | n | IUDBMS | Stage-1 only | median latency |
-|---|---|---|---|---|
-| `class_exfil` | 24 | 100% | 21% | 4.2 s |
-| `hid_injection` | 21 | 100% | 0% | 4.4 s |
-| `identity_switch` | 20 | 100% | 70% | 3.5 s |
-| `mimicry` | 15 | 93% | 0% | 24.4 s |
-| `mimicry_adaptive` | 20 | 40% | 0% | 51.2 s |
-| `staged_delay` | 20 | 100% | 0% | 4.3 s |
-
-### The two mimicry variants, and why they differ
-
-Both clone a keyboard descriptor and draw keystroke timing from the same
-distribution as a human operator. They differ in one respect:
-
-- **`mimicry`** cycles a short script, so its payload transitions exhaust
-  themselves. `payload_seq_novelty` catches this — **93%**.
-- **`mimicry_adaptive`** types a finite payload **once** and the device then
-  falls silent, which is what a real BadUSB does. No transition repeats, so that
-  feature has nothing to bite on. Detection is **40%** at
-  51 s, resting entirely on the sustained silence after the payload.
-
-The limiting case — a payload of unbounded length drawing fresh keycodes forever
-— is *statistically the benign keyboard process*, and a per-feature
-Kolmogorov–Smirnov scan finds zero of the 28 deployed features separate it. That
-is a bound on what single-device HID behaviour can reveal. The principled next
-defence is cross-device correlation: a human typing produces concurrent mouse
-activity, a BadUSB typing alone does not.
-
-Single-modality ablation (novelty pillar N1):
-
-| modality | features | window AUC | session detection |
-|---|---|---|---|
-| timing | 9 | 0.9662 | 77.5% |
-| payload | 8 | 0.9752 | 90.8% |
-| protocol | 6 | 0.9458 | 77.5% |
-| identity | 6 | 0.8884 | 39.2% |
-| **deployed (fused)** | **28** | **0.9762** | **89.2%** |
-
-## Honest caveats
-
-- Every number currently in the repo comes from **synthetic** traffic produced
-  by `prototype/simulator.py`. Real captures will be noisier.
-- Attack families are generated by the same code the feature set was designed
-  against, so per-profile detection rates are optimistic by construction.
-- The capture layer has not yet been validated against real `usbmon` output.
-  Four real line forms are known to be dropped by the Sprint-0 parser; see
-  `CLAUDE.md` § "Sprint-0 defects".
+- **Simulated training data.** Both attack and benign traffic for training come from a
+  simulator; Corpus B's typing is close to real people's on the measured statistics
+  (`eval/analysis_human_timing.py`) but not identical.
+- **Emulated devices.** The testbed's kernels and drivers are real; the devices are
+  QEMU's, driven by recorded (not live) human input. No physical device or live user.
+- **Attack realism.** Attacks are innocuous text typed with attack-shaped timing inside
+  disposable VMs. They are not real BadUSB hardware.
+- **Dry-run enforcement.** No device is ever deauthorised.
