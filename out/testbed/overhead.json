@@ -1,0 +1,1076 @@
+{
+ "distro": "debian-13",
+ "stick_mb": 16,
+ "bs_kib": 4,
+ "reps": 15,
+ "runs": [
+  {
+   "rep": 0,
+   "cond": "both",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.638663 s, 26.3 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.638999 s, 26.3 MB/s",
+   "write_MBps": 26.3,
+   "read_MBps": 26.3,
+   "cpu_jiffies": 143,
+   "ebpf_ns_per_call": 6574.205616526791,
+   "trace_lines": [
+    49568,
+    24785
+   ]
+  },
+  {
+   "rep": 0,
+   "cond": "none",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.428264 s, 39.2 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.425372 s, 39.4 MB/s",
+   "write_MBps": 39.2,
+   "read_MBps": 39.4,
+   "cpu_jiffies": 100,
+   "ebpf_ns_per_call": null,
+   "trace_lines": []
+  },
+  {
+   "rep": 0,
+   "cond": "ebpf_event",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.46708 s, 35.9 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.348758 s, 48.1 MB/s",
+   "write_MBps": 35.9,
+   "read_MBps": 48.1,
+   "cpu_jiffies": 116,
+   "ebpf_ns_per_call": 6027.074937451239,
+   "trace_lines": [
+    24783
+   ]
+  },
+  {
+   "rep": 0,
+   "cond": "usbmon",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.503427 s, 33.3 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.424864 s, 39.5 MB/s",
+   "write_MBps": 33.3,
+   "read_MBps": 39.5,
+   "cpu_jiffies": 121,
+   "ebpf_ns_per_call": null,
+   "trace_lines": [
+    49556
+   ]
+  },
+  {
+   "rep": 0,
+   "cond": "ebpf_count",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.346071 s, 48.5 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.468623 s, 35.8 MB/s",
+   "write_MBps": 48.5,
+   "read_MBps": 35.8,
+   "cpu_jiffies": 102,
+   "ebpf_ns_per_call": 5585.79056366219,
+   "trace_lines": []
+  },
+  {
+   "rep": 1,
+   "cond": "ebpf_count",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.588724 s, 28.5 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.513908 s, 32.6 MB/s",
+   "write_MBps": 28.5,
+   "read_MBps": 32.6,
+   "cpu_jiffies": 132,
+   "ebpf_ns_per_call": 5501.658822500807,
+   "trace_lines": []
+  },
+  {
+   "rep": 1,
+   "cond": "ebpf_event",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.552848 s, 30.3 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.470938 s, 35.6 MB/s",
+   "write_MBps": 30.3,
+   "read_MBps": 35.6,
+   "cpu_jiffies": 141,
+   "ebpf_ns_per_call": 5445.639797777163,
+   "trace_lines": [
+    24785
+   ]
+  },
+  {
+   "rep": 1,
+   "cond": "usbmon",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.560322 s, 29.9 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.638319 s, 26.3 MB/s",
+   "write_MBps": 29.9,
+   "read_MBps": 26.3,
+   "cpu_jiffies": 157,
+   "ebpf_ns_per_call": null,
+   "trace_lines": [
+    49560
+   ]
+  },
+  {
+   "rep": 1,
+   "cond": "both",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.571776 s, 29.3 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.583883 s, 28.7 MB/s",
+   "write_MBps": 29.3,
+   "read_MBps": 28.7,
+   "cpu_jiffies": 164,
+   "ebpf_ns_per_call": 5288.0077656321455,
+   "trace_lines": [
+    49564,
+    24783
+   ]
+  },
+  {
+   "rep": 1,
+   "cond": "none",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.648469 s, 25.9 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.591545 s, 28.4 MB/s",
+   "write_MBps": 25.9,
+   "read_MBps": 28.4,
+   "cpu_jiffies": 154,
+   "ebpf_ns_per_call": null,
+   "trace_lines": []
+  },
+  {
+   "rep": 2,
+   "cond": "ebpf_event",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.649161 s, 25.8 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.678603 s, 24.7 MB/s",
+   "write_MBps": 25.8,
+   "read_MBps": 24.7,
+   "cpu_jiffies": 178,
+   "ebpf_ns_per_call": 5169.019739689947,
+   "trace_lines": [
+    24785
+   ]
+  },
+  {
+   "rep": 2,
+   "cond": "ebpf_count",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.664617 s, 25.2 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.649489 s, 25.8 MB/s",
+   "write_MBps": 25.2,
+   "read_MBps": 25.8,
+   "cpu_jiffies": 188,
+   "ebpf_ns_per_call": 5130.254314403314,
+   "trace_lines": []
+  },
+  {
+   "rep": 2,
+   "cond": "none",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.64053 s, 26.2 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.656203 s, 25.6 MB/s",
+   "write_MBps": 26.2,
+   "read_MBps": 25.6,
+   "cpu_jiffies": 197,
+   "ebpf_ns_per_call": null,
+   "trace_lines": []
+  },
+  {
+   "rep": 2,
+   "cond": "usbmon",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.735119 s, 22.8 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.617187 s, 27.2 MB/s",
+   "write_MBps": 22.8,
+   "read_MBps": 27.2,
+   "cpu_jiffies": 184,
+   "ebpf_ns_per_call": null,
+   "trace_lines": [
+    49560
+   ]
+  },
+  {
+   "rep": 2,
+   "cond": "both",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.738343 s, 22.7 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.584691 s, 28.7 MB/s",
+   "write_MBps": 22.7,
+   "read_MBps": 28.7,
+   "cpu_jiffies": 221,
+   "ebpf_ns_per_call": 4897.7883099553965,
+   "trace_lines": [
+    49564,
+    24783
+   ]
+  },
+  {
+   "rep": 3,
+   "cond": "usbmon",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.749377 s, 22.4 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.747854 s, 22.4 MB/s",
+   "write_MBps": 22.4,
+   "read_MBps": 22.4,
+   "cpu_jiffies": 244,
+   "ebpf_ns_per_call": null,
+   "trace_lines": [
+    49556
+   ]
+  },
+  {
+   "rep": 3,
+   "cond": "ebpf_count",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.708072 s, 23.7 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.685297 s, 24.5 MB/s",
+   "write_MBps": 23.7,
+   "read_MBps": 24.5,
+   "cpu_jiffies": 210,
+   "ebpf_ns_per_call": 4684.82324093108,
+   "trace_lines": []
+  },
+  {
+   "rep": 3,
+   "cond": "none",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.672037 s, 25.0 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.722012 s, 23.2 MB/s",
+   "write_MBps": 25.0,
+   "read_MBps": 23.2,
+   "cpu_jiffies": 197,
+   "ebpf_ns_per_call": null,
+   "trace_lines": []
+  },
+  {
+   "rep": 3,
+   "cond": "both",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.675208 s, 24.8 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.703507 s, 23.8 MB/s",
+   "write_MBps": 24.8,
+   "read_MBps": 23.8,
+   "cpu_jiffies": 220,
+   "ebpf_ns_per_call": 4476.235943148175,
+   "trace_lines": [
+    49568,
+    24785
+   ]
+  },
+  {
+   "rep": 3,
+   "cond": "ebpf_event",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.964002 s, 17.4 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.74536 s, 22.5 MB/s",
+   "write_MBps": 17.4,
+   "read_MBps": 22.5,
+   "cpu_jiffies": 250,
+   "ebpf_ns_per_call": 4475.9721054203255,
+   "trace_lines": [
+    24779
+   ]
+  },
+  {
+   "rep": 4,
+   "cond": "usbmon",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.591123 s, 28.4 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.704153 s, 23.8 MB/s",
+   "write_MBps": 28.4,
+   "read_MBps": 23.8,
+   "cpu_jiffies": 199,
+   "ebpf_ns_per_call": null,
+   "trace_lines": [
+    49552
+   ]
+  },
+  {
+   "rep": 4,
+   "cond": "ebpf_count",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.779525 s, 21.5 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.479746 s, 35.0 MB/s",
+   "write_MBps": 21.5,
+   "read_MBps": 35.0,
+   "cpu_jiffies": 175,
+   "ebpf_ns_per_call": 4313.333777839735,
+   "trace_lines": []
+  },
+  {
+   "rep": 4,
+   "cond": "both",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.709931 s, 23.6 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.532691 s, 31.5 MB/s",
+   "write_MBps": 23.6,
+   "read_MBps": 31.5,
+   "cpu_jiffies": 204,
+   "ebpf_ns_per_call": 4180.002310696577,
+   "trace_lines": [
+    49493,
+    24785
+   ]
+  },
+  {
+   "rep": 4,
+   "cond": "ebpf_event",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.919487 s, 18.2 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.997279 s, 16.8 MB/s",
+   "write_MBps": 18.2,
+   "read_MBps": 16.8,
+   "cpu_jiffies": 322,
+   "ebpf_ns_per_call": 4174.921440773722,
+   "trace_lines": [
+    24779
+   ]
+  },
+  {
+   "rep": 4,
+   "cond": "none",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.772402 s, 21.7 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.79595 s, 21.1 MB/s",
+   "write_MBps": 21.7,
+   "read_MBps": 21.1,
+   "cpu_jiffies": 255,
+   "ebpf_ns_per_call": null,
+   "trace_lines": []
+  },
+  {
+   "rep": 5,
+   "cond": "ebpf_event",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.773423 s, 21.7 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.801958 s, 20.9 MB/s",
+   "write_MBps": 21.7,
+   "read_MBps": 20.9,
+   "cpu_jiffies": 263,
+   "ebpf_ns_per_call": 4037.3599354954868,
+   "trace_lines": [
+    24783
+   ]
+  },
+  {
+   "rep": 5,
+   "cond": "both",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.885132 s, 19.0 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.796443 s, 21.1 MB/s",
+   "write_MBps": 19.0,
+   "read_MBps": 21.1,
+   "cpu_jiffies": 304,
+   "ebpf_ns_per_call": 3984.382698630956,
+   "trace_lines": [
+    49568,
+    24785
+   ]
+  },
+  {
+   "rep": 5,
+   "cond": "ebpf_count",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 1.21061 s, 13.9 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 1.09819 s, 15.3 MB/s",
+   "write_MBps": 13.9,
+   "read_MBps": 15.3,
+   "cpu_jiffies": 371,
+   "ebpf_ns_per_call": 3989.898245189259,
+   "trace_lines": []
+  },
+  {
+   "rep": 5,
+   "cond": "none",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 1.1792 s, 14.2 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 1.09854 s, 15.3 MB/s",
+   "write_MBps": 14.2,
+   "read_MBps": 15.3,
+   "cpu_jiffies": 373,
+   "ebpf_ns_per_call": null,
+   "trace_lines": []
+  },
+  {
+   "rep": 5,
+   "cond": "usbmon",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.802717 s, 20.9 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 1.34691 s, 12.5 MB/s",
+   "write_MBps": 20.9,
+   "read_MBps": 12.5,
+   "cpu_jiffies": 348,
+   "ebpf_ns_per_call": null,
+   "trace_lines": [
+    49560
+   ]
+  },
+  {
+   "rep": 6,
+   "cond": "ebpf_event",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.504098 s, 33.3 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 1.02382 s, 16.4 MB/s",
+   "write_MBps": 33.3,
+   "read_MBps": 16.4,
+   "cpu_jiffies": 268,
+   "ebpf_ns_per_call": 3878.596626677289,
+   "trace_lines": [
+    24785
+   ]
+  },
+  {
+   "rep": 6,
+   "cond": "ebpf_count",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.917737 s, 18.3 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.455515 s, 36.8 MB/s",
+   "write_MBps": 18.3,
+   "read_MBps": 36.8,
+   "cpu_jiffies": 222,
+   "ebpf_ns_per_call": 3791.6856030608283,
+   "trace_lines": []
+  },
+  {
+   "rep": 6,
+   "cond": "both",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.854215 s, 19.6 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.825429 s, 20.3 MB/s",
+   "write_MBps": 19.6,
+   "read_MBps": 20.3,
+   "cpu_jiffies": 288,
+   "ebpf_ns_per_call": 3734.714163953992,
+   "trace_lines": [
+    49491,
+    24779
+   ]
+  },
+  {
+   "rep": 6,
+   "cond": "usbmon",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.834397 s, 20.1 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 1.35014 s, 12.4 MB/s",
+   "write_MBps": 20.1,
+   "read_MBps": 12.4,
+   "cpu_jiffies": 362,
+   "ebpf_ns_per_call": null,
+   "trace_lines": [
+    49556
+   ]
+  },
+  {
+   "rep": 6,
+   "cond": "none",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 1.04671 s, 16.0 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.832868 s, 20.1 MB/s",
+   "write_MBps": 16.0,
+   "read_MBps": 20.1,
+   "cpu_jiffies": 292,
+   "ebpf_ns_per_call": null,
+   "trace_lines": []
+  },
+  {
+   "rep": 7,
+   "cond": "usbmon",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.827631 s, 20.3 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.846924 s, 19.8 MB/s",
+   "write_MBps": 20.3,
+   "read_MBps": 19.8,
+   "cpu_jiffies": 275,
+   "ebpf_ns_per_call": null,
+   "trace_lines": [
+    49560
+   ]
+  },
+  {
+   "rep": 7,
+   "cond": "both",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.870949 s, 19.3 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.918389 s, 18.3 MB/s",
+   "write_MBps": 19.3,
+   "read_MBps": 18.3,
+   "cpu_jiffies": 318,
+   "ebpf_ns_per_call": 3578.92742734118,
+   "trace_lines": [
+    49261,
+    24785
+   ]
+  },
+  {
+   "rep": 7,
+   "cond": "none",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.906927 s, 18.5 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.457682 s, 36.7 MB/s",
+   "write_MBps": 18.5,
+   "read_MBps": 36.7,
+   "cpu_jiffies": 206,
+   "ebpf_ns_per_call": null,
+   "trace_lines": []
+  },
+  {
+   "rep": 7,
+   "cond": "ebpf_event",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.457188 s, 36.7 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 1.22655 s, 13.7 MB/s",
+   "write_MBps": 36.7,
+   "read_MBps": 13.7,
+   "cpu_jiffies": 299,
+   "ebpf_ns_per_call": 3469.1061865590564,
+   "trace_lines": [
+    24785
+   ]
+  },
+  {
+   "rep": 7,
+   "cond": "ebpf_count",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.711548 s, 23.6 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.883285 s, 19.0 MB/s",
+   "write_MBps": 23.6,
+   "read_MBps": 19.0,
+   "cpu_jiffies": 258,
+   "ebpf_ns_per_call": 3418.2622731849247,
+   "trace_lines": []
+  },
+  {
+   "rep": 8,
+   "cond": "usbmon",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.884422 s, 19.0 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.875393 s, 19.2 MB/s",
+   "write_MBps": 19.0,
+   "read_MBps": 19.2,
+   "cpu_jiffies": 306,
+   "ebpf_ns_per_call": null,
+   "trace_lines": [
+    49462
+   ]
+  },
+  {
+   "rep": 8,
+   "cond": "none",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.883914 s, 19.0 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.876517 s, 19.1 MB/s",
+   "write_MBps": 19.0,
+   "read_MBps": 19.1,
+   "cpu_jiffies": 299,
+   "ebpf_ns_per_call": null,
+   "trace_lines": []
+  },
+  {
+   "rep": 8,
+   "cond": "ebpf_event",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.644028 s, 26.1 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.873185 s, 19.2 MB/s",
+   "write_MBps": 26.1,
+   "read_MBps": 19.2,
+   "cpu_jiffies": 231,
+   "ebpf_ns_per_call": 3311.9300932277993,
+   "trace_lines": [
+    24781
+   ]
+  },
+  {
+   "rep": 8,
+   "cond": "ebpf_count",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.841711 s, 19.9 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.698183 s, 24.0 MB/s",
+   "write_MBps": 19.9,
+   "read_MBps": 24.0,
+   "cpu_jiffies": 258,
+   "ebpf_ns_per_call": 3265.658900936033,
+   "trace_lines": []
+  },
+  {
+   "rep": 8,
+   "cond": "both",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 1.17977 s, 14.2 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.795961 s, 21.1 MB/s",
+   "write_MBps": 14.2,
+   "read_MBps": 21.1,
+   "cpu_jiffies": 306,
+   "ebpf_ns_per_call": 3227.93942141275,
+   "trace_lines": [
+    37095,
+    24785
+   ]
+  },
+  {
+   "rep": 9,
+   "cond": "ebpf_count",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.475151 s, 35.3 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 1.48606 s, 11.3 MB/s",
+   "write_MBps": 35.3,
+   "read_MBps": 11.3,
+   "cpu_jiffies": 323,
+   "ebpf_ns_per_call": 3194.8765874088085,
+   "trace_lines": []
+  },
+  {
+   "rep": 9,
+   "cond": "both",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.840559 s, 20.0 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.666743 s, 25.2 MB/s",
+   "write_MBps": 20.0,
+   "read_MBps": 25.2,
+   "cpu_jiffies": 236,
+   "ebpf_ns_per_call": 3144.2938821383923,
+   "trace_lines": [
+    41829,
+    24781
+   ]
+  },
+  {
+   "rep": 9,
+   "cond": "ebpf_event",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 1.00018 s, 16.8 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 1.13668 s, 14.8 MB/s",
+   "write_MBps": 16.8,
+   "read_MBps": 14.8,
+   "cpu_jiffies": 391,
+   "ebpf_ns_per_call": 3128.8482292983776,
+   "trace_lines": [
+    24785
+   ]
+  },
+  {
+   "rep": 9,
+   "cond": "usbmon",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.685865 s, 24.5 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.513667 s, 32.7 MB/s",
+   "write_MBps": 24.5,
+   "read_MBps": 32.7,
+   "cpu_jiffies": 202,
+   "ebpf_ns_per_call": null,
+   "trace_lines": [
+    27550
+   ]
+  },
+  {
+   "rep": 9,
+   "cond": "none",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.983314 s, 17.1 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.646009 s, 26.0 MB/s",
+   "write_MBps": 17.1,
+   "read_MBps": 26.0,
+   "cpu_jiffies": 273,
+   "ebpf_ns_per_call": null,
+   "trace_lines": []
+  },
+  {
+   "rep": 10,
+   "cond": "usbmon",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.919217 s, 18.3 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 1.08892 s, 15.4 MB/s",
+   "write_MBps": 18.3,
+   "read_MBps": 15.4,
+   "cpu_jiffies": 343,
+   "ebpf_ns_per_call": null,
+   "trace_lines": [
+    44655
+   ]
+  },
+  {
+   "rep": 10,
+   "cond": "ebpf_event",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 1.04971 s, 16.0 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 1.01407 s, 16.5 MB/s",
+   "write_MBps": 16.0,
+   "read_MBps": 16.5,
+   "cpu_jiffies": 371,
+   "ebpf_ns_per_call": 2979.9548518524266,
+   "trace_lines": [
+    24785
+   ]
+  },
+  {
+   "rep": 10,
+   "cond": "ebpf_count",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 1.01898 s, 16.5 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.662443 s, 25.3 MB/s",
+   "write_MBps": 16.5,
+   "read_MBps": 25.3,
+   "cpu_jiffies": 288,
+   "ebpf_ns_per_call": 2947.446448639973,
+   "trace_lines": []
+  },
+  {
+   "rep": 10,
+   "cond": "none",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.840825 s, 20.0 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.958956 s, 17.5 MB/s",
+   "write_MBps": 20.0,
+   "read_MBps": 17.5,
+   "cpu_jiffies": 308,
+   "ebpf_ns_per_call": null,
+   "trace_lines": []
+  },
+  {
+   "rep": 10,
+   "cond": "both",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.64015 s, 26.2 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 1.02304 s, 16.4 MB/s",
+   "write_MBps": 26.2,
+   "read_MBps": 16.4,
+   "cpu_jiffies": 285,
+   "ebpf_ns_per_call": 2892.0779100430104,
+   "trace_lines": [
+    34278,
+    24783
+   ]
+  },
+  {
+   "rep": 11,
+   "cond": "none",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.718997 s, 23.3 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 1.56541 s, 10.7 MB/s",
+   "write_MBps": 23.3,
+   "read_MBps": 10.7,
+   "cpu_jiffies": 383,
+   "ebpf_ns_per_call": null,
+   "trace_lines": []
+  },
+  {
+   "rep": 11,
+   "cond": "ebpf_count",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.59072 s, 28.4 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 1.0524 s, 15.9 MB/s",
+   "write_MBps": 28.4,
+   "read_MBps": 15.9,
+   "cpu_jiffies": 294,
+   "ebpf_ns_per_call": 2839.5096745280616,
+   "trace_lines": []
+  },
+  {
+   "rep": 11,
+   "cond": "ebpf_event",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 1.06556 s, 15.7 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 1.07483 s, 15.6 MB/s",
+   "write_MBps": 15.7,
+   "read_MBps": 15.6,
+   "cpu_jiffies": 375,
+   "ebpf_ns_per_call": 2815.5315149145317,
+   "trace_lines": [
+    24785
+   ]
+  },
+  {
+   "rep": 11,
+   "cond": "usbmon",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.534378 s, 31.4 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.863507 s, 19.4 MB/s",
+   "write_MBps": 31.4,
+   "read_MBps": 19.4,
+   "cpu_jiffies": 244,
+   "ebpf_ns_per_call": null,
+   "trace_lines": [
+    19280
+   ]
+  },
+  {
+   "rep": 11,
+   "cond": "both",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 1.14032 s, 14.7 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 1.12557 s, 14.9 MB/s",
+   "write_MBps": 14.7,
+   "read_MBps": 14.9,
+   "cpu_jiffies": 411,
+   "ebpf_ns_per_call": 2763.119499143807,
+   "trace_lines": [
+    49232,
+    24783
+   ]
+  },
+  {
+   "rep": 12,
+   "cond": "none",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.60211 s, 27.9 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 1.10537 s, 15.2 MB/s",
+   "write_MBps": 27.9,
+   "read_MBps": 15.2,
+   "cpu_jiffies": 291,
+   "ebpf_ns_per_call": null,
+   "trace_lines": []
+  },
+  {
+   "rep": 12,
+   "cond": "usbmon",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 1.41112 s, 11.9 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 1.22038 s, 13.7 MB/s",
+   "write_MBps": 11.9,
+   "read_MBps": 13.7,
+   "cpu_jiffies": 479,
+   "ebpf_ns_per_call": null,
+   "trace_lines": [
+    46762
+   ]
+  },
+  {
+   "rep": 12,
+   "cond": "both",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 1.14403 s, 14.7 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.693916 s, 24.2 MB/s",
+   "write_MBps": 14.7,
+   "read_MBps": 24.2,
+   "cpu_jiffies": 341,
+   "ebpf_ns_per_call": 2697.5694551203214,
+   "trace_lines": [
+    49432,
+    24785
+   ]
+  },
+  {
+   "rep": 12,
+   "cond": "ebpf_event",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 1.07306 s, 15.6 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 1.13242 s, 14.8 MB/s",
+   "write_MBps": 15.6,
+   "read_MBps": 14.8,
+   "cpu_jiffies": 383,
+   "ebpf_ns_per_call": 2681.709175161135,
+   "trace_lines": [
+    24783
+   ]
+  },
+  {
+   "rep": 12,
+   "cond": "ebpf_count",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.722369 s, 23.2 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 1.11459 s, 15.1 MB/s",
+   "write_MBps": 23.2,
+   "read_MBps": 15.1,
+   "cpu_jiffies": 333,
+   "ebpf_ns_per_call": 2661.2046609027775,
+   "trace_lines": []
+  },
+  {
+   "rep": 13,
+   "cond": "usbmon",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 1.02395 s, 16.4 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.705914 s, 23.8 MB/s",
+   "write_MBps": 16.4,
+   "read_MBps": 23.8,
+   "cpu_jiffies": 311,
+   "ebpf_ns_per_call": null,
+   "trace_lines": [
+    49132
+   ]
+  },
+  {
+   "rep": 13,
+   "cond": "ebpf_event",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 1.1274 s, 14.9 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 1.09094 s, 15.4 MB/s",
+   "write_MBps": 14.9,
+   "read_MBps": 15.4,
+   "cpu_jiffies": 403,
+   "ebpf_ns_per_call": 2615.808376900282,
+   "trace_lines": [
+    24785
+   ]
+  },
+  {
+   "rep": 13,
+   "cond": "none",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.771966 s, 21.7 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 1.01169 s, 16.6 MB/s",
+   "write_MBps": 21.7,
+   "read_MBps": 16.6,
+   "cpu_jiffies": 314,
+   "ebpf_ns_per_call": null,
+   "trace_lines": []
+  },
+  {
+   "rep": 13,
+   "cond": "both",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.671087 s, 25.0 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.550149 s, 30.5 MB/s",
+   "write_MBps": 25.0,
+   "read_MBps": 30.5,
+   "cpu_jiffies": 226,
+   "ebpf_ns_per_call": 2563.271088205811,
+   "trace_lines": [
+    19789,
+    24783
+   ]
+  },
+  {
+   "rep": 13,
+   "cond": "ebpf_count",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 1.07059 s, 15.7 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.716034 s, 23.4 MB/s",
+   "write_MBps": 15.7,
+   "read_MBps": 23.4,
+   "cpu_jiffies": 314,
+   "ebpf_ns_per_call": 2538.5284061232796,
+   "trace_lines": []
+  },
+  {
+   "rep": 14,
+   "cond": "ebpf_event",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.734671 s, 22.8 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.946144 s, 17.7 MB/s",
+   "write_MBps": 22.8,
+   "read_MBps": 17.7,
+   "cpu_jiffies": 290,
+   "ebpf_ns_per_call": 2513.636502164364,
+   "trace_lines": [
+    24783
+   ]
+  },
+  {
+   "rep": 14,
+   "cond": "both",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.647585 s, 25.9 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.728585 s, 23.0 MB/s",
+   "write_MBps": 25.9,
+   "read_MBps": 23.0,
+   "cpu_jiffies": 256,
+   "ebpf_ns_per_call": 2489.5476103468686,
+   "trace_lines": [
+    46518,
+    24781
+   ]
+  },
+  {
+   "rep": 14,
+   "cond": "ebpf_count",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 1.10901 s, 15.1 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 0.836431 s, 20.1 MB/s",
+   "write_MBps": 15.1,
+   "read_MBps": 20.1,
+   "cpu_jiffies": 331,
+   "ebpf_ns_per_call": 2478.009536887167,
+   "trace_lines": []
+  },
+  {
+   "rep": 14,
+   "cond": "none",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.597683 s, 28.1 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 1.06153 s, 15.8 MB/s",
+   "write_MBps": 28.1,
+   "read_MBps": 15.8,
+   "cpu_jiffies": 310,
+   "ebpf_ns_per_call": null,
+   "trace_lines": []
+  },
+  {
+   "rep": 14,
+   "cond": "usbmon",
+   "write": "16777216 bytes (17 MB, 16 MiB) copied, 0.744974 s, 22.5 MB/s",
+   "read": "16777216 bytes (17 MB, 16 MiB) copied, 1.13697 s, 14.8 MB/s",
+   "write_MBps": 22.5,
+   "read_MBps": 14.8,
+   "cpu_jiffies": 334,
+   "ebpf_ns_per_call": null,
+   "trace_lines": [
+    36965
+   ]
+  }
+ ],
+ "bpftrace": true,
+ "bpftool": true,
+ "kernel": "6.12.111+deb13-arm64",
+ "device": "/dev/sda",
+ "summary": {
+  "none": {
+   "write_MBps": [
+    22.92,
+    6.23918492845248
+   ],
+   "read_MBps": [
+    22.046666666666667,
+    8.060828268915818
+   ],
+   "cpu_jiffies": [
+    263.46666666666664,
+    78.7526567956977
+   ],
+   "write_MBps_vs_none": 0.0,
+   "write_MBps_vs_none_ci": [
+    0.0,
+    0.0
+   ],
+   "read_MBps_vs_none": 0.0,
+   "read_MBps_vs_none_ci": [
+    0.0,
+    0.0
+   ]
+  },
+  "usbmon": {
+   "write_MBps": [
+    22.806666666666665,
+    5.859847227002554
+   ],
+   "read_MBps": [
+    21.526666666666667,
+    7.726065961282964
+   ],
+   "cpu_jiffies": [
+    273.93333333333334,
+    94.03910027723776
+   ],
+   "write_MBps_vs_none": 0.038845095632711706,
+   "write_MBps_vs_none_ci": [
+    -0.10189947280435936,
+    0.17953268549206966
+   ],
+   "read_MBps_vs_none": 0.019050918095494803,
+   "read_MBps_vs_none_ci": [
+    -0.1254781680979388,
+    0.17606011891756262
+   ]
+  },
+  "ebpf_count": {
+   "write_MBps": [
+    23.82,
+    8.989295221063138
+   ],
+   "read_MBps": [
+    23.993333333333332,
+    8.131022310234046
+   ],
+   "cpu_jiffies": [
+    253.26666666666668,
+    79.52759329464268
+   ],
+   "ebpf_ns_per_call": [
+    3756.0627370798825,
+    1068.7274157767354
+   ],
+   "write_MBps_vs_none": 0.05896903213980769,
+   "write_MBps_vs_none_ci": [
+    -0.09423063263204527,
+    0.23652043299997588
+   ],
+   "read_MBps_vs_none": 0.16171703003908067,
+   "read_MBps_vs_none_ci": [
+    -0.024163767223432275,
+    0.34584263557862355
+   ]
+  },
+  "ebpf_event": {
+   "write_MBps": [
+    23.14666666666667,
+    7.782018345121625
+   ],
+   "read_MBps": [
+    20.846666666666668,
+    9.361918810239908
+   ],
+   "cpu_jiffies": [
+    285.4,
+    91.61550087185029
+   ],
+   "ebpf_ns_per_call": [
+    3781.673967557543,
+    1100.1495732500864
+   ],
+   "write_MBps_vs_none": 0.07236463463326276,
+   "write_MBps_vs_none_ci": [
+    -0.1337799654708712,
+    0.3209780197289966
+   ],
+   "read_MBps_vs_none": -0.016176046198866388,
+   "read_MBps_vs_none_ci": [
+    -0.16210104021307006,
+    0.11538475116230065
+   ]
+  },
+  "both": {
+   "write_MBps": [
+    21.686666666666667,
+    4.754827121187579
+   ],
+   "read_MBps": [
+    23.6,
+    5.0118431169153155
+   ],
+   "cpu_jiffies": [
+    261.53333333333336,
+    70.2351831519001
+   ],
+   "ebpf_ns_per_call": [
+    3766.1388734864117,
+    1162.077512902762
+   ],
+   "write_MBps_vs_none": -0.012469485440732809,
+   "write_MBps_vs_none_ci": [
+    -0.1411369180235183,
+    0.10796783797836713
+   ],
+   "read_MBps_vs_none": 0.16629037327625623,
+   "read_MBps_vs_none_ci": [
+    0.004327142599871325,
+    0.33818511808231283
+   ]
+  }
+ }
+}

@@ -163,7 +163,7 @@ def run(par, text, *, italic=None, bold=None, small_caps=None, size=None):
 OLD2KEY = {1: "shen", 2: "bintang", 3: "kosto", 4: "rajurkar", 5: "song", 6: "baek",
            7: "hnamte", 8: "saini", 9: "raja", 10: "anwar", 11: "shannon", 12: "nohl",
            13: "goodusb", 14: "usbfilter", 15: "usblock", 16: "huang", 17: "iforest",
-           18: "lstm"}
+           18: "lstm", 19: "dhakal", 20: "killourhy", 21: "balabit", 22: "hidspec"}
 REF_NO: dict[str, int] = {}
 
 
@@ -344,9 +344,9 @@ sec0.top_margin, sec0.bottom_margin = Inches(0.75), Inches(1.0)
 sec0.header_distance = sec0.footer_distance = Inches(0.4)
 set_columns(sec0, 1)
 
-para("IEEE Title",
-     "Intelligent USB Device Behaviour Monitoring System (IUDBMS): "
-     "A Behaviour-Based Approach to Runtime USB Peripheral Trust")
+TITLE = ("IUDBMS: Behaviour-Based Runtime Trust for USB Peripherals, a Simulation-Based "
+         "Proof of Concept Evaluated on Real Linux Kernels")
+para("IEEE Title", TITLE)
 
 AUTHORS = [("Darsh Sharma", "24BDS0082"),
            ("Devansh Bramha", "24BCE0646"),
@@ -372,926 +372,694 @@ author_line("IEEE Affiliation", [f"Reg. No. {r}" for _, r in AUTHORS])
 new_section(2)
 
 # ---------------------------------------------------------------- numbers
-RB = load("analysis_realistic_v2.json")
+CAL = load("analysis_calibration.json")
+SFP = load("analysis_session_fp.json")
+LONG = load("analysis_long_sessions.json")
+ROBF = load("analysis_robust_features.json")
+HYB = load("analysis_hybrid.json")
+TR = load("analysis_transfer.json")
+HT = load("analysis_human_timing.json")
+POLL = load("analysis_polling.json")
 LOPO = load("analysis_lopo.json")
-GATES = load("analysis_gates.json")
-VARS = load("analysis_variants.json")
-ROB = load("analysis_robustness.json")
-AUG = load("analysis_augment.json")
-IDLE = load("analysis_idle.json")
+RB = load("analysis_realistic_v2.json")
+MC = load("model_card.json")
+TB = load("testbed/report.json")
+OVH = load("testbed/overhead.json")
+TABLE_ORDER[:] = (["families", "features", "settings", "timing", "data", "simdetect",
+                   "operating", "transfer", "envs", "realkernel"]
+                  + (["overhead"] if OVH else []) + ["claims"])
+DEP = json.loads((OUT_DIR / "models" / "deploy.json").read_text())
 
-FAMS = ["hid_injection", "identity_switch", "staged_delay", "class_exfil", "mimicry",
+FAMS = ["hid_injection", "staged_delay", "identity_switch", "class_exfil", "mimicry",
         "mimicry_adaptive"]
+FAST = ["hid_injection", "staged_delay", "identity_switch"]
+before, after = CAL["fresh_before"], CAL["fresh_after"]
+cb, ca = before["corpus_c"], after["corpus_c"]
+kb_b, kb_a = before["keyboard"], after["keyboard"]
+sfp_old, sfp_new = SFP["rows"][0], SFP["rows"][-1]
+lopo_m, lopo_h = HYB["lopo_mean"]["model"], HYB["lopo_mean"]["hybrid"]
 seen_mean = sum(LOPO[f]["full"][0] for f in FAMS) / len(FAMS)
-unseen_mean = sum(LOPO[f]["unseen"][0] for f in FAMS) / len(FAMS)
-or_mean = sum(LOPO[f]["unseen_or_s1"][0] for f in FAMS) / len(FAMS)
-s1_mean = sum(LOPO[f]["stage1"][0] for f in FAMS) / len(FAMS)
-fp_fresh = LOPO["benign_fp_full"]
-fp_or = sum(LOPO[f]["fp_unseen_or_s1"] for f in FAMS) / len(FAMS)
-fp_unseen = sum(LOPO[f]["fp_unseen"] for f in FAMS) / len(FAMS)
-orig_fp = RB["overall"]["original"]["fp"]
-real_o, real_r = RB["real"]["original"], RB["real"]["realistic"]
+tb_tot = TB["benign_total"]
+tb_att = TB["attack_summary"]
+n_att_tb = sum(v["n"] for v in tb_att.values())
+fast_n = sum(tb_att[f]["n"] for f in FAST)
+fast_dep = sum(tb_att[f]["deployed"] for f in FAST)
+fast_rule = sum(tb_att[f]["rule"] for f in FAST)
+fast_prev = sum(tb_att[f]["model_previous"] for f in FAST)
+model_cal_all = sum(v["model_calibrated"] for v in tb_att.values())
+mim_n = sum(tb_att[f]["n"] for f in ("mimicry", "mimicry_adaptive"))
+mim_dep = sum(tb_att[f]["deployed"] for f in ("mimicry", "mimicry_adaptive"))
+kbd_role = TB["benign_by_role"]["keyboard"]
+tb_lat = sorted(a["latency_s"] for a in TB["attacks"] if a["latency_s"] is not None)
+tb_lat_med = tb_lat[len(tb_lat) // 2]
+dists = TB["distributions"]
+tb_minutes = sum(d["minutes"] for d in dists.values())
+tb_lines = sum(d["usbmon_lines"] for d in dists.values())
+tb_unparsed = sum(d["unparsed"] for d in dists.values())
+tb_keys = sum(d["keys_typed"] for d in dists.values())
+long_kbd = LONG["benign"]["keyboard"]["alarms_per_device_hour"]
+det_a = M["full_system"]["session"]["attack_detect"]
+s1_a = M["stage1_only"]["session"]["attack_detect"]
+orig_fp_b = RB["overall"]["original"]["fp"]
+human = HT["aalto"]
 
-det = M["full_system"]["session"]["attack_detect"]
-fp = M["full_system"]["session"]["benign_fp"]
-auc = M["full_system"]["window"]["auc"]
-s1_det = M["stage1_only"]["session"]["attack_detect"]
 
-ebpf_ratio = None
-if EBPF_IDLE and EBPF_BUSY:
-    ebpf_ratio = round(EBPF_BUSY["ebpf"]["completions_at_giveback_hook"]
-                       / max(EBPF_IDLE["ebpf"]["completions_at_giveback_hook"], 1))
+def kn(k, n):
+    return f"{k}/{n} ({100 * k / n:.1f}%)" if n else "—"
+
 
 # ---------------------------------------------------------------- abstract
 ABSTRACT = (
-    "USB hosts accept a peripheral’s self-reported identity, and BadUSB attacks exploit "
-    "that trust to inject keystrokes within seconds. Identity checks at connection time "
-    "cannot judge what a device does afterwards. We present IUDBMS, which trusts a device by "
-    "its observed behaviour. It reads USB request blocks from the Linux kernel, condenses "
-    "each second into a feature vector, scores it with an Isolation Forest and a per-device "
-    "baseline, and feeds that score to an LSTM over ten-second sequences. Enforcement runs "
-    f"in dry-run only. On a simulated corpus it detects {pct(det)} of attack sessions with "
-    f"{pct(fp)} benign false positives, but that corpus had no idle devices: once they idle, "
-    f"the model flags {pct(orig_fp)} of benign sessions. Retrained on realistic traffic it "
-    f"detects {pct(seen_mean)} of attacks at {fp_fresh:.2%} false positives on 3,600 fresh "
-    f"sessions, against {pct(RULEJ['all three rules']['mean'])} at none for three "
-    f"hand-written rules, and only {pct(unseen_mean)} of families it never saw. On a live "
-    "Linux guest the original model revoked a typing keyboard and the retrained one did not. "
-    "Of four novelty claims, one is supported, one partly, one not, and one untested."
+    "USB hosts trust what a peripheral declares, so a BadUSB device that declares itself a "
+    "keyboard can type a payload seconds after it is plugged in. IUDBMS judges devices by "
+    "behaviour instead. It reads the Linux usbmon stream, summarises each device-second as "
+    "30 features, scores them with an Isolation Forest and an LSTM over ten-second "
+    "sequences, and alarms when four of six seconds look malicious. Enforcement is generated "
+    "but not applied, and the models are trained on simulated traffic, so the work is a "
+    "simulation-based proof of concept. On 3,600 fresh simulated sessions, with the alarm "
+    "threshold calibrated to 0.01 false alarms per device-hour, it detects "
+    f"{ca['detect_k']} of {ca['n_attack']} attack sessions ({pct(ca['detect'])}) with no false "
+    f"alarm in {ca['n_benign']:,} benign ones. A typing-speed bound measured on 1,972 people raises "
+    f"detection of attack families withheld from training from {pct(lopo_m)} to "
+    f"{pct(lopo_h)}. On four Linux distributions with emulated devices driven by recorded "
+    f"human input, none of {int(tb_tot['devices'])} benign devices alarmed in "
+    f"{tb_tot['hours']:.0f} device-hours and "
+    f"{fast_dep} of {fast_n} fast injection attacks were caught, but by the speed bound: "
+    f"the learned model alone caught {model_cal_all} of {n_att_tb}, and human-paced attacks "
+    "went undetected."
 )
 n_words = len(re.findall(r"\S+", ABSTRACT))
-assert n_words <= 199, f"abstract is {n_words} words; IEEE allows at most 200"
+assert n_words <= 200, f"abstract is {n_words} words; IEEE allows at most 200"
 print(f"  abstract: {n_words} words")
 
 p = doc.add_paragraph(style="IEEE Abstract")
 run(p, "Abstract", italic=True)
 run(p, "—" + ABSTRACT)
-
 p = doc.add_paragraph(style="IEEE Abstract")
 run(p, "Index Terms", italic=True)
-run(p, "—BadUSB, behavioural anomaly detection, eBPF, Isolation Forest, kernel "
-       "enforcement, LSTM, USB security, usbmon.")
+run(p, "—BadUSB, behavioural anomaly detection, false alarms per device-hour, HID, "
+       "Isolation Forest, LSTM, USB security, usbmon.")
 
 # ---------------------------------------------------------------- I
 h1("I", "Introduction")
-body("USB has been the standard way to attach peripherals since 1996, and plug-and-play "
-     "convenience is the reason. That convenience hides a weakness: the host trusts what a "
-     "device says about itself. During enumeration a device reports its Vendor ID (VID), "
-     "Product ID (PID) and interface descriptors, and the host accepts them with no "
-     "cryptographic attestation.")
-body("BadUSB attacks [12] exploit this. Altered firmware lets a flash drive or a charging cable "
-     "declare itself a Human Interface Device (HID) keyboard and type a stored payload the "
-     "moment it is plugged in. Hosts trust HID input by default, so the payload gets past "
-     "file-based antivirus and runs within seconds.")
-body("Most defences check identity at connection time. They allowlist VID/PID pairs, ask the "
-     "user to confirm a device’s role, or apply static kernel filter rules. None of them "
-     "looks at what the device does once it is running. A device that copies an allowed "
-     "identity, or misbehaves inside an approved role, passes every one of these checks.")
-body("IUDBMS (Intelligent USB Device Behaviour Monitoring System) moves the decision from "
-     "connection time to run time. It captures USB Request Blocks (URBs) at the kernel "
-     "boundary, turns each device’s traffic into one feature vector per second, and scores "
-     "those vectors in two stages. An unsupervised Isolation Forest [17] asks whether this "
-     "second looks normal for the device class. An LSTM [18] asks whether the last ten seconds look like an "
-     "attack unfolding. A graduated policy then rate-limits or revokes the device when the "
-     "evidence persists.")
-body("This paper makes six contributions.")
-item("1)", "A complete behavioural pipeline from usbmon capture to a dry-run enforcement "
-           "policy, with every stage tested.")
-item("2)", "Four novelty claims, each given a purpose-built experiment with its pass "
-           "criterion fixed in advance. Temporal modelling is strongly supported, fusion "
-           "only partly, and the per-device baseline not at all.")
-item("3)", "A realism stress test. Our first corpus had benign devices that never went idle. "
-           "That inflated the headline result and taught the model to flag any quiet "
-           "keyboard. We rebuild the corpus, retrain, and report what survives.")
-item("4)", "A baseline of three hand-written rules with no learning. They detect "
-           f"{pct(RULEJ['all three rules']['mean'])} of attacks at no false positives, so the "
-           f"learned system’s measured gain over them is {100 * (seen_mean - RULEJ['all three rules']['mean']):.0f} "
-           "points, all of it in one attack family.")
-item("5)", "A leave-one-family-out test of how the system handles attacks it was not trained "
-           f"on: detection falls from {pct(seen_mean)} to {pct(unseen_mean)}.")
-item("6)", "Validation against real kernel output, including an eBPF capture prototype. "
-           "It exposed defects that the 385 simulator-driven tests then in the suite had missed.")
-body("Sections II to IV review the literature, derive the research gap and novelty, and "
-     "state the objectives. Section V describes the architecture and the experimental "
-     "setup. Section VI reports the results, and Section VII states what they do not show.")
+body("A USB host believes what a device says about itself. During enumeration the device "
+     "reports its vendor and product identifiers and its interfaces, and the host binds "
+     "drivers to them with no attestation. BadUSB [12] turns this into an attack: "
+     "reprogrammed firmware lets a flash drive or a cable declare a keyboard and type a "
+     "stored payload as soon as it is plugged in. The operating system treats those "
+     "keystrokes as a person’s, so the payload runs with the user’s privileges.")
+body("Defences in use today check identity. Allowlists admit devices by class and "
+     "identifier [1], GoodUSB asks the user which functions a device should have [13], and "
+     "USBFILTER enforces packet rules in the USB stack [14]. A device that copies an allowed "
+     "identity passes all of them. Behavioural monitors exist for keystrokes [2], [15], but "
+     "they are rule- or threshold-based, and the learned temporal models that work well "
+     "for network intrusion detection [6]–[10] have not been applied to the event stream of a "
+     "single USB device. Where learned detectors are evaluated, the figures are per window "
+     "or per short session on synthetic or benchmark traffic. A monitor watches each device "
+     "for a working day, so the number that matters to an operator is false alarms per "
+     "device-hour, and a model trained on simulated USB traffic has to be checked against "
+     "real kernel output before any result means much.")
+body("IUDBMS is our attempt to close that gap, and this paper reports how far it gets. It "
+     "is a Linux monitor that reads every USB request block (URB) through usbmon, scores "
+     "each device once a second, and escalates through a persistence gate. The "
+     "contributions are listed once here, each with the scope of its evidence:")
+item("1)", "<i>A working pipeline</i> (implemented): capture, features, a two-stage "
+           "detector, a gated policy, storage, dashboard and systemd services, running on "
+           "real kernels. Enforcement is generated but not applied.")
+item("2)", "<i>Operating-point calibration in false alarms per device-hour</i> (simulation): "
+           "a per-window false-positive target does not predict session-level false alarms "
+           "(the independence model is off by a factor of millions), so the threshold is "
+           "chosen on gate firings over long benign sessions.")
+item("3)", "<i>A human-capability bound</i> (simulation and real kernels): the fastest "
+           "sustained typing of 1,972 people, used as a second gate beside the model. It "
+           "explains and partly repairs the failure on unseen attack families.")
+item("4)", "<i>A real-kernel testbed</i> (four distributions, 11 emulated USB device types, "
+           "recorded human input) and what it showed: the learned model did not transfer at "
+           "a usable operating point, and declining to judge device types the model never "
+           "saw removes false alarms without losing keystroke coverage.")
+item("5)", "<i>Negative results with their pre-registered criteria</i>, including two "
+           "candidate improvements that were measured and not adopted.")
+body("Section II reviews related work. Section III fixes the threat model and the terms used "
+     "throughout. Section IV describes the system, Section V the evaluation method and "
+     "Section VI the results. Section VII separates what is proposed, implemented and "
+     "supported, Section VIII lists the limitations, and Section IX concludes.")
 
 # ---------------------------------------------------------------- II
-h1("II", "Literature Review")
-body("The literature falls into three strands: the USB attack surface and defences against "
-     "malicious peripherals, eBPF as a way to observe and enforce at kernel level, and "
-     "deep-learning methods for anomalies that unfold over time. IUDBMS sits where the "
-     "three meet.")
-
-h2("A", "USB Peripheral Security and BadUSB Defences")
-body("Shen et al. [1] proposed WMUD, a whitelist method for USB redirection in virtual "
-     "desktops (QEMU/SPICE). Server-side filter rules keyed on device class, VID and PID "
-     "admit only permitted devices, and the client cannot tamper with them. That shows the "
-     "value of protected, per-asset policy. It is still an identity allowlist, though. A "
-     "device that presents an allowed identifier is admitted whatever it does next, and "
-     "the scheme covers virtualised redirection, not the defence of a physical host.")
-body("Bintang et al. [2] proposed SafeUSB, a Windows keystroke monitor that combines an "
-     "inter-keystroke timing threshold with content analysis, flagging typed keywords such "
-     "as <i>POWERSHELL</i> and <i>CMD.EXE</i>. It blocks most injection scenarios. The "
-     "authors also report a delay of about one second between HID connection and the "
-     "start of monitoring, long enough for a short payload to finish, and they suggest "
-     "compiled, kernel-level hooks as future work. That is the direction IUDBMS takes.")
-body("Host-side work goes beyond allowlisting inside the Linux kernel. GoodUSB [13] mediates "
-     "the USB stack and grants a device only the functions the user expects of it. USBFILTER "
-     "[14] instruments the stack between the drivers and the host controller and filters "
-     "packets by rule, at a cost of a few microseconds per packet. USBlock [15] is the "
-     "closest to our setting: it detects keystroke-injection devices from the temporal "
-     "characteristics of the packets they generate. Huang et al. [16] look higher up and "
-     "identify HID-based attacks from the process events on the host. We know these works "
-     "from their published descriptions, and as far as we can tell none of them learns a "
-     "model of each device or models a device’s behaviour over a sequence of windows.")
-body("Read together, [1] and [2] show part of the gap. WMUD’s tamper-resistant policy is bound "
-     "to identity, and SafeUSB’s behavioural analysis is held back by its place in userspace "
-     "and its activation delay. USBFILTER [14] shows that kernel-level USB filtering is "
-     "already established, and USBlock [15] shows that packet timing alone exposes many "
-     "injection devices, a point our own rule baseline in Section VI-F supports.")
-
-h2("B", "eBPF for Kernel-Level Observability and Enforcement")
-body("eBPF lets verified bytecode run inside the Linux kernel, which gives "
-     "userspace-authored logic fine-grained observation and enforcement at kernel speed. "
-     "Song’s survey [5] traces its core mechanics: the in-kernel virtual machine, JIT "
-     "compilation, and the static verifier that guarantees bounded, memory-safe execution. "
-     "It also follows eBPF’s growth from packet filtering into tracing and security, and "
-     "notes the remaining limits on verification complexity and program size.")
-body("Kostopoulos et al. [3] presented eIDPS, a real-time eBPF and machine-learning "
-     "pipeline for network intrusion detection and prevention at line rate. Rajurkar and "
-     "Deshmukh [4] survey the field and identify its dominant pattern: <i>hybrid designs "
-     "that extract features in the kernel and leave ML inference to userspace</i>, "
-     "coordinated through shared BPF maps. They list verifier constraints, portability and "
-     "ML integration as open problems.")
-body("Together [3]–[5] establish eBPF as a proven substrate for sub-microsecond observation "
-     "and enforcement, and the kernel-extract, userspace-infer split as the accepted way to "
-     "pair kernel speed with ML expressiveness. But this work is about <i>network</i> "
-     "intrusion detection. To our knowledge, applying the pattern to the <i>USB</i> subsystem, "
-     "with URBs as the unit of observation and driver binding as the enforcement point, "
-     "has not been done.")
-
-h2("C", "Deep Learning for Behavioural and Temporal Anomaly Detection")
-body("LSTM networks suit anomalies whose signal lies in temporal structure rather than in any "
-     "single moment. Hnamte et al. [7] proposed LSTM-AE, which hybridises an LSTM with an "
-     "auto-encoder for network intrusion detection. They validate it on several public "
-     "datasets and argue for two-stage designs that separate detection from classification.")
-body("Baek and Jung [6] also decouple anomaly detection from attack classification. A binary "
-     "focal-loss stage filters anomalies out of heavily imbalanced traffic, and a "
-     "multi-class stage then names the attack, with both stages sharing a CNN-1D-LSTM "
-     "backbone. IUDBMS’s own layering follows the same staged idea. Saini et al. [8] "
-     "reinforce the value of hybrid <i>CNN–LSTM</i> architectures for network threat "
-     "detection.")
-body("Two further works target novel and slow-developing attacks. Chithik Raja and Al Mahri "
-     "[9] applied an attention-enhanced LSTM to zero-day detection across process, network "
-     "and file-system telemetry, showing that behaviour-based temporal models can "
-     "generalise to unseen threats. Mohamed Anwar et al. [10] used LSTM-based anomaly "
-     "detection on IIoT systems against DDoS, spoofing and ransomware, and beat Random "
-     "Forest, Logistic Regression and 1D-CNN baselines at low latency.")
-body("Collectively, [6]–[10] show that LSTM-based temporal models catch multi-stage and "
-     "zero-day behaviour within real-time budgets, and that layered designs balance recall "
-     "against discrimination. As far as we found, none of them applies a learned temporal "
-     "model to the event stream of a single USB peripheral, which is what IUDBMS does.")
+h1("II", "Related Work")
+h2("A", "USB Peripheral Security")
+body("Shen et al. [1] proposed WMUD, a server-side allowlist for USB redirection to virtual "
+     "desktops. It keys policy on class and identifier, which shows the value of "
+     "tamper-resistant policy but admits any device that presents an allowed identity. "
+     "GoodUSB [13] mediates the Linux USB stack and grants a device only the functions the "
+     "user expects. USBFILTER [14] filters packets between drivers and the host controller "
+     "at a cost of microseconds per packet. These are identity- or rule-based.")
+body("Closer to our setting, SafeUSB [2] monitors keystrokes on Windows with an "
+     "inter-keystroke timing threshold and keyword matching, and reports roughly one second "
+     "between connection and the start of monitoring. USBlock [15] detects injection devices "
+     "from the timing of the packets they send, and Huang et al. [16] identify HID attacks "
+     "from host process events. As far as we can tell from their descriptions, none of "
+     "these learns a per-device model or models a device’s behaviour over a sequence of "
+     "windows, and none reports false alarms per device-hour.")
+h2("B", "eBPF for Kernel Observability")
+body("eBPF runs verified programs inside the Linux kernel. Song [5] surveys its mechanics "
+     "and limits, Kostopoulos et al. [3] build a real-time eBPF and machine-learning network "
+     "intrusion system, and Rajurkar and Deshmukh [4] identify the common pattern of "
+     "extracting features in the kernel and inferring in userspace. This work is about "
+     "networks; we use the same pattern on USB, with usbmon as the deployed capture and an "
+     "eBPF counting prototype measured against it.")
+h2("C", "Temporal Models for Behavioural Anomalies")
+body("LSTM networks [18] suit anomalies that lie in temporal structure. Hnamte et al. [7] "
+     "combine an LSTM with an auto-encoder for network intrusion detection, Baek and Jung [6] "
+     "separate anomaly detection from attack classification in two stages, and Saini et "
+     "al. [8] use CNN–LSTM hybrids. Chithik Raja and Al Mahri [9] and Mohamed Anwar et al. "
+     "[10] report LSTM-based detection of zero-day and IIoT attacks. Isolation Forests [17] "
+     "are a standard unsupervised first stage. None of this work applies a learned temporal "
+     "model to one USB device’s URB stream, and none tests transfer from simulated to real "
+     "kernel traffic, which is where Section VI-D finds the largest gap.")
 
 # ---------------------------------------------------------------- III
-h1("III", "Inferences from the Literature")
-body("The USB-defence work [1], [2] establishes the threat and the value of behavioural "
-     "analysis, but stays tied to identity or to userspace latency. The eBPF work [3]–[5] "
-     "provides a fast, verifiable kernel mechanism, almost entirely for networks. The "
-     "deep-learning work [6]–[10] shows that layered LSTM models catch temporally "
-     "structured, zero-day behaviour in real time, but never on the USB event stream. "
-     "IUDBMS occupies the space these three strands leave open.")
-
-h2("A", "Problem Statement")
-body("USB’s trust-by-default enumeration lets a malicious peripheral declare a trusted "
-     "identity, typically an HID keyboard, and abuse it to inject commands at machine "
-     "speed. The host can be compromised within seconds. Existing defences authenticate "
-     "<i>claimed identity</i> at connection and do not continuously judge <i>actual "
-     "behaviour</i>. Devices that spoof an allowed identifier, or misbehave inside an "
-     "approved role, evade them, and existing behavioural monitors run in userspace, whose "
-     "activation delay lets short payloads succeed. A defence is needed that (a) trusts "
-     "devices by observed behaviour, not declared identity, (b) enforces at the "
-     "kernel/driver boundary to remove round-trip latency, and (c) detects staged, "
-     "slow-escalation attacks as well as single-point anomalies.")
-
-h2("B", "Research Gap")
-item("1)", "<i>Identity-bound trust.</i> Allowlisting (for example WMUD [1]) admits devices by "
-           "class, VID and PID, and is blind to spoofed identities or misuse within an "
-           "approved role.")
-item("2)", "<i>Userspace activation latency.</i> SafeUSB [2] shows that runtime analysis "
-           "works, but its userspace placement adds a delay of about one second that short "
-           "payloads exploit.")
-item("3)", "<i>Network-only kernel intelligence.</i> The eBPF-plus-ML pattern (eIDPS [3]; "
-           "Rajurkar and Deshmukh [4]) is mature for networks and unapplied to USB, where "
-           "the natural unit is the URB and the natural enforcement point is driver binding.")
-item("4)", "<i>No learned temporal model of USB behaviour.</i> LSTM and attention models "
-           "[6]–[10] catch staged and zero-day attacks in network and IIoT settings. The USB "
-           "defences we found use rules or timing analysis [2], [14], [15], not a learned "
-           "model of a device’s event sequence over time.")
-item("5)", "<i>Open enforcement loop.</i> Existing behavioural detectors alert or block from "
-           "userspace after a round trip. None closes the loop inside the kernel.")
-
-h2("C", "Novelty of IUDBMS")
-body("The underlying techniques already exist: eBPF capture [3]–[5], unsupervised anomaly "
-     "scoring, and LSTM temporal modelling [6]–[10]. The novelty of IUDBMS is their "
-     "<i>combination and application</i>, a single per-device, closed-loop pipeline aimed at "
-     "the USB subsystem, which to our knowledge no eBPF-ML or LSTM-anomaly work addresses "
-     "and no USB defence implements in this form. Two neighbours narrow the claim. USBFILTER "
-     "[14] already enforces inside the USB stack, and USBlock [15] already detects injection "
-     "from packet timing, so what is new is the learned per-device scoring and sequence model "
-     "that would drive a verdict, not kernel-level filtering or timing analysis as such. Each "
-     "element below answers a gap from Section III-B and is tested in Section VI-C. The "
-     "numbering follows §3.3 of the Review 1 submission.")
-item("N1)", "<i>Multi-modal feature fusion at the kernel/driver boundary.</i> Event timing, "
-            "traffic volume and descriptor changes are fused into one feature stream. This "
-            "carries the eBPF-ML pattern [3], [4] into USB and answers the network-only gap.")
-item("N2)", "<i>Per-device adaptive behavioural baselines.</i> Each device is scored against "
-            "its own learned norm instead of a global rule set, which answers the "
-            "identity-bound gap left by WMUD [1].")
-item("N3)", "<i>Closed-loop kernel-level enforcement.</i> Verdicts such as rate-limiting or "
-            "unbinding execute without a userspace round trip, which answers SafeUSB’s [2] "
-            "activation latency and the open-loop gap.")
-item("N4)", "<i>Temporal sequence modelling for staged attacks.</i> A userspace LSTM reads "
-            "rolling event windows and catches slow-escalation attacks that single-point "
-            "detectors miss, bringing temporal modelling [6]–[10] to USB.")
-
-h2("D", "Relationship to the Reference Framework")
-body("The reference framework is a kernel-level eBPF security framework that filters "
-     "peripherals against human-written rules at the host-controller boundary, with "
-     "sub-microsecond overhead. IUDBMS keeps its central insight, that the kernel/driver "
-     "boundary is the right place to enforce, and replaces its static, "
-     "administrator-written rules with <i>behavioural intelligence learned from traffic</i>: "
-     "per-device baselines and anomaly scoring backed by a userspace LSTM. In short, "
-     "it keeps the fast, verifiable enforcement substrate and adds the adaptive "
-     "capability the framework does not attempt, moving from <i>rules an administrator "
-     "must foresee</i> to <i>behaviour the system learns</i>. No experiment here is run "
-     "against the reference framework; it is discussed only to position the contribution.")
+h1("III", "Threat Model, Scope and Terminology")
+h2("A", "Threat Model and Scope")
+body("The attacker supplies a USB device that presents a HID interface able to send "
+     "keystrokes, alone or beside other interfaces, and uses it to type on the host. The "
+     f"six attack families ({tref('families')}) cover machine-speed injection, injection "
+     "after a long benign dwell, a storage device that comes back as a keyboard, a keyboard "
+     "that sends covert bulk data, and two human-paced attacks. The defender runs Linux "
+     "with usbmon available and no special hardware. Out of scope: attacks that never send "
+     "keystrokes (a network adapter that hijacks traffic, a drive carrying malware), "
+     "attacks below the USB protocol, and physical or electrical attacks. Section IV-C "
+     "shows how the system reports devices outside this scope rather than judging them.")
+table("The six attack families", ["Family", "What the device does", "Main signal"],
+      [["hid_injection", "Types a scripted payload at machine speed soon after plug-in",
+        "Speed, regularity"],
+       ["staged_delay", "Types like a person for about half the session, then injects",
+        "Burst after a dwell"],
+       ["identity_switch", "Works as storage, then a keyboard appears and injects",
+        "New interface or device"],
+       ["class_exfil", "A declared keyboard that sends covert bulk data out",
+        "Transfer type outside its class"],
+       ["mimicry", "Replays a fixed short script in a loop at human speed",
+        "Exact repeats across windows"],
+       ["mimicry_adaptive", "Types a finite payload once at human speed, then goes silent",
+        "None strong (Section VI-C)"]],
+      key="families", left_cols=(0, 1, 2))
+h2("B", "Terminology")
+body("These terms are used with one meaning throughout.")
+for term, meaning in (
+        ("Window", "one device’s traffic in one second; the unit the models score."),
+        ("Session", "one device from attachment to removal, or one simulated device run."),
+        ("Window-level recall / false-positive rate", "the fraction of post-onset attack "
+         "windows, or of benign windows, scored at or above the threshold."),
+        ("Session-level detection rate", "the fraction of attack sessions in which the "
+         "4-of-6 gate fires at least once; always given with its count, k/n."),
+        ("Session-level false-positive rate", "the fraction of benign sessions in which the "
+         "gate fires at least once, with its count."),
+        ("False alarms per device-hour", "gate firings on benign devices divided by the "
+         "hours they were observed; the unit that matters for continuous monitoring."),
+        ("Latency", "time from attack onset to the end of the window that completed the "
+         "gate."),
+        ("Learned model alone / deployed decision rule", "the model’s own gate, versus the "
+         "full rule of Section IV-C, which adds the capability gate and competence check.")):
+    item("–", f"<i>{term}:</i> {meaning}")
 
 # ---------------------------------------------------------------- IV
-h1("IV", "Objectives")
-body("The aim is a system that trusts USB peripherals by runtime behaviour and not by "
-     "claimed identity. It is a four-layer pipeline that carries a device’s activity from "
-     "raw kernel events, through scoring, to userspace temporal analysis, and back into the "
-     "kernel as an enforced verdict. It follows the kernel-extract, userspace-infer "
-     "pattern [3], [4] and adds per-device adaptivity and closed-loop enforcement. Each "
-     "objective below corresponds to one stage.")
-item("1)", "<i>Kernel-level capture (Layer 1).</i> Intercept URBs at the kernel/driver "
-           "boundary and extract multi-modal features (event timing, traffic volume, "
-           "descriptor changes), passing compact records upward with minimal overhead.")
-item("2)", "<i>Per-window anomaly scoring (Layer 2).</i> Build a <i>per-device adaptive "
-           "baseline</i> and score incoming features against it with unsupervised learning "
-           "(Isolation Forest or One-Class SVM), a fast, high-recall filter that flags "
-           "suspicious activity for deeper inspection.")
-item("3)", "<i>Userspace temporal sequence modelling (Layer 3).</i> Train a PyTorch LSTM on "
-           "rolling event windows to detect <i>temporal structure</i>, meaning staged, "
-           "multi-step attacks whose ordering rather than any single event betrays intent.")
-item("4)", "<i>Closed-loop enforcement (Layer 4).</i> Execute verdicts from Layers 2 and 3 "
-           "(rate-limiting or unbinding a device) without a userspace round trip, closing "
-           "the activation window that lets short BadUSB payloads succeed.")
-item("5)", "<i>Supporting data store and interface.</i> Persist baselines, event history and "
-           "alerts in SQLite and expose them through a dashboard for monitoring, tuning and "
-           "review of enforcement decisions.")
-item("6)", "<i>Evaluation against BadUSB scenarios.</i> Measure detection, false-positive "
-           "rate, enforcement latency and overhead against rapid, delayed and multi-stage "
-           "payloads, and compare behavioural trust with identity-based baselines.")
-body("The capture mechanism in Objective 1 admits two options: eBPF, the richer one, or "
-     "usbmon as a lighter fallback. Because both sit behind one interface the choice only "
-     "affects Layer 1. The implementation takes the usbmon path, and Section VI-J reports "
-     "an eBPF prototype that was measured against it.")
-
-# ---------------------------------------------------------------- V
-h1("V", "System Architecture")
-h2("A", "Capture and Feature Extraction")
-body("Fig. 1 shows the whole pipeline, from kernel capture to enforcement. URB traffic is "
-     "observed through usbmon, a passive kernel tap available on any Linux host with debugfs "
-     "mounted. An eBPF backend with lower overhead and explicit control over payload "
-     "truncation is the intended production path. Section VI-J reports a counting "
-     "prototype of it, and both backends sit behind one capture interface so the choice "
-     "does not touch any later stage. A parser turns raw event text into typed records. A "
-     "stateful, per-device extractor then compresses each non-overlapping one-second window "
-     "into a vector over four behavioural modalities: timing, payload, protocol and "
-     "identity. Raw payloads are not kept in clear by default. The trace store replaces each "
-     "report with a keyed, length-preserving pseudonym, so features can compare reports for "
-     "equality and nothing more.")
+h1("IV", "System")
+h2("A", "Capture and Features")
+body("usbmon, a passive kernel tap, writes one text line per URB submission, completion or "
+     "error. A parser turns each line into a typed event; completions and errors are used "
+     "for features, submissions are not. Events are bucketed by kernel timestamp into "
+     "one-second windows per device. The text timestamp is the monotonic clock with its "
+     "seconds truncated to 12 bits, so it wraps every 4,096 s; the parser undoes that wrap "
+     "(Section VI-E records the defect we found here). Each window becomes 30 features in "
+     f"five modalities ({tref('features')}). Two are not given to the model: time since "
+     "enumeration, which a Kolmogorov–Smirnov test showed to encode session position and "
+     "hence the label, and the host-level rate, which is constant on single-device training "
+     "data. Payload bytes are compared only for equality, so a stored trace replaces each "
+     "payload with a keyed, length-preserving pseudonym and every feature stays exact.")
+FD = MC["features"]
+rows = [[f["index"], f["name"].replace("_", " "), f["unit"],
+         "yes" if f["used_by_deployed_model"] else "no"] for f in FD]
+table("Input features in their frozen order (definitions and normalisation in the model card)",
+      ["#", "Feature", "Unit", "Used"], rows, key="features", left_cols=(1,))
+h2("B", "Two-Stage Detector")
+body("<i>Stage 1</i> is unsupervised and trained on benign windows only. Each feature is "
+     "z-scored with the benign training mean and standard deviation, with the deviation "
+     "floored at 0.01 and the result clipped to ±10, so a feature that is constant in benign "
+     "traffic cannot explode when it changes. An Isolation Forest per declared class group "
+     "scores the window against devices of the same kind, and a per-device exponentially "
+     "weighted baseline scores it against the device’s own history; the two are combined "
+     f"0.55/0.45 into one score. <i>Stage 2</i> is a one-layer LSTM over the last ten "
+     "windows, each holding the deployed features plus the Stage-1 score; its last hidden "
+     "state feeds one linear unit and a sigmoid, the probability that the newest window is "
+     f"post-onset. {tref('settings')} lists every setting. Sequences are left-padded by "
+     "repeating the earliest row, so scoring is strictly causal, and a test pins the "
+     "streaming detector to the offline scores exactly.")
+S1C, S2C = MC["stage1"], MC["stage2"]
+rows = [["Stage 1", "Isolation Forest", f"{S1C['n_estimators']} trees, contamination "
+         f"{S1C['contamination']}, max samples min(512, n)"],
+        ["", "Device baseline", "EWMA α 0.15, warm-up 4 windows, update gate 0.55"],
+        ["", "Normalisation", "z-score, SD floor 0.01, clip ±10"],
+        ["Stage 2", "Input", f"10 windows × {DEP['feature_idx'].__len__() + 1} values"],
+        ["", "Architecture", "LSTM, 1 layer, 32 hidden; Linear(32→1); sigmoid"],
+        ["", "Loss", "binary cross-entropy (with logits)"],
+        ["", "Class weighting", "positive weight = negatives / positives"],
+        ["", "Optimiser", "Adam, lr 2×10⁻³, no weight decay, grad-norm clip 5"],
+        ["", "Batch, epochs", f"{S2C['batch_size']}, {S2C['epochs']} (fixed; no early stopping)"],
+        ["", "Seed", "7 (seeds 8, 9 for spread)"],
+        ["Decision", "Threshold", f"{DEP['threshold']:.6f}, ≤ 0.01 false alarms/device-h"],
+        ["", "Gate", "4 of last 6 windows; 8 qualifying → revoke"],
+        ["", "Capability gate", f"keyboard ≥ {DEP['capability_rule']['human_max_rps']} "
+                                "reports/s, own 4-of-6"]]
+table("Model and decision settings", ["Stage", "Item", "Setting"], rows, key="settings",
+      left_cols=(0, 1, 2))
 
 new_section(1)
 p = doc.add_paragraph(style="IEEE Figure")
 p.add_run().add_picture(str(FIG), width=Inches(7.16))
 para("IEEE Caption",
-     "Fig. 1.  The IUDBMS pipeline: kernel capture, per-window feature extraction, the "
-     "two-stage detector (Stage 1’s score is passed to Stage 2 as an input, not cast as a "
-     "separate vote), and the graduated enforcement policy. Dashed blocks are designed but "
-     "not yet built, or generated but not yet executed.")
+     "Fig. 1.  The IUDBMS pipeline. Stage 1’s score is an input to Stage 2, not a separate "
+     "vote. The policy engine alarms on the model’s calibrated threshold or on the "
+     "capability gate, and never escalates on device types outside the model’s competence. "
+     "Dashed blocks are a prototype (eBPF) or generated but never executed (enforcement).")
 new_section(2)
 
-h2("B", "Two-Stage Detection and Enforcement")
-body("The two models run in series. Stage 1 is a memoryless, per-window anomaly score that "
-     "fuses an Isolation Forest, trained on benign devices of the same class, with an "
-     "adaptive per-device baseline. Its output is not thresholded directly. It is appended "
-     "to that window’s feature vector, and the vector enters a ten-second sliding buffer. "
-     "Stage 2, an LSTM, reads the ten-window sequence and produces the one probability that "
-     "is compared with the decision threshold. A persistence gate requires four flagged "
-     "windows in any six before a device is throttled, and eight cumulative flagged windows "
-     "before it is deauthorised. The policy engine generates both actions, but execution "
-     "against the kernel stays behind a manual safety review and runs in dry-run mode.")
+h2("C", "Decision Rule")
+body("A device alarms when 4 of its last 6 windows reach the threshold. The threshold is "
+     "chosen in false alarms per device-hour (Section VI-B): the smallest value at which "
+     "benign devices raise at most 0.01 alarms per hour over 80 hours of long simulated "
+     "sessions. A second gate, with its own 4-of-6 count, fires when a keyboard sends at "
+     f"least {DEP['capability_rule']['human_max_rps']} reports in a second; no human in a "
+     f"population of 1,972 sustained more than {human['reports_per_s_sustained_max']} "
+     "(Section V-A). The two gates are combined with OR exactly as they were evaluated.")
+body("Two checks decide what is judged at all. The model records the interface classes of "
+     "its benign training devices, and a device that declares any other class (a network "
+     "adapter, a serial converter, a smart-card reader) is reported as <i>unmodelled</i>: "
+     "scored and stored, never escalated. For HID interfaces the class is not enough, "
+     "because a keyboard and a tablet share it. What a HID interface can send is declared "
+     "by its report descriptor [22], which the kernel exposes in sysfs; keystrokes need the "
+     "Keyboard page and applications can be launched through the Consumer page. A device "
+     "that may send keystrokes is always judged, including when its descriptor cannot be "
+     "read; a pure pointer is outside the threat model and reported as unmodelled.")
+h2("D", "Enforcement and Deployment")
+body("Escalation generates THROTTLE and then DEAUTHORIZE actions with the kernel command and "
+     "the evidence behind them, and stores them. Nothing is written to the kernel’s "
+     "authorization interface: execution is gated behind a manual safety review that has "
+     "not been done, and the claim of closed-loop enforcement is therefore untested. The "
+     "monitor and an operator API run as hardened systemd services, and checkpoints carry a "
+     "fixed-input fingerprint that the loader checks.")
 
-h2("C", "Experimental Setup")
-body("<i>Traffic.</i> No labelled USB attack traffic is publicly available, so we generate "
-     "it. A simulator writes sessions in the exact text format the Linux usbmon driver "
-     "emits, and the same parser a live capture uses reads them back. A session is one "
-     "device observed for 40 to 85 s. Benign devices come from five profiles: keyboard, "
-     "mouse, mass storage, webcam and audio. Attacks come from the six families in "
-     f"{tref('families')}, which range from crude machine-speed injection to a "
-     "human-paced payload that is typed once.")
-
-table("The six attack families and what separates each from benign traffic",
-      ["Family", "What the device does", "Main signal"],
-      [["hid_injection", "Types a scripted payload at machine speed (about 4.5 ms per key) "
-                         "soon after plug-in", "Speed, regularity"],
-       ["staged_delay", "Types like a person for about half the session, then injects at "
-                        "machine speed", "Burst after a long dwell"],
-       ["identity_switch", "Enumerates as storage, later exposes a keyboard interface and "
-                           "injects", "Late interface, class mismatch"],
-       ["class_exfil", "A declared keyboard that sends covert bulk data out",
-        "Transfer type outside its class"],
-       ["mimicry", "Replays a fixed 24 to 48-key script in a loop at human speed",
-        "Exact repeats across windows"],
-       ["mimicry_adaptive", "Types a finite 60 to 220-key payload once at human speed, then "
-                            "goes silent", "Silence after the payload"]],
-      key="families", left_cols=(0, 1, 2))
-
-body("<i>Corpora.</i> We use three. Corpus A is the original: 1,000 sessions (600 benign, "
-     "400 attack) in which every benign device is active for its whole session. Corpus B has "
-     "the same size and seed but changes the benign side and the typing model. Keyboards, "
-     "mice, drives, webcams and audio devices alternate active bursts with idle gaps or "
-     "stay idle after enumeration (40% always active, 15% with gaps of 3 to 8 s, 15% of 8 "
-     "to 20 s, 20% of 20 to 60 s, 10% idle throughout). Keyboards send a key-down and a "
-     "key-up report per keystroke, with overlapping keys producing multi-key reports, as "
-     "the HID boot protocol specifies. Keystrokes come from a Zipf-weighted vocabulary "
-     "whose bigram entropy is tuned to 3.56 bits, Shannon’s estimate for English digrams [11], "
-     "and each device types at its own speed (median inter-key time 60 to 300 ms). Attack "
-     "typing gets identical treatment so that key-release reports cannot become a shortcut. "
-     "Corpus C is a fresh set of 3,600 sessions (3,000 benign, 100 per attack family) "
-     "generated with a different seed. It is never used to train, calibrate or choose "
-     "anything.")
-body("<i>Training and calibration.</i> Sessions, never windows, are split by profile into "
-     "training, calibration and test partitions, so no window of a session appears on both "
-     "sides. Two columns are withheld from the deployed model: time since enumeration, which "
-     "a Kolmogorov–Smirnov test identified as a session-position leak, and any column with "
-     "zero variance on the training split. Stage 1 (Isolation Forest, weight 0.55, plus a "
-     "per-device EWMA baseline, weight 0.45) is fit on benign training sessions only. "
-     "Stage 2 is a single-layer LSTM with hidden size 32 over causally left-padded "
-     "ten-window sequences, trained with class-weighted cross-entropy (Adam, learning rate "
-     "2×10⁻³, gradient norm clipped at 5). The decision threshold is the empirical quantile "
-     "of Stage-2 scores on held-out benign windows at a per-window false-positive rate of "
-     "0.01%. It is never read off the test set. The deployed model set is the one trained "
-     "on Corpus B.")
-body("<i>Metrics and statistics.</i> A session counts as detected when the persistence gate "
-     "fires. We report session-level detection, the benign session false-positive rate, and "
-     "the median time from attack onset to the first alert. Rates carry 95% Wilson "
-     "intervals. LSTM training is seeded but seed-sensitive, so where a comparison could "
-     "hinge on the seed we train three and call a difference real only if it exceeds both "
-     "the seed spread and the resolution of one session. The pass criterion of each novelty "
-     "experiment was fixed before its first run.")
-body("<i>Real kernel traffic.</i> For the real-traffic checks we ran Ubuntu 24.04.5 (kernel "
-     "6.8, aarch64) in a QEMU guest with a virtual xHCI controller, keyboard, mouse, "
-     "tablet, hub and storage device. We recorded usbmon output with the project’s own "
-     "capture script. In one recording a person typed into the guest keyboard for about "
-     "100 s. These recordings are scored offline with named model weights and are never "
-     "used for training or tuning. A later live run watched the guest with both the "
-     "original and the retrained model at once. Development used Python 3.12, "
-     "scikit-learn and PyTorch on macOS/arm64.")
-body("<i>Reproducibility.</i> Every number in this paper is read from a result file written by a "
-     "seeded script in the project repository (<code>make eval</code>, "
-     "<code>make train-deployed</code> and the analysis scripts), and this document is "
-     "generated from those files. The recorded keyboard session is not published, because "
-     "keycodes in a recording can be decoded.")
+# ---------------------------------------------------------------- V
+h1("V", "Evaluation Method")
+h2("A", "Simulated Traffic")
+body("No labelled USB attack traffic is public, so training data come from a simulator that "
+     "writes sessions in usbmon’s exact text format; the same parser reads them back. Benign "
+     "devices come from five profiles (keyboard, mouse, mass storage, webcam, audio). The "
+     "choices that matter, and their sources:")
+item("–", "<i>Typing speed:</i> each device draws its own median inter-key time, "
+          "log-uniform over 60 to 300 ms, with log-normal spread.")
+item("–", "<i>Key releases:</i> as the HID boot protocol specifies, every keystroke sends a "
+          "key-down and a key-up report, and overlapping keys produce multi-key reports. "
+          "Key holds are log-normal with median 90 ms.")
+item("–", "<i>Text:</i> a Zipf-weighted vocabulary whose digram entropy is tuned to 3.56 "
+          "bits, Shannon’s estimate for English [11].")
+item("–", "<i>Idle periods:</i> 40% of benign devices are always active, 15% pause for 3 to "
+          "8 s between bursts, 15% for 8 to 20 s, 20% for 20 to 60 s, and 10% idle after "
+          "enumeration.")
+item("–", "<i>Attack duration and onset:</i> every session, benign or attack, lasts 40 to "
+          "85 s. Onset is 1.5 to 4 s for injection, 15 to 30 s for the identity switch, 45 "
+          "to 62% of the session for the staged attack, 5 to 12 s for covert exfiltration "
+          "and 4 to 12 s for the mimicry families; a human-paced payload is 60 to 220 keys.")
+body("Three choices keep attacks from being easy. Attack devices draw their timing persona "
+     "from the same prior as benign ones, the mimicry families draw keystroke timing from the "
+     "exact human parameters, and benign and attack sessions share one duration "
+     "distribution. A leakage audit tests duration, window count and identifier per family, "
+     "and found the time-since-enumeration leak that is now excluded. "
+     f"{tref('timing')} measures the simulator against real people: 1,972 participants of "
+     "the 136M Keystrokes study [19] and the 51 subjects of the CMU benchmark [20]. The "
+     "simulator types at a realistic median pace and hold time, pauses more than "
+     "transcription typists, and has no very fast typists, which is why the capability "
+     "bound is taken from the real data.")
+H = HT
+rows = [["People (sessions)", f"{H['aalto']['sessions']:,}", f"51 ({H['cmu']['sessions']})",
+         f"({H['simulator']['sessions']})"]]
+for k, lbl, f in (("iki_median_ms", "Inter-key median (ms)", "{:.0f}"),
+                  ("iki_p10_ms", "Inter-key 10th pct. (ms)", "{:.0f}"),
+                  ("hold_median_ms", "Key hold median (ms)", "{:.0f}"),
+                  ("rollover_share", "Rollover share", "{:.1%}"),
+                  ("gaps_over_1s_share", "Gaps over 1 s", "{:.1%}"),
+                  ("reports_per_s_sustained_max", "Fastest sustained reports/s", "{:d}")):
+    rows.append([lbl] + [f.format(H[s][k]) for s in ("aalto", "cmu", "simulator")])
+table("Simulated typing against two real populations", ["Measure", "Aalto [19]", "CMU [20]",
+      "Simulator"], rows, key="timing")
+body("For illustration, two seconds of a benign keyboard emit lines such as "
+     "<code>C Ii:3:003:1 0:10 8 = 00000b00…</code> a few dozen milliseconds apart, a key-down "
+     "followed by its all-zero release; machine-speed injection emits the same pairs about "
+     "2 ms apart for as long as its payload lasts. The model card lists real excerpts of "
+     "both.")
+h2("B", "Corpora and Splits")
+body("Corpus A (1,000 sessions, 600 benign) is the original corpus, in which every benign "
+     "device is always active. Corpus B has the same size and seed with the realistic "
+     "generator of Section V-A, and the deployed model is trained on it. Corpus C is a "
+     "fresh set of 3,600 sessions (3,000 benign, 100 per attack family) from a different "
+     "seed, never used to train, calibrate or select. Splits are by session, never by "
+     "window: 30% of each profile is held out for test, and 20% of the rest is drawn for "
+     f"validation, which is where thresholds are set ({tref('data')}). Long-session sets for "
+     "calibration and evaluation use their own seeds.")
+B = MC["data"]["corpus_B"]["splits"]
+A = MC["data"]["corpus_A"]["splits"]
+rows = []
+for nm, S in (("A", A), ("B", B)):
+    for sp in ("fit (train)", "validation", "test"):
+        v = S[sp]
+        rows.append([f"{nm} {sp.split()[0]}", v["sessions"], v["benign"], v["attack"],
+                     f"{v['windows']:,}", f"{v['hours']:.1f}"])
+rows.append(["C (all)", 3600, 3000, 600, "—", "—"])
+table("Sessions, windows and hours per split", ["Split", "Sessions", "Benign", "Attack",
+      "Windows", "Hours"], rows, key="data")
+h2("C", "Real-Kernel Testbed")
+body("To test on real kernels we boot four distributions headless under QEMU with hardware "
+     "acceleration: Ubuntu 24.04 (kernel 6.8), Debian 13 (6.12), Fedora 44 (6.19) and "
+     "AlmaLinux 9 (5.14). Each guest has 11 emulated USB devices: boot keyboard, mouse, "
+     "absolute tablet, pen tablet, bulk-only and UAS storage, audio, network adapter, "
+     "serial converter, smart-card reader and hub. The kernels and drivers are real; the "
+     "device side is emulated. The keyboard replays key-down and key-up times of real "
+     "participants [19], the mouse and tablet replay the Balabit recordings of ten users "
+     "[21], and the guest copies files to the drives, sends network packets, writes to the "
+     "serial port and plays audio on a seeded schedule. Each distribution runs a 75-minute "
+     "benign session and two 30-minute attack sessions, in which six episodes are played "
+     "on newly attached keyboards: the five attack families that a keyboard can carry out "
+     "and a benign control in which a new keyboard is used by a replayed person. Attack "
+     "payloads are innocuous text without the Enter key; what makes them attacks is the "
+     "traffic the kernel sees. Captures are scored through the deployed monitor loop itself, "
+     "replayed as fast as the file can be read; a test shows that replay gives the same "
+     "verdicts as replay at wall-clock pace.")
+h2("D", "Statistics, Pre-Registration and Availability")
+body("Rates carry 95% Wilson intervals or counts. LSTM training is seed-sensitive, so "
+     "comparisons that could hinge on the seed use three seeds, and a difference counts only "
+     "if it exceeds both the seed spread and one session. Every candidate improvement had "
+     "its adoption criterion written into its script before the first run, and two failed "
+     "(Section VI-E). Every number here is read from a file written by a seeded script in "
+     "the project repository, and this document is generated from those files. Seeds: 7 "
+     "for Corpora A and B and model training (8 and 9 for spread), 2025 for Corpus C, 4049 "
+     "for threshold calibration, 2027 to 2031 for the long-session evaluation sets, and 1 "
+     "and 2 for the testbed rounds. The code, data formats and generator settings are in "
+     "the repository and its model card; the human-input datasets are fetched from their "
+     "publishers under their licences and are not redistributed.")
 
 # ---------------------------------------------------------------- VI
 h1("VI", "Results")
-
-h2("A", "Headline Detection on the Original Corpus")
-rows = []
-for key, label in (("full_system", "IUDBMS (Stage 1 + Stage 2)"),
-                   ("stage1_only", "Stage 1 only (no temporal model)"),
-                   ("identity_whitelist", "Identity whitelist (VID:PID)")):
-    r = M.get(key, {})
-    w = r.get("window", {})
-    se = r.get("session", r if "attack_detect" in r else {})
-    rows.append([label,
-                 f"{w['auc']:.3f}" if w.get("auc") is not None else "—",
-                 pct(w.get("precision"), 1) if w.get("precision") is not None else "—",
-                 pct(w.get("recall"), 1) if w.get("recall") is not None else "—",
-                 pct(se.get("attack_detect")), pct(se.get("benign_fp"))])
-table("Detection on the held-out test split of Corpus A. AUC, precision and recall are per window; Detect and FP are per session",
-      ["Model", "ROC-AUC", "Prec.", "Rec.", "Detect", "FP"], rows, key="headline")
-lat = M["full_system"]["session"].get("median_latency")
-body(f"{tref('headline')} compares the system with two baselines on Corpus A. The identity "
-     "whitelist is a USBGuard-style control. Every attack in the corpus presents a VID/PID "
-     "from the same pool as benign devices, so the whitelist detects none of them, which is "
-     "the premise the project set out to test. Removing the temporal stage costs "
-     f"{round(100 * det, 1) - round(100 * s1_det, 1):.1f} points of session detection, the largest "
-     f"single effect among the ablations. Detection is {BASEJ['headline']['detect_k']} of "
-     f"{BASEJ['headline']['n_attack']} attack sessions (95% interval "
-     f"{pct(BASEJ['headline']['detect_ci'][0], 0)} to {pct(BASEJ['headline']['detect_ci'][1], 0)}), "
-     f"and no false alarm in {BASEJ['headline']['n_benign']} benign sessions bounds the "
-     f"false-positive rate below {pct(BASEJ['headline']['fp_ci'][1])}. The median time from "
-     f"attack onset to the first enforcement action is {lat:.1f} s. These figures come from "
-     "the corpus the project started with. "
-     "Sections VI-E to VI-I show how much of them survives a more realistic one.")
-
-h2("B", "Per-Family Detection and the Single-Shot Bound")
-pp = M["full_system"]["per_profile"]
-rows = [[k, v.get("n", "—"), pct(v.get("detect_rate")),
-         f"{v['median_latency']:.1f} s" if v.get("median_latency") else "—"]
-        for k, v in sorted(pp.items()) if v.get("label") == 1]
-table("Detection by attack family on Corpus A",
-      ["Attack family", "n", "Detect", "Latency"], rows, key="perclass")
-mim_ad = pp["mimicry_adaptive"]["detect_rate"]
-body(f"Detection is not uniform ({tref('perclass')}). Attacks that deviate structurally are "
-     "caught every time: machine-speed injection, a storage device that grows a keyboard "
-     "interface, a keyboard that pushes bulk data out, and a long benign dwell followed by a "
-     "burst. The replay loop is caught in "
-     f"{pct(pp['mimicry']['detect_rate'], 0)} of sessions. The hard case is the "
-     "human-paced payload typed once. A per-feature Kolmogorov–Smirnov scan of that family "
-     "against benign keyboard traffic separates it on none of the deployed features, because "
-     "inside one device’s URB stream it is statistically the same process as a person typing. "
-     f"On this corpus {pct(mim_ad, 0)} of those sessions are caught, and the only reason is "
-     "the permanent silence that follows a finished payload. Section VI-E shows why that "
-     "silence cannot be trusted as a signal.")
-
-h2("C", "Ablations Against the Novelty Claims")
-body("Each novelty claim from Section III-C was tested by an experiment built for it, with "
-     "the acceptance criterion fixed before the first run. Two of the four are not "
-     "supported. We report that as a result.")
-
-
-def SHORT_VERDICT(r):
-    if r["fusion_wins"]:
-        return "fusion wins"
-    if r["fusion_loses"]:
-        return "fusion loses"
-    if not r["valid"]:
-        return "saturated" if "saturat" in r["verdict"] else "invalid"
-    return "tie"
-
-
-sw = FUSION["sweep"]
-rows = [[f"{r['strength']:.2f}",
-         f"{100 * r['fused_mean']:.1f} ± {100 * r['fused_sd']:.1f}",
-         f"{100 * r['best_spec_mean']:.1f} ± {100 * r['best_spec_sd']:.1f}",
-         f"{100 * r['margin_mean']:+.1f} ± {100 * r['margin_sd']:.1f}",
-         SHORT_VERDICT(r)] for r in sw]
-table("N1: fused model vs best single modality on a diffuse attack, by attack strength "
-      "(mean ± s.d. over three seeds)",
-      ["Strength", "Fused", "Best single", "Margin", "Verdict"], rows, key="n1")
-body(f"<i>N1, multi-modal fusion: supported only non-uniformly.</i> Every family in the main "
-     "corpus deviates on several modalities at once, so any single modality catches all of "
-     "them and fusion cannot show a gain. The ablation therefore uses purpose-built "
-     "families that deviate on one axis at a time, plus a <i>diffuse</i> attack that "
-     "deviates weakly on two axes together. Fusion never loses on a single-axis family, and "
-     "on descriptor-only attacks it is the only configuration that works: the identity "
-     "modality alone has too little variance to calibrate a threshold, while the fused "
-     f"model detects such attacks reliably. On the diffuse attack the benefit changes sign "
-     f"with strength ({tref('n1')}). Fusion gains substantially at moderate strength, but a "
-     "nine-feature subset of the model beats it at the subtlest strength, where the extra "
-     "dimensions cost more variance than they add. The criterion was to win somewhere and "
-     "never lose, so N1 is not supported.")
-
-hom, het = BASE["results"]["homogeneous"], BASE["results"]["heterogeneous"]
-rows = []
-for label, r in (("Homogeneous devices", hom), ("Heterogeneous devices", het)):
-    full = r["rows"]["full (forest + baseline)"]
-    fo = r["rows"]["forest only"]
-    rows.append([label, f"{r['keyboard_rate_sd']:.3f}", pct(full["detect"]), pct(fo["detect"]),
-                 f"{100 * r['margin']:+.1f}", f"{100 * r['noise_floor']:.1f}"])
-table("N2: contribution of the per-device baseline, with and without device variation",
-      ["Corpus", "Rate s.d.", "Full", "Forest only", "Δ", "Noise"], rows, key="n2")
-body("<i>N2, per-device baseline: not supported.</i> Removing the per-device term changes "
-     "detection by less than the noise floor. We first suspected the cause was the "
-     "simulator, since every device of a class behaved identically and a class-conditioned "
-     "forest already modelled them all. That is testable, because homogeneity is a property "
-     "of the generator. Giving each device its own timing persona raised between-device "
-     f"variation 2.8-fold, and the baseline stayed inert ({tref('n2')}). The suspected "
-     "explanation was wrong, so the negative result is stronger than we first reported. "
-     "Detection also falls under heterogeneity, as it should: more varied benign behaviour "
-     "is harder to separate from attacks.")
-body("<i>N3, closed-loop enforcement: dry-run only.</i> The policy engine generates the exact "
-     "kernel command that would revoke a device, with the evidence that justified it, and "
-     "the escalation ladder runs end to end on recorded sessions. Execution against the "
-     "kernel is gated behind a manual review and has never been performed, so the loop is "
-     "closed in software and not yet against hardware.")
-body("<i>N4, temporal sequence modelling: strongly supported.</i> Without its sequence stage "
-     f"the pipeline falls from {pct(det)} to {pct(s1_det)} session detection. The effect "
-     f"survives the realistic corpus: on Corpus C Stage 1 alone detects {pct(s1_mean)} "
-     f"against {pct(seen_mean)} for the full system. A model-family comparison shows the "
-     "gain belongs to <i>sequence</i> and not to recurrence in particular. A GRU and a "
-     "dilated 1-D CNN match the LSTM within noise, and a supervised model given one window "
-     "does markedly worse. We keep the LSTM because no challenger clears the noise floor. "
-     "The claim is strong against Stage 1 and weaker against simple rules: Section VI-F shows "
-     "that three hand-written rules already match the learned system on four of the six "
-     "families, so the sequence model’s measured contribution is one family.")
-
-h2("D", "Does Host Context Help?")
-cm = CROSS["per_profile"]["mimicry_adaptive"]
-body("The single-shot bound suggests an extension. A person typing is usually also moving a "
-     "mouse, and a malicious device typing alone is not. We added a host-level feature "
-     "carrying the event rate of every other device on the machine, together with a leakage "
-     "guard built before the feature, since host composition that correlates with the label "
-     "would reproduce the positional leak of Section V-C. With the guard holding, the "
-     f"feature does not help: on the human-paced family the change in detection is "
-     f"{100 * cm['delta_mean']:+.1f} ± {100 * cm['delta_sd']:.1f} points against a noise "
-     f"floor of {100 * cm['noise']:.1f}. The reason is specific. The generator draws each "
-     "device on a host independently, so a benign keyboard and its mouse are statistically "
-     "independent, just as a malicious device and a bystander’s mouse would be. The "
-     "coupling the feature exists to detect is absent on both sides. Real users interleave "
-     "typing and mousing. Testing that needs either a coupled generator, which risks building "
-     "in the signal it then detects, or real captured traffic.")
-
-h2("E", "A Realism Stress Test: Idle Devices")
-kb, ms, st = (IDLE["idle gaps 3-8 s"][c] for c in ("keyboard", "mouse", "mass_storage"))
-kb2, ms2 = IDLE["idle gaps 8-20 s"]["keyboard"], IDLE["idle gaps 8-20 s"]["mouse"]
-kb3 = IDLE["fully idle after enumeration"]["keyboard"]
-ms3 = IDLE["fully idle after enumeration"]["mouse"]
-body("The generator behind Corpus A has a property real devices lack. Every benign device is "
-     "active for its whole session. Keyboards pause for at most three seconds, mice never "
-     "stop moving, drives never stop working. We gave benign keyboards, mice and drives "
-     "duty cycles and scored them with the original model (60 sessions per cell). With "
-     f"idle gaps of 3 to 8 s it flagged {pct(kb['fp'], 0)} of keyboards and "
-     f"{pct(ms['fp'], 0)} of mice. With gaps of 8 to 20 s it flagged {pct(kb2['fp'], 0)} "
-     f"and {pct(ms2['fp'], 0)}, and it flagged every keyboard and mouse that sat idle "
-     f"after enumeration ({pct(kb3['fp'], 0)} and {pct(ms3['fp'], 0)}). Mass-storage "
-     f"devices were never flagged ({pct(st['fp'], 0)}). The claim of 0.0% benign false "
-     "positives on Corpus A held only because no keyboard in it ever stopped typing, and "
-     "real keyboards stop constantly. The same artefact explains the human-paced family’s "
-     "40% detection. Its only tell was sustained typing followed by silence, which an "
-     "ordinary idle keyboard also produces.")
-
-h2("F", "Retraining on Realistic Traffic, and a Rule Baseline")
-n = RB["benign_n"]
-an = RB["attack_n"]
-rows = [["Benign false positives", "", ""]]
-for key, label in (("active", "Always active"), ("gap3-8", "Idle gaps 3–8 s"),
-                   ("gap8-20", "Idle gaps 8–20 s"), ("gap20-60", "Idle gaps 20–60 s"),
-                   ("idle", "Idle after enumeration"), ("keyboards", "All keyboards")):
-    rows.append([f"{label} (n={n[key]})", pct(RB["benign"][key]["original"]),
-                 pct(RB["benign"][key]["realistic"])])
-rows.append([f"All benign (n={n['ALL']})", pct(RB["overall"]["original"]["fp"]),
-             pct(RB["overall"]["realistic"]["fp"])])
-rows.append(["Attack detection†", "", ""])
-for f in sorted(an, key=lambda x: FAMS.index(x)):
-    rows.append([f"{f} (n={an[f]})", pct(RB["attack"][f]["original"]),
-                 pct(RB["attack"][f]["realistic"])])
-rows.append([f"All attacks (n={sum(an.values())})", pct(RB["overall"]["original"]["detect"]),
-             pct(RB["overall"]["realistic"]["detect"])])
-rows.append(["Window ROC-AUC", f"{RB['window_auc']['original']:.3f}",
-             f"{RB['window_auc']['realistic']:.3f}"])
-table("Original and retrained models on the test split of Corpus B",
-      ["", "Original", "Retrained"], rows, key="realism")
-body(f"We retrained the same architecture on Corpus B with the same seed, epochs, "
-     f"calibration rule and gate. {tref('realism')} compares both models on Corpus B’s test "
-     f"split. The original model flags {pct(orig_fp)} of benign sessions and every keyboard, and "
-     f"even its always-active devices {pct(RB['benign']['active']['original'])} of the time, "
-     "because Corpus B’s keyboards also differ from Corpus A’s in HID structure. "
-     "Its 100% attack detection (marked † in the table) is not detection, because it alarms "
-     "on every keyboard-class session whether or not an attack is under way. The retrained model flags no benign "
-     f"session. Overall detection is {pct(RB['overall']['realistic']['detect'])}, with the "
-     f"cost where the earlier reading predicted: the human-paced payload falls from {pct(mim_ad, 0)} to "
-     "0%, since the silence that was its only tell is now something every idle keyboard "
-     "does. We regard 0% as the honest figure for that family. On the fresh Corpus C the "
-     f"retrained model detects {pct(seen_mean)} of attacks on average (per family: "
-     + ", ".join(f"{pct(LOPO[f]['full'][0], 0)}" for f in FAMS) + f") with {fp_fresh:.2%} "
-     f"benign false positives, which is {round(fp_fresh * 3000)} alarms in 3,000 sessions.")
-
+h2("A", "Detection in Simulation")
+body("On Corpus A the full system detected "
+     f"{BASEJ['headline']['detect_k']}/{BASEJ['headline']['n_attack']} attack sessions "
+     f"({pct(det_a)}) with no false positive in {BASEJ['headline']['n_benign']} benign test "
+     f"sessions, against {pct(s1_a)} without the LSTM. That result did not survive "
+     "realism: Corpus A’s benign devices never go idle, and once they did, the same model "
+     f"flagged {pct(orig_fp_b)} of Corpus B’s benign sessions. Retrained on Corpus B, the "
+     f"model at its original per-window threshold detects {kn(cb['detect_k'], cb['n_attack'])} "
+     f"of Corpus C’s attacks with {cb['fp_k']} false positives in {cb['n_benign']:,} benign "
+     f"sessions; at the deployed, calibrated threshold it detects "
+     f"{kn(ca['detect_k'], ca['n_attack'])} with {ca['fp_k']} ({tref('simdetect')}).")
 R = RULEJ
-rl = ["speed (HID only)", "class", "late", "all three rules", "learned model"]
+H_ = HYB["corpus_c"]
 rows = []
 for f in FAMS:
-    rows.append([f] + [pct(R[c][f][0], 0) for c in rl])
-rows.append(["Mean"] + [pct(R[c]["mean"]) for c in rl])
-rows.append(["Benign FP"] + [pct(R[c]["benign_fp"][0], 2) for c in rl])
-table("Three hand-written rules and the learned model on Corpus C (100 sessions per family)",
-      ["Family", "Speed", "Class", "Late iface", "All three", "Learned"], rows, key="rules")
-RA = R["all three rules"]
-body("A fair question is how much of this needs learning at all. The only baseline so far is an "
-     "identity whitelist, which scores zero by construction. We therefore wrote three rules "
-     "with no learned parameters and fixed their thresholds from the protocol before looking "
-     "at detection results. <i>Speed</i> flags an HID device whose window of at least 20 "
-     "events has a mean inter-arrival under 5 ms, below the fastest human cadence in the "
-     "recorded session. <i>Class</i> flags a device whose events are at least 25% of a "
-     "transfer type its declared classes do not use. <i>Late interface</i> flags a device "
-     "that grew an interface after enumeration and is sending. Each uses the same 4-of-6 gate "
-     f"as the model. Together they detect {pct(RA['mean'])} of attacks with "
-     f"{pct(RA['benign_fp'][0], 2)} false positives ({tref('rules')}), against "
-     f"{pct(R['learned model']['mean'])} at {pct(R['learned model']['benign_fp'][0], 2)} for "
-     "the learned system. On four of six families the rules match it at 100%. The learned "
-     f"system’s whole advantage is the replay loop ({pct(R['learned model']['mimicry'][0], 0)} "
-     f"against {pct(RA['mimicry'][0], 0)}), which is the result that swings from 97% to 1% "
-     "with one attacker choice (Section VI-I). The first version of the speed rule applied "
-     f"to every device and flagged {pct(R['speed (any dev.)']['benign_fp'][0], 0)} of benign "
-     "sessions, since webcams, audio devices and drives legitimately emit events faster than "
-     "5 ms. That was a design error and not a finding, so the rule is restricted to HID "
-     "devices, and both versions are in the result file. A fourth rule for replayed scripts, "
-     "added after seeing the others miss that family, reached "
-     f"{pct(R['replay (explor.)']['mimicry'][0], 0)} on it with "
-     f"{pct(R['replay (explor.)']['benign_fp'][0], 2)} false positives and flags "
-     f"{R['real_capture']['replay']} windows of the real typing, so it is not adopted. "
-     "These rules encode the attack families we wrote, so their score is not a claim that "
-     "they would catch an unknown one. It is a statement of how much of the headline a few "
-     "lines of code can reach.")
-
-h2("G", "Validation Against Real Kernel Traffic")
-body("Everything so far is measured on simulated sessions. To check the pipeline against "
-     "genuine kernel output we captured usbmon text from the Linux guest described in "
-     "Section V-C. This checks the machinery. The devices are virtual and no attack "
-     "traffic was generated, so none of it is a detection result.")
-rc = REALCAP
-rows = [["Lines parsed", f"{rc['lines_seen']:,}"],
-        ["Lines unparsed", f"{rc['lines_unparsed']}"],
-        ["Loss rate", f"{rc['loss_rate']:.4%}"],
-        ["Target (plan §4.1)", f"< {rc['plan_criterion']:.1%}"],
-        ["Events satisfying the contract", f"{rc['events_contract_valid']} of {rc['events_total']}"],
-        ["Control submissions with SETUP",
-         f"{rc['control_submissions_with_setup']} of {rc['control_submissions_total']}"],
-        ["Devices observed", f"{rc['n_devices']}"]]
-table(f"Parser validation on a real usbmon capture ({rc['span_s']:.1f} s)",
-      ["Metric", "Value"], rows, key="parser")
-body(f"The parser lost none of the {rc['lines_seen']} real lines against a target of under "
-     "0.1%, a criterion that could not be measured before this capture existed. Every "
-     "event satisfied the data contract, and every real control submission carried the "
-     "SETUP packet that the first prototype had silently dropped.")
-body("Checking the real system, and not only the simulated corpus, exposed two defects that "
-     "the simulator cannot show. First, the window clock started when the service started, "
-     "not at the first observed event. Any delay before the first USB event left every "
-     "window out of phase with the traffic, and the service scored nothing while 385 "
-     "simulator-driven tests passed, because a simulated source delivers its first event "
-     "at once. Second, the Stage-2 checkpoint installed on the test host was not the one "
-     "behind the reported numbers. It loaded, scored traffic and passed every structural "
-     "check, yet at its recorded threshold it detected none of 120 simulated attacks. "
-     "Retraining with the documented command reproduced the reported figures exactly (AUC "
-     "0.9762, 89.2% detection, no benign false positives), so the evaluation was sound and "
-     "the shipped file was wrong. Each stage now stores a fixed-input output fingerprint, "
-     "the loader refuses weights that do not match it, and an end-to-end test asserts that "
-     "the shipped set alerts on simulated attacks.")
-W = RB["wire"]
-rows = [["HID reports per second", f"{W['real']['reports_per_s']:.1f}",
-         f"{W['corpus_a_sim']['reports_per_s']:.1f}", f"{W['corpus_b_sim']['reports_per_s']:.1f}"],
-        ["Key-release (all-zero) reports", pct(W['real']['release_share']),
-         pct(W['corpus_a_sim']['release_share']), pct(W['corpus_b_sim']['release_share'])],
-        ["Distinct payloads", pct(W['real']['unique_payload_share']),
-         pct(W['corpus_a_sim']['unique_payload_share']),
-         pct(W['corpus_b_sim']['unique_payload_share'])],
-        ["Gaps longer than 1 s", pct(W['real']['gaps_over_1s']),
-         pct(W['corpus_a_sim']['gaps_over_1s']), pct(W['corpus_b_sim']['gaps_over_1s'])]]
-table("A real keyboard against the two simulated ones, measured identically",
-      ["Property", "Real", "Corpus A", "Corpus B"], rows, key="keyboard")
-body(f"One person typed into the guest’s virtual keyboard for about 100 s. {tref('keyboard')} "
-     "shows how the recording differs from Corpus A’s keyboard. A real keyboard reports "
-     "key-releases as well as key-presses, repeats about a third of its payloads, and "
-     "sends reports roughly ten times faster than the simulator, though the speed gap "
-     "mostly reflects the task, since continuous key-mashing is not prose. Corpus B narrows "
-     "the structural gap but does not close it, since its release share is still about "
-     "three times the recording’s. We then scored the recording offline with named weights. "
-     f"The original model put {real_o['at_or_above_threshold']} of {real_o['busy']} windows "
-     f"containing keystrokes at or above its threshold, and its gate fired "
-     f"{real_o['first_alert_s']:.0f} s into the capture. The retrained model put "
-     f"{real_r['at_or_above_threshold']} of {real_r['busy']} over the threshold, with a "
-     f"median Stage-2 score of {real_r['stage2_median']:.2f}, and its gate stayed silent. "
-     "This is one session of one person on a virtual keyboard, so it is not a "
-     "false-positive rate. It is also not independent evidence for the retrained model, "
-     "because Corpus B was built from HID-protocol facts that the capture happens to "
-     "share. What it does show is that the original model’s failure on real typing is "
-     "real and not a simulation artefact.")
-body("A third defect appeared only on live devices. The descriptor scanner stamped every "
-     "interface with the time since the scanner started, and the model reads any interface "
-     "with a positive arrival time as one that appeared after enumeration, which is the "
-     "signature of the identity-switch attack. Every window of every real device therefore "
-     "carried the late-interface flag, and no device was assigned its class group. The "
-     "first live alerts, a keyboard and a drive escalated to a dry-run revoke, came from a "
-     "system in this state and cannot be read as evidence about behaviour, so we do not "
-     "report them. The drive stopped alerting once the defect was fixed. Interfaces present "
-     "when a device is first listed now count as enumeration-time, and the scanner shares "
-     "the monitor’s window clock. With the fix the flag is 0.00 in every window and the "
-     "keyboard is classed as an HID device.")
+    rows.append([f.replace("_", " "), f"{pct(cb['per_profile'][f], 0)}",
+                 f"{pct(ca['per_profile'][f], 0)}", f"{pct(H_['rule']['per_profile'][f]['rate'], 0)}",
+                 f"{pct(H_['hybrid']['per_profile'][f]['rate'], 0)}"])
+rows.append(["All (n = 600)", f"{cb['detect_k']}", f"{ca['detect_k']}", f"{H_['rule']['detect_k']}",
+             f"{H_['hybrid']['detect_k']}"])
+rows.append(["Benign FP (n = 3,000)", f"{cb['fp_k']}", f"{ca['fp_k']}", f"{H_['rule']['fp_k']}",
+             f"{H_['hybrid']['fp_k']}"])
+table("Session-level detection on Corpus C (100 sessions per family)",
+      ["Family", "Per-window thr.", "Calibrated", "Capability gate", "Deployed rule"],
+      rows, key="simdetect")
+body(f"Four families are detected every time at either threshold. The cost of calibration "
+     f"falls on one family, the replay loop, which drops from {pct(cb['per_profile']['mimicry'], 0)} "
+     f"to {pct(ca['per_profile']['mimicry'], 0)}; the single human-paced payload is not "
+     "detected by anything. The capability gate alone reaches "
+     f"{kn(H_['rule']['detect_k'], 600)} with no false positive, and adds nothing to the "
+     "deployed rule on families the model was trained on. Three hand-written rules from our "
+     f"earlier study reach the same {pct(R['all three rules']['mean'])}: in simulation, what "
+     "learning adds over rules is the replay loop.")
+h2("B", "From a Window Threshold to False Alarms per Device-Hour")
+body("The threshold was first set at a per-window false-positive rate of 10⁻⁴ on "
+     "validation windows. On sessions of up to an hour (about 101 device-hours) that model "
+     f"raised {long_kbd:.3f} false alarms per keyboard-hour, about one per keyboard per working "
+     "day, and none on other classes; short sessions had too few hours to show it. "
+     f"{tref('operating')} explains why the per-window target says little. On 40 benign "
+     f"keyboard-hours, {sfp_old['p_window_over']:.2e} of windows were over that threshold, ten "
+     "times the target, because the pooled validation target hides the keyboard’s own rate. "
+     f"An over-threshold window was followed by another {100 * sfp_old['q_next_over_given_over']:.0f}% "
+     "of the time, since consecutive LSTM inputs share nine of ten rows. Treating windows as "
+     f"independent predicts {sfp_old['naive_alarms_per_hour']:.1e} alarms per hour against "
+     f"{sfp_old['observed_alarms_per_hour']:.3f} observed.")
+rows = [["Keyboard windows over threshold", f"{sfp_old['p_window_over']:.1e}",
+         f"{sfp_new['p_window_over']:.1e}"],
+        ["P(next over | over)", f"{sfp_old['q_next_over_given_over']:.2f}",
+         f"{sfp_new['q_next_over_given_over']:.2f}"],
+        ["Alarms/h predicted if independent", f"{sfp_old['naive_alarms_per_hour']:.1e}",
+         f"{sfp_new['naive_alarms_per_hour']:.1e}"],
+        ["Alarms/h observed (40 h)", f"{sfp_old['observed_alarms_per_hour']:.3f}",
+         f"{sfp_new['observed_alarms_per_hour']:.3f}"],
+        ["Fresh keyboard alarms (80 h)", f"{kb_b['alarms']} ({kb_b['rate']:.3f}/h)",
+         f"{kb_a['alarms']} ({kb_a['rate']:.3f}/h)"],
+        ["Corpus C detection", kn(cb["detect_k"], cb["n_attack"]), kn(ca["detect_k"], ca["n_attack"])],
+        ["Corpus C benign FP", f"{cb['fp_k']}/3,000", f"{ca['fp_k']}/3,000"],
+        ["Median latency", f"{cb['median_latency']:.1f} s", f"{ca['median_latency']:.1f} s"]]
+table("Two operating points of the same model", ["Measure",
+      f"Per-window ({CAL['previous_threshold']:.4f})", f"Calibrated ({CAL['chosen_threshold']:.4f})"],
+      rows, key="operating")
+body("We therefore choose the threshold on gate firings. Each session has a critical "
+     "threshold, the largest at which its gate fires, so the whole curve of false alarms "
+     "against threshold is a sort; a test checks this against the policy engine. On 80 "
+     "hours of long benign sessions from a calibration seed, the smallest threshold with at "
+     "most 0.01 alarms per device-hour was adopted, as pre-registered, and evaluated once on "
+     f"a fresh seed: keyboard false alarms fell from {kb_b['rate']:.3f} to {kb_a['rate']:.3f} "
+     "per hour, at the cost in Table "
+     f"{ROMAN[TABLE_ORDER.index('simdetect') + 1]}. The full threshold curve is in the "
+     "result file, so a deployment can trade the other way.")
+h2("C", "Generalisation to Unseen Attack Families")
+body("Stage 2 learns the families it is shown. Trained without a family and tested on it, "
+     f"mean detection on Corpus C falls from {pct(seen_mean)} to {pct(lopo_m)}. To see why, we trained on "
+     f"benign traffic and one family at a time and tested every family ({tref('transfer')}).")
+fl = {"hid_injection": "hid", "staged_delay": "stag", "identity_switch": "iden",
+      "class_exfil": "exfil", "mimicry": "mim", "mimicry_adaptive": "mim-a"}
 rows = []
-for model, LV in (("Original", LIVE_O), ("Retrained", LIVE_R)):
-    for did, label in (("1-4", "keyboard"), ("1-6", "USB drive")):
-        d = LV["devices"][did]
-        rows.append([f"{model}, {label}", f"{d['windows']} ({d['busy_windows']})",
-                     f"{d['stage2_busy_median']:.2f}", d["alerts"], d["trust_state"]])
-table("A live run on the guest: both models watching the same real devices for seven minutes",
-      ["Model, device", "Windows (with traffic)", "Median Stage-2", "Alerts", "Final state"],
-      rows, key="live")
-ko, kr = LIVE_O["devices"]["1-4"], LIVE_R["devices"]["1-4"]
-body(f"{tref('live')} records the run. The deployed set is now the retrained model, and we "
-     "ran it beside the original on the guest while a person typed on the keyboard and then "
-     f"left it idle. On the keyboard the original model’s median Stage-2 score was "
-     f"{ko['stage2_busy_median']:.2f}, its gate fired {ko['alerts']} times, and the keyboard "
-     f"ended in a dry-run revoke. The retrained model scored the same windows with a median "
-     f"of {kr['stage2_busy_median']:.2f} (maximum {kr['stage2_max']:.2f}) and raised no alert. "
-     "Neither model alerted on the USB drive. Both models watched the same device in the same "
-     "seconds, so the comparison is paired. It is still one keyboard, one typist and one "
-     "session on a virtual device, and it repeats the offline result in place of adding "
-     "independent evidence about attacks.")
-
-h2("H", "Generalisation to Unseen Attack Families")
+for F in FAMS:
+    rows.append([fl[F]] + [f"{100 * TR['matrix'][F][G]['rate']:.0f}" for G in FAMS])
+table("Detection (%) of each family (columns) by a model trained on one family (rows)",
+      ["Trained on"] + [fl[g] for g in FAMS], rows, key="transfer")
+st = TR["overlap"]["strong"]
+body("The four injection-speed families transfer among themselves almost completely, and "
+     "the two human-paced families transfer to and from nothing. We measured, for each "
+     "family, the features that separate its attack windows from benign windows of the same "
+     "class by a Kolmogorov–Smirnov statistic of at least 0.8. The overlap of those sets "
+     f"predicts transfer (Spearman ρ = {st['spearman_jaccard']:+.2f}; a version using the top "
+     f"five features, stated before the run, gave {TR['overlap']['top5']['spearman_jaccard']:+.2f} "
+     "because many features tie at 1.00). The injection families share 9 to 11 such "
+     "features, mostly rate and timing. The human-paced families have none: their best "
+     "feature reaches 0.45. A supervised model can only learn weak, family-specific cues for "
+     "them, and no other family carries those cues, so a new human-paced attack will not be "
+     "caught by training on old ones.")
+body("The capability gate needs no training family. Combined with the model under the same "
+     "leave-one-family-out protocol, mean detection rises from "
+     f"{pct(lopo_m)} to {pct(lopo_h)}: identity switch and covert exfiltration go from 0% "
+     "to 100%, with no added false positive, because they inject at machine speed. The "
+     "human-paced families stay where they were.")
+h2("D", "Real Kernels")
 rows = []
-for f in FAMS:
-    r = LOPO[f]
-    rows.append([f, pct(r["full"][0], 0), pct(r["unseen"][0], 0), pct(r["stage1"][0], 0),
-                 pct(r["unseen_or_s1"][0], 0)])
-rows.append(["Mean", pct(seen_mean), pct(unseen_mean), pct(s1_mean), pct(or_mean)])
-rows.append(["Benign FP", f"{fp_fresh:.2%}", f"{fp_unseen:.2%}", f"{LOPO['benign_fp_stage1']:.2%}",
-             f"{fp_or:.2%}"])
-table("Leave-one-family-out detection on Corpus C (100 sessions per family)",
-      ["Family", "Trained on it", "Never seen", "Stage 1 only", "Never seen + Stage 1"],
-      rows, key="unseen")
-body("Stage 2 is supervised, so it is trained on the families we can write down, and a real "
-     "attack will be one we did not. For each family we trained without it, with Stage 1, "
-     "the LSTM and the threshold all excluding it, and scored it on Corpus C "
-     f"({tref('unseen')}). Mean detection falls from {pct(seen_mean)} to {pct(unseen_mean)}, "
-     "so about half of the headline is memorised family structure. The two injection "
-     "families transfer to each other. Families with a unique signature do not. Detection "
-     "of <i>identity_switch</i> and <i>class_exfil</i> drops to 0%, and the replay loop to "
-     f"{pct(LOPO['mimicry']['unseen'][0], 0)}. The label-free Stage 1 catches "
-     f"{pct(LOPO['identity_switch']['stage1'][0], 0)} of <i>identity_switch</i> sessions that "
-     "the trained Stage 2 scores at 0%, so Stage 2 shadows a detector that already works. "
-     f"Keeping Stage 1 as an independent alarm path recovers part of the gap, from "
-     f"{pct(unseen_mean)} to {pct(or_mean)} mean detection at no measurable extra "
-     f"false-positive cost ({fp_unseen:.2%} without it, {fp_or:.2%} with it). The "
-     f"{fp_unseen:.2%} is higher than the {fp_fresh:.2%} of the full model because the "
-     "models trained without a family calibrate their thresholds on less data.")
-
-h2("I", "What Did Not Help, and What the Results Depend On")
-g = GATES["rules"][0]["rows"]
-dts = [r["detect_test"] for r in g]
-r11 = next(r for r in g if r["rule"] == "k-of-n" and r["params"] == "1/1")
-r46 = next(r for r in g if r["rule"] == "k-of-n" and r["params"] == "4/6")
-bd = [r["detect_at_0.5pct"] for r in VARS["base"]]
-mean_bd = sum(bd) / len(bd)
-sd_bd = (sum((x - mean_bd) ** 2 for x in bd) / len(bd)) ** 0.5
-vm = {k: sum(r["detect_at_0.5pct"] for r in v) / len(v) for k, v in VARS.items()}
-swaps = AUG["class_exfil"]["+ swaps (held-out pair removed)"]
-body("<i>The alerting rule.</i> We calibrated 13 rules to the same 0.5% benign false-positive "
-     "target on one half of Corpus C’s benign sessions and scored them on the other half: "
-     "k-of-n gates, an exponentially weighted mean of the log-odds, and a CUSUM. Detection "
-     f"on held-out attacks ranged only from {pct(min(dts))} to {pct(max(dts))}, which is "
-     "within noise at n = 300. A bare single-window threshold matched the 4-of-6 gate and "
-     f"alerted after {r11['median_latency']:.1f} s instead of {r46['median_latency']:.1f} s. "
-     "On this corpus the persistence gate buys latency cost and no false-positive benefit, "
-     "though real traffic may have transient spikes the simulator lacks.")
-body("<i>Model changes.</i> At a matched 0.5% false-positive rate the baseline detects "
-     f"{pct(mean_bd)} ± {100 * sd_bd:.1f} points over three seeds. A long-repeat "
-     f"feature, the share of 12-report n-grams already seen in the session ({pct(vm['+repeat'])}), "
-     f"long-memory context features such as activity averages and idle-run length ({pct(vm['+context'])}), "
-     f"and a five-seed ensemble ({pct(vm['ens5'])}) all sit inside that spread. The limit is "
-     "the information in the features and the training data, not model capacity.")
-body("<i>Synthetic attacks.</i> We trained on 152 generated sessions of devices that declare "
-     "one class and behave as another, withholding the swap equivalent to the held-out "
-     "family. The model learned the swaps, detecting "
-     f"{pct(swaps['swap_seen_pairs'], 0)} of fresh swaps it had trained on and "
-     f"{pct(swaps['swap_withheld_pair'], 0)} of the withheld pair. It still detected none "
-     "of the real held-out families, because they are not plain class swaps. "
-     "<i>identity_switch</i> relies on an interface that appears late, and "
-     "<i>class_exfil</i> is low-rate covert bulk traffic.")
-cal = DIAG["calibration"]
-lo_pt, mid_pt = cal["operating_points"][0], cal["operating_points"][2]
-imp = sorted(DIAG["importance"]["drops"].items(), key=lambda kv: -kv[1])[:3]
-bm = DIAG["importance"]["by_modality"]
-body("<i>Calibration noise.</i> The threshold is the 1-in-10,000 quantile of benign validation "
-     "windows, and with 4,964 of them that is half a window, so in effect it is the single "
-     f"highest benign score. Resampling the validation sessions 400 times moves it from "
-     f"{lo_pt['threshold']:.2f} (2.5th percentile) to {mid_pt['threshold']:.3f} (median). On "
-     f"Corpus C the low end gives {pct(lo_pt['fp'], 2)} benign false positives and "
-     f"{pct(lo_pt['detect'])} detection, the median {pct(mid_pt['fp'], 2)} and "
-     f"{pct(mid_pt['detect'])}. The operating point therefore depends partly on which benign "
-     "window happened to be the largest. A deployment should calibrate on thousands of benign "
-     "sessions against a session-level target, as in the alerting-rule study.")
-body("<i>What the model relies on.</i> Shuffling one feature at a time across a 300-session "
-     f"sample lowers window AUC ({DIAG['importance']['base_auc']:.3f}) most for "
-     + ", ".join(f"{k} ({v:.3f})" for k, v in imp) + f". By modality the payload features "
-     f"account for {bm['payload']:.3f}, timing {bm['timing']:.3f}, protocol {bm['protocol']:.3f} "
-     f"and identity {bm['identity']:.3f}. No proxy for position in the session is among the "
-     "inputs, since time since enumeration is excluded. The streaming detector costs "
-     f"{DIAG['cost']['ms_per_device_window']:.1f} ms per device-window, about "
-     f"{DIAG['cost']['devices_per_core']} devices per core at one window per second.")
-mo = ROB["mimicry_overlap"]
-body("<i>The replay-loop result hangs on one attacker choice.</i> A device replaying a script "
-     "presses and releases keys cleanly, and detection is "
-     f"{pct(mo['short']['rate'], 0)} (95% CI {pct(mo['short']['ci'][0], 0)} to "
-     f"{pct(mo['short']['ci'][1], 0)}). A mimic that also imitates human key overlap makes "
-     "every cycle of the script produce different reports, and detection falls to "
-     f"{pct(mo['human']['rate'], 0)}. That is a 96-point swing from a single design choice, "
-     "and no real attack hardware was available to say which is realistic, so the "
-     "result should be read as a range.")
-P = ROB["perturbations"]
-rows = []
-for key, label in (("as generated", "As generated"), ("jitter 5 ms", "Timestamp jitter, 5 ms"),
-                   ("quantise 10 ms", "Quantised to 10 ms ticks"), ("drop 5%", "5% of events lost"),
-                   ("drop 20%", "20% of events lost"), ("dilate x2", "All times doubled")):
-    d = P[key]
-    rows.append([label, pct(d["fp"]),
-                 pct(d["detect"]) if d["detect"] == d["detect"] else "n/a",
-                 pct(d["per_profile"]["mimicry"]) if d["detect"] == d["detect"] else "n/a"])
-table("Robustness of the retrained model to capture-level perturbations "
-      f"({P['as generated']['n_benign']} benign and {P['as generated']['n_attack']} attack sessions)",
-      ["Perturbation", "Benign FP", "Detection", "Replay loop"], rows, key="perturb")
-body(f"{tref('perturb')} applies perturbations a real capture has and the simulator lacks. "
-     "False positives stay at 0% throughout, and detection is unchanged except for the "
-     "replay loop, which depends on exact repeats and degrades when events are lost. Time "
-     "doubling applies to benign sessions only, because it would move attack onsets. With "
-     f"200 benign sessions, 0% bounds the false-positive rate only below about 2%.")
-
-h2("J", "eBPF Capture Feasibility")
-body("Section V-A names two capture backends behind one interface: usbmon, which is "
-     "deployed, and eBPF, which is designed. Rather than leave that as a design claim, we "
-     "built a minimal prototype on the two hook points named there "
-     "(<code>usb_submit_urb</code> and <code>__usb_hcd_giveback_urb</code>) and measured "
-     "whether counting completions through them agrees with usbmon, the criterion the "
-     "project had set for this decision. The probe attaches by kfunc, which gives "
-     "BTF-typed field access, and counts only at the completion hook, matching the "
-     "completions-only rule of the feature extractor.")
-rows = [["Idle (25 s)", f"{EBPF_IDLE['usbmon']['completions_and_errors']:,}",
-         f"{EBPF_IDLE['ebpf']['completions_at_giveback_hook']:,}",
-         f"{EBPF_IDLE['agreement_pct']:.3f}%"],
-        [f"Busy, 15× lsusb -v ({EBPF_BUSY['seconds_requested']:.0f} s)",
-         f"{EBPF_BUSY['usbmon']['completions_and_errors']:,}",
-         f"{EBPF_BUSY['ebpf']['completions_at_giveback_hook']:,}",
-         f"{EBPF_BUSY['agreement_pct']:.3f}%"]]
-table("URB completions counted by eBPF and by usbmon over the same window",
-      ["Condition", "usbmon", "eBPF", "Agreement"], rows, key="ebpf")
-body(f"Agreement is exact across a {ebpf_ratio}-fold difference in traffic volume "
-     f"({tref('ebpf')}). One finding came only from running on real hardware. The URB "
-     "status field, read at kfunc entry to the completion hook, is -115 (EINPROGRESS) on "
-     "every completion, including control transfers that plainly succeeded. The count is "
-     "unaffected, but a real backend would need a different probe point to read per-URB "
-     "status. No typed records are emitted and no ring buffer exists, and overhead against "
-     "the literature’s sub-microsecond claim [3]–[5] is not measured.")
+for k in ("ubuntu-24.04", "debian-13", "fedora-44", "alma-9"):
+    d = dists[k]
+    drv = "all classes" if "cdc_ether" in d["drivers"] else "HID, storage"
+    rows.append([d["os"].replace(" (Olive Jaguar)", "").replace(" (Cloud Edition)", "")
+                 .replace(" GNU/Linux", "").replace(" (trixie)", ""),
+                 d["kernel"].split("-")[0], f"{d['usbmon_lines']:,}", drv])
+table(f"Testbed environments ({tb_minutes / len(dists):.0f} min each, {tb_minutes / 60:.0f} h in all)",
+      ["Distribution", "Kernel", "usbmon lines", "Drivers bound"], rows, key="envs",
+      left_cols=(0, 3))
+body(f"The parser read {tb_lines:,} lines from four kernels with {tb_unparsed} unparsed "
+     f"({tref('envs')}). The environments differ in a way simulation cannot show: Ubuntu’s "
+     "and Fedora’s cloud kernels ship without the audio, network and serial class drivers, "
+     "so the same emulated devices fall silent after enumeration there, and Ubuntu’s also "
+     "lacks usbmon itself until an extra module package is installed.")
+BR = TB["benign_by_role"]
+assert tb_tot["rule_alarmed"] == 0       # so the model-alone benign column equals the deployed one
+rows = [["Benign devices alarmed", f"{int(tb_tot['deployed_alarmed'])}/{int(tb_tot['devices'])}",
+         f"{int(tb_tot['deployed_alarmed'])}/{int(tb_tot['devices'])}",
+         f"{int(tb_tot['previous_threshold_alarmed'])}/{int(tb_tot['devices'])}",
+         f"{int(tb_tot['rule_alarmed'])}/{int(tb_tot['devices'])}",
+         f"{int(tb_tot['corpus_a_alarmed'])}/{int(tb_tot['devices'])}"],
+        ["  of which keyboards (human input)", f"{int(kbd_role['deployed_alarmed'])}/{int(kbd_role['devices'])}",
+         f"{int(kbd_role['deployed_alarmed'])}/{int(kbd_role['devices'])}",
+         f"{int(kbd_role['previous_threshold_alarmed'])}/{int(kbd_role['devices'])}",
+         f"{int(kbd_role['rule_alarmed'])}/{int(kbd_role['devices'])}",
+         f"{int(kbd_role['corpus_a_alarmed'])}/{int(kbd_role['devices'])}"]]
+for f in FAST + ["mimicry", "mimicry_adaptive"]:
+    v = tb_att[f]
+    rows.append([f.replace("_", " "), f"{v['deployed']}/{v['n']}", f"{v['model_calibrated']}/{v['n']}",
+                 f"{v['model_previous']}/{v['n']}", f"{v['rule']}/{v['n']}", f"{v['corpus_a']}/{v['n']}"])
+table(f"Real kernels: benign devices ({tb_tot['hours']:.1f} device-hours) and attack episodes. "
+      "† model alone, calibrated threshold, competence checks on; ‡ model alone, per-window "
+      "threshold, every device judged",
+      ["", "Deployed", "Model, cal.†", "Model, per-win.‡", "Gate only", "Corpus A"],
+      rows, key="realkernel", left_cols=(0,))
+body(f"{tref('realkernel')} holds the main real-kernel result. The deployed rule raised no "
+     f"alarm on any of {int(tb_tot['devices'])} benign device sessions over "
+     f"{tb_tot['hours']:.1f} device-hours, including {int(kbd_role['devices'])} keyboards "
+     f"driven by real people’s keystrokes, and detected all {fast_n} injection-speed attacks "
+     f"with a median latency of {tb_lat_med:.1f} s. Those detections are the capability "
+     f"gate’s. The learned model alone (†, competence checks on) caught {model_cal_all} of "
+     f"{n_att_tb} attacks at its calibrated threshold. At the per-window threshold "
+     f"(‡, every device judged) it caught all {fast_prev} injection attacks but also alarmed "
+     f"on {int(kbd_role['previous_threshold_alarmed'])} of the {int(kbd_role['devices'])} "
+     "human-typed keyboards. Real injection through a keyboard polled every 10 ms produces "
+     "about 93 reports per second, not the simulator’s 390, and the model’s score reached "
+     "the calibrated threshold too briefly to complete the gate. Nothing detected the "
+     f"human-paced attacks ({mim_dep}/{mim_n}) except the original Corpus-A model, which "
+     f"alarmed on {int(tb_tot['corpus_a_alarmed'])} of {int(tb_tot['devices'])} benign devices.")
+body("The competence checks were needed. Judging every device, the same model alarmed on "
+     f"{int(tb_tot['judging_all_alarmed'])} benign devices: a network adapter whose "
+     "link-status endpoint sends an identical eight-byte report every 32 ms (perfectly "
+     "regular and repetitive, which is what injection looks like to a model that has only "
+     "seen keyboards), a serial converter, hubs, and the absolute tablet, whose six-byte "
+     "reports no training device had. The HID check was designed after seeing the tablet "
+     "alarm and validated on the sessions run afterwards.")
+h2("E", "What Did Not Help")
+rs = ROBF["summary"]
+body("<i>Sample-size-robust features.</i> The long-session false alarms came from windows "
+     "holding one keystroke, where the coefficient of variation and entropy of inter-arrival "
+     "times are exactly zero, the signature of a script. Freezing either feature removed "
+     "every such alarm in the trained model. Retraining with versions shrunk toward a "
+     "Poisson prior, and with a novelty feature on a 60-second horizon, did not: pooled over "
+     f"three seeds the candidate raised more keyboard alarms than the base model "
+     f"({rs['R_both']['kbd_alarms_per_hour'][0]:.3f} against "
+     f"{rs['base']['kbd_alarms_per_hour'][0]:.3f} per hour), so it was not adopted.")
+pv2 = POLL["polling_v3"]["corpus_c_v2"]
+body("<i>Polling-limited injection.</i> Training on injection bounded by a device polling "
+     "interval of 1 to 10 ms, after the real-kernel miss, lowered Corpus C detection to "
+     f"{pct(pv2['detect'])} (replay loop {pct(pv2['per_family']['mimicry'], 0)}) and caught "
+     "almost none of the real-kernel attacks, failing two of its four criteria. The "
+     "sim-to-real gap is not only speed.")
+body("<i>Earlier negative results.</i> The per-device baseline contributes nothing measurable, "
+     "even when devices are made heterogeneous; 13 alternative alerting rules, a long-repeat "
+     "feature, longer context and a five-seed ensemble all fall within seed noise; a "
+     "host-level feature for concurrent mouse activity did not help, because simulated "
+     "devices on one host are independent. Two real defects surfaced only on real kernels: "
+     "the usbmon timestamp wraps at 4,096 s and the parser had assumed 2³² µs, shifting "
+     "every event after a wrap 199 s into the future, and the descriptor scanner had marked "
+     "every real interface as late-arriving.")
+h2("F", "Cost and Overhead")
+body(f"The streaming detector costs {DIAG['cost']['ms_per_device_window']:.1f} ms per "
+     f"device-window, about {DIAG['cost']['devices_per_core']} devices per core. An eBPF probe "
+     "on the URB completion hook counts exactly the same completions as usbmon "
+     f"({EBPF_BUSY['ebpf']['completions_at_giveback_hook']:,} of "
+     f"{EBPF_BUSY['usbmon']['completions_and_errors']:,} under load), but reads the URB status "
+     "too early to be correct, emits no records and is not a capture backend.")
+if OVH:
+    OS_ = OVH["summary"]
+    rows = []
+    for c, lbl in (("usbmon", "usbmon (deployed)"), ("ebpf_count", "eBPF, counting"),
+                   ("ebpf_event", "eBPF, per-event"), ("both", "usbmon + eBPF")):
+        s_ = OS_[c]
+        wl, wh = s_["write_MBps_vs_none_ci"]
+        rl, rh = s_["read_MBps_vs_none_ci"]
+        ns = s_.get("ebpf_ns_per_call")
+        rows.append([lbl, f"{100 * s_['write_MBps_vs_none']:+.0f}% [{100 * wl:+.0f}, {100 * wh:+.0f}]",
+                     f"{100 * s_['read_MBps_vs_none']:+.0f}% [{100 * rl:+.0f}, {100 * rh:+.0f}]",
+                     f"{s_['cpu_jiffies'][0]:.0f}", f"{ns[0] / 1000:.1f}" if ns else "—"])
+    nn = OS_["none"]
+    rows.append(["None (reference)", f"{nn['write_MBps'][0]:.1f} MB/s", f"{nn['read_MBps'][0]:.1f} MB/s",
+                 f"{nn['cpu_jiffies'][0]:.0f}", "—"])
+    table(f"Monitoring cost under USB storage load ({OVH['stick_mb']} MB in {OVH['bs_kib']} KiB "
+          f"direct I/Os, {OVH['reps']} paired repetitions; change vs. none, 95% CI)",
+          ["Monitor", "Write", "Read", "CPU (jiffies)", "eBPF µs/URB"], rows,
+          key="overhead", left_cols=(0,))
+    ns_max = max(OS_[c]["ebpf_ns_per_call"][0] for c in ("ebpf_count", "ebpf_event", "both"))
+    cis = [OS_[c][k] for c in ("usbmon", "ebpf_count", "ebpf_event", "both")
+           for k in ("write_MBps_vs_none_ci", "read_MBps_vs_none_ci")]
+    n_ci, n_contain = len(cis), sum(lo <= 0 <= hi for lo, hi in cis)
+    # an interval that excludes zero must do so on the FASTER side, or this text is wrong
+    assert all(lo > 0 for lo, hi in cis if not lo <= 0 <= hi), "a monitor measurably slowed I/O"
+    body(f"{tref('overhead')} measures each monitor on a guest whose storage stick is driven "
+         f"with {OVH['bs_kib']} KiB direct I/Os, so that every few kilobytes costs three URBs, "
+         "the worst case for a per-URB monitor. Each condition is compared with the "
+         "unmonitored run of the same repetition, because a first version of the benchmark "
+         "drifted by more than any difference between conditions. No monitor’s cost is "
+         f"detectable. {n_contain} of {n_ci} intervals contain zero; "
+         + (f"the {'other' if n_ci - n_contain == 1 else 'others'} lie on the side where "
+            "monitoring would make transfers faster, which no monitor can cause, and with "
+            f"{n_ci} intervals at 95% about one miss is expected. " if n_contain < n_ci else "")
+         + "The resolution is coarse, ±10 to 30%, "
+         "because the device is emulated, so the honest statement is an upper bound, not a "
+         "zero. The kernel’s own BPF statistics put the probe at most "
+         f"{ns_max / 1000:.1f} µs per URB completion in this guest, the same for counting and "
+         "per-event output, which suggests the measurement’s own timing dominates; at a "
+         "keyboard’s ten or so URBs a second that is negligible.")
 
 # ---------------------------------------------------------------- VII
-h1("VII", "Limitations and Threats to Validity")
-item("1)", "<i>No real attack traffic.</i> Every detection figure is measured on simulated "
-           "attacks. The real-traffic checks cover the capture machinery and benign typing "
-           "on a virtual keyboard, scored offline and live. They cannot validate "
-           "detection accuracy. This is the main limitation.")
-item("2)", "<i>Corpus B encodes our assumptions.</i> The idle mix, the text model, the "
-           "hold times and the typing-speed range come from the HID specification and the "
-           "typing literature, but they are still assumptions. The replay-loop result "
-           "swings from 97% to 1% on one of them, and the human-paced payload is at 0%.")
-item("3)", "<i>Weak generalisation.</i> Detection of families the model has not seen is "
-           f"{pct(unseen_mean)}, against {pct(seen_mean)} for families it has. The Stage 1 "
-           "alarm path recovers part of that and no method we tried closed it.")
-item("4)", "<i>False-positive rate is not established at deployment scale.</i> "
-           f"{round(fp_fresh * 3000)} false alarms in 3,000 benign sessions of about a "
-           f"minute each is roughly one alarm per {62.5 / 3600 / fp_fresh:.0f} device-hours. "
-           "Many devices running continuously need a rate orders of magnitude lower, "
-           "which simulation cannot certify.")
-item("5)", "<i>The enforcement loop is a userspace one, and slower than the work it "
-           "improves on.</i> Enforcement has never executed. Even if it did, the policy engine "
-           "runs in userspace and writes to sysfs, so the claim that verdicts execute without a "
-           "userspace round trip (N3) is not realised, and eBPF is a counting prototype. The "
-           "median time to the first alert is 3.8 to 4.3 s, longer than the one-second "
-           "activation delay [2] reports for SafeUSB, so a short payload would already have "
-           "run. A single-window threshold alerts after 0.9 s at the same detection in "
-           "Section VI-I and is the better operating point for that goal.")
-item("6)", "<i>Novelty is narrower than first claimed.</i> N4 is supported, N1 only "
-           "non-uniformly, N2 not at all, and N3 untested. Kernel-level filtering [14] and "
-           "timing-based injection detection [15] exist, and three hand-written rules reach "
-           f"{pct(RULEJ['all three rules']['mean'])} detection. What the learned system adds "
-           "is the replay-loop family, under an assumption we could not check against real "
-           "attack hardware. The related work is also short, and we read the USB defences "
-           "[13]–[16] through their published descriptions.")
-item("7)", "<i>The live evidence is thin.</i> The live comparison is one keyboard, one typist "
-           "and one seven-minute session on a virtual device, with no attack traffic. It shows "
-           "that the deployed model leaves a typing keyboard alone and that the original did "
-           "not. It says nothing about detection on real attack hardware.")
-item("8)", "<i>A feature was designed against a known failure.</i> The cross-window payload "
-           "feature was added after seeing which family the system missed. Its constraint is "
-           "real, since a payload must type specific commands, but it raises the attacker’s "
-           "cost and does not remove it. The trace store also pseudonymises whole reports, "
-           "so features can only compare reports for equality.")
+h1("VII", "What the Evidence Supports")
+body(f"{tref('claims')} separates what was proposed, what was built and what the "
+     "experiments support. The four novelty claims of the original proposal are N1 to N4.")
+rows = [["N1 Multi-modal fusion", "Built", "Partly: helps at moderate attack strength, loses at "
+         "the subtlest (simulation)"],
+        ["N2 Per-device baseline", "Built", "Not supported (simulation)"],
+        ["N3 Closed-loop enforcement", "Generated, not executed", "Untested"],
+        ["N4 Temporal modelling", "Built", f"Supported in simulation ({pct(s1_a)} → {pct(det_a)}); "
+         "did not transfer to real kernels at a usable threshold"],
+        ["Device-hour calibration", "Built, deployed", "Supported: simulation and real kernels"],
+        ["Competence checks", "Built, deployed", "Supported on real kernels"],
+        ["Capability gate", "Built, deployed", "Supported: unseen families, real kernels"],
+        ["Zero-day detection", "Not claimed", "Unseen human-paced attacks are missed"]]
+table("Claims, implementation status and evidence", ["Claim", "Status", "Evidence"], rows,
+      key="claims", left_cols=(0, 1, 2))
+body("Three readings follow. First, the strongest result is operational: a monitor that "
+     "raised no false alarm on 114 real-kernel device sessions and caught every "
+     "injection-speed attack, with the detections coming from a physical bound and the "
+     "learned model contributing its calibrated restraint rather than its detections. "
+     "Second, the learned model’s advantage is narrow even in simulation, the replay loop, "
+     "and it did not carry over to real kernel traffic, so this paper does not present "
+     "IUDBMS as a detector of unknown attacks. Third, a human-paced payload typed once is "
+     "statistically the same process as a person typing within one device’s traffic; no "
+     "feature we have separates it, and no detector here catches it.")
 
 # ---------------------------------------------------------------- VIII
-h1("VIII", "Conclusion")
-body("IUDBMS poses USB trust as a question about behaviour over time and not about identity "
-     "asserted at connection. The pipeline compresses URB traffic into per-second vectors, "
-     "scores them against population and per-device norms, passes that score to a sequence "
-     "model, and escalates through a persistence-gated policy. On the original corpus it "
-     f"detects {pct(det)} of attack sessions with {pct(fp)} false positives, against "
-     f"{pct(s1_det)} without the temporal stage and none for an identity-based control.")
-body("That number was too kind. Giving benign devices idle periods and realistic HID "
-     f"behaviour made the original model flag {pct(orig_fp)} of benign sessions. Retraining "
-     f"restored zero false positives at {pct(seen_mean)} detection on fresh data, and "
-     f"detection of unseen families is only {pct(unseen_mean)}. Three hand-written rules reach "
-     f"{pct(RULEJ['all three rules']['mean'])} with no false positives, so the learned system’s "
-     "measured gain is one attack family. Of four novelty claims, one is supported, one partly, "
-     "one not, and one untested. Running the system against a real kernel found a timing defect, "
-     "a mismatched checkpoint and a scanner defect that the 385 simulator-driven tests then in "
-     "the suite had not. "
-     "The retrained model is now the deployed one, and on a live guest it left a typing "
-     "keyboard alone where the original revoked it. The next steps "
-     "follow directly: capture real attack hardware and a longer record of ordinary use, "
-     "close the generalisation gap, measure false positives at deployment scale, and review "
-     "the enforcement loop before it touches a kernel.")
+h1("VIII", "Limitations and Threats to Validity")
+item("1)", "<i>Simulated training data.</i> Every model is trained on simulated traffic, and "
+           "the real-kernel results show that the learned component does not transfer at a "
+           "usable operating point.")
+item("2)", "<i>Emulated devices and recorded users.</i> The testbed’s kernels and drivers are "
+           "real, but the devices are QEMU’s and the input is replayed, not live. No physical "
+           "device, real attack hardware or live user has been tested. A capture tool that "
+           "pseudonymises payloads as it records exists for contributors with their own "
+           "machines and devices; no contribution has been analysed yet.")
+item("3)", "<i>Small real-kernel attack set.</i> Forty episodes, eight per family, on one "
+           "QEMU keyboard model with a 10 ms polling interval. A device declaring a slower "
+           "interval, or typing just under 30 reports per second, would evade the "
+           "capability gate.")
+item("4)", "<i>Human-paced attacks are not detected.</i> Neither the model nor the gate "
+           "catches a payload typed at human speed.")
+item("5)", "<i>Enforcement is not applied.</i> Actions are generated and logged only, so the "
+           "closed loop and its latency are untested.")
+item("6)", "<i>Assumptions in the generator.</i> Idle mixes, text model and onsets are our "
+           "choices; the replay-loop result swings from 97% to 1% on one attacker choice.")
+item("7)", "<i>Post-hoc design.</i> The HID competence check and the 0.8 overlap threshold "
+           "were introduced after seeing data; both are reported as such, and the check was "
+           "validated only on sessions run after it was designed.")
+
+# ---------------------------------------------------------------- IX
+h1("IX", "Conclusion")
+body("IUDBMS treats USB trust as a question about behaviour over time. As built, it is a "
+     "working Linux monitor whose alarm threshold is set in false alarms per device-hour, "
+     "which declines to judge device types its model never saw, and which pairs a learned "
+     "sequence model with a bound on human typing speed. In simulation it detects "
+     f"{kn(ca['detect_k'], ca['n_attack'])} of fresh attack sessions at no false positive in "
+     f"3,000 benign ones. On four real kernels it raised no false alarm in "
+     f"{tb_tot['hours']:.0f} device-hours and caught every injection-speed attack, but those "
+     "detections came from the typing-speed bound, and human-paced attacks went undetected. "
+     "The work is a simulation-based proof of concept with a real-kernel testbed, not a "
+     "tested security product. The next steps are recordings of real users on physical "
+     "devices, real attack hardware, a review of the enforcement path before it touches a "
+     "kernel, and features that can see a human-paced payload.")
 
 # ---------------------------------------------------------------- refs
 p = doc.add_paragraph(style="IEEE H1")
@@ -1326,6 +1094,20 @@ REFS = {
                 "Proc. 8th IEEE Int. Conf. Data Mining (ICDM)", ", 2008, pp. 413–422."),
     "lstm": ("S. Hochreiter and J. Schmidhuber, “Long short-term memory,” ", "Neural Comput.",
              ", vol. 9, no. 8, pp. 1735–1780, 1997."),
+    "dhakal": ("V. Dhakal, A. M. Feit, P. O. Kristensson, and A. Oulasvirta, “Observations on "
+               "typing from 136 million keystrokes,” in ",
+               "Proc. CHI Conf. Human Factors in Computing Systems",
+               ", Montréal, QC, Canada, 2018, doi: 10.1145/3173574.3174220."),
+    "killourhy": ("K. S. Killourhy and R. A. Maxion, “Comparing anomaly-detection algorithms "
+                  "for keystroke dynamics,” in ",
+                  "Proc. IEEE/IFIP Int. Conf. Dependable Systems and Networks (DSN)",
+                  ", Lisbon, Portugal, 2009, pp. 125–134, doi: 10.1109/DSN.2009.5270346."),
+    "balabit": ("Á. Fülöp, L. Kovács, T. Kurics, and E. Windhager-Pokol, ",
+                "Balabit Mouse Dynamics Challenge data set",
+                ", 2016. [Online]. Available: https://github.com/balabit/Mouse-Dynamics-Challenge"),
+    "hidspec": ("USB Implementers Forum, ",
+                "Device Class Definition for Human Interface Devices (HID), Version 1.11",
+                ", Jun. 2001."),
 }
 
 missing = [k for k in REFS if k not in REF_NO]
@@ -1351,11 +1133,10 @@ for key, n in sorted(REF_NO.items(), key=lambda kv: kv[1]):
         run(p, t_)
 
 cp = doc.core_properties
-cp.title = ("Intelligent USB Device Behaviour Monitoring System (IUDBMS): "
-            "A Behaviour-Based Approach to Runtime USB Peripheral Trust")
+cp.title = TITLE
 cp.author = ", ".join(n for n, _ in AUTHORS)
 cp.subject = "IEEE conference format"
-cp.keywords = "BadUSB, behavioural anomaly detection, eBPF, LSTM, USB security"
+cp.keywords = "BadUSB, behavioural anomaly detection, false alarms per device-hour, LSTM, USB security"
 
 DEST.parent.mkdir(parents=True, exist_ok=True)
 doc.save(DEST)
