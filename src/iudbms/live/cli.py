@@ -143,10 +143,12 @@ def _load_descriptor_snapshot(path):
             eps = tuple(Endpoint(addr=e["addr"], type=xfer.get(e["bmAttributes"] & 3, "control"),
                                  interval=e.get("bInterval"))
                         for e in i.get("endpoints", []))
+            pages = i.get("hid_usage_pages")
             ifaces.append(Interface(bInterfaceClass=i["bInterfaceClass"],
                                     bInterfaceSubClass=i.get("bInterfaceSubClass", 0),
                                     bInterfaceProtocol=i.get("bInterfaceProtocol", 0),
-                                    endpoints=eps))
+                                    endpoints=eps,
+                                    hid_usage_pages=tuple(pages) if pages is not None else None))
         out[key] = DeviceDescriptor(
             bus=d["bus"], devnum=d["devnum"], vid=d["vid"], pid=d["pid"],
             bDeviceClass=d.get("bDeviceClass", 0),
@@ -263,7 +265,8 @@ def main(argv: list[str] | None = None) -> int:
     support = ModelSupport(cfg["support"]) if cfg.get("support") else None
     detector = StreamingDetector(
         s1, s2, PolicyEngine(threshold=cfg["threshold"], k=cfg["k"], n=cfg["n"], support=support),
-        feature_idx=np.array(cfg["feature_idx"]), seq_len=cfg["seq_len"])
+        feature_idx=np.array(cfg["feature_idx"]), seq_len=cfg["seq_len"],
+        human_max_rps=(cfg.get("capability_rule") or {}).get("human_max_rps"))
 
     # ---- source ------------------------------------------------------------
     cache: dict = {}
@@ -327,8 +330,13 @@ def main(argv: list[str] | None = None) -> int:
              f"{'loaded' if s2 is not None else 'ABSENT (stage-1-only)'}{out.RESET}")
     out.line(f"{out.DIM}model support: "
              + (f"interface classes {sorted(support.classes)}; devices declaring others are reported "
-                f"'unmodelled' and never escalated (any HID interface is always judged)"
+                f"'unmodelled' and never escalated (a device that may send keystrokes is always judged)"
                 if support is not None else "not recorded in deploy.json; every device is judged")
+             + out.RESET)
+    cap = cfg.get("capability_rule")
+    out.line(f"{out.DIM}capability rule: "
+             + (f"boot keyboards at >= {cap['human_max_rps']} reports/s, its own "
+                f"{cfg['k']}-of-{cfg['n']} gate OR-ed with the model's" if cap else "off")
              + out.RESET)
     out.line(f"{out.DIM}enforcement is dry-run (ENFORCEMENT_REVIEWED={ENFORCEMENT_REVIEWED}); "
              f"nothing is written to sysfs{out.RESET}")
@@ -365,9 +373,8 @@ def main(argv: list[str] | None = None) -> int:
                 last_state[v.device_id] = v.trust_state
                 if changed and v.trust_state == "unmodelled":
                     d = detector.devices[v.device_id].descriptor
-                    out.line(f"{out.GREY}NOTICE device={v.device_id} declares interface types the "
-                             f"model was not trained on {support.uncovered(d)}: scored and stored, "
-                             f"never escalated. Decide its policy by type.{out.RESET}")
+                    out.line(f"{out.GREY}NOTICE device={v.device_id} {support.reason(d)}: scored "
+                             f"and stored, never escalated. Decide its policy by type.{out.RESET}")
                 if args.log == "verbose" and not (
                         args.quiet_devices and v.features[0] == 0 and not changed
                         and not v.action):

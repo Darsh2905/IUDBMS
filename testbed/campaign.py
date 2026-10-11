@@ -72,6 +72,19 @@ def env_info(g: Guest) -> dict:
 
 def prepare_guest(g: Guest, log: Log) -> None:
     g.ssh(f"mkdir -p {GUEST_DIR} && sudo chmod 777 {GUEST_DIR}")
+    # Ubuntu's cloud kernel keeps usbmon (and the audio/network/serial class drivers) in
+    # linux-modules-extra, which cloud images do not install; the first Ubuntu session
+    # captured 0 lines because of it. Install it only when usbmon will not load, and say so.
+    r = g.ssh("modprobe usbmon 2>/dev/null && echo have || (command -v apt-get >/dev/null && "
+              "DEBIAN_FRONTEND=noninteractive timeout 900 apt-get -qq update && "
+              "DEBIAN_FRONTEND=noninteractive timeout 900 apt-get -qq install -y "
+              "linux-modules-extra-$(uname -r) && modprobe usbmon && echo installed)",
+              sudo=True, check=False, timeout=2000)
+    log.add("usbmon_module", status=("present" if "have" in r.stdout else
+                                     "installed linux-modules-extra" if "installed" in r.stdout
+                                     else "MISSING"))
+    if "have" not in r.stdout and "installed" not in r.stdout:
+        raise RuntimeError(f"{g.distro}: usbmon unavailable: {r.stderr[-300:]}")
     g.scp_to(ROOT / "testbed" / "guest_descriptors.py", f"{GUEST_DIR}/guest_descriptors.py")
     # Audio playback needs alsa-utils, which cloud images do not ship. Best effort with a
     # time limit; if it fails the audio device is present and idle, and env.json says so.
@@ -142,7 +155,7 @@ def run_session(distro: str, kind: str, seed: int, minutes: float,
     rd.mkdir(parents=True, exist_ok=True)
     typing, mice = human_material(seed)
     rng = random.Random(seed * 7919 + zlib.crc32(distro.encode()) % 1000)
-    g = Guest(distro, BENIGN_DEVICES, rd)
+    g = Guest(distro, BENIGN_DEVICES, rd, mem_mb=1536)
     log = Log()
     duration = minutes * 60.0
     labels: dict[str, dict] = {}

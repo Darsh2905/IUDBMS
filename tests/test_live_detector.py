@@ -148,3 +148,60 @@ def test_stage1_only_mode(trained):
     det.attach(test[0].descriptor, "d1")
     v = det.observe_window("d1", 0.0, [])
     assert v.stage2 == v.stage1
+
+
+# --------------------------------------------------------------------------
+# human-capability rule: live == the evaluated OR of two separate gates
+# --------------------------------------------------------------------------
+
+def test_capability_rule_live_matches_the_offline_or_of_two_gates():
+    """eval.analysis_hybrid scores model OR rule as two separate 4-of-6 gates; the live
+    detector must fire at exactly the same window, or the shipped rule is not the
+    measured one."""
+    import json
+    from pathlib import Path
+
+    import numpy as np
+
+    from eval.analysis_common import deployed, featurize, run_gate, score_with
+    from eval.analysis_hybrid import combine, rule_scores
+    from eval.analysis_realistic import RealisticSim
+    from iudbms.capture.simulator import SimulatedSource
+    from iudbms.features.extractor import window_events
+    from iudbms.live import StreamingDetector
+    from iudbms.policy import PolicyEngine
+
+    cfg, s1, lstm = deployed()
+    idx = np.array(cfg["feature_idx"])
+    sim = RealisticSim(seed=21)
+    for prof in ("hid_injection", "keyboard", "mimicry", "identity_switch"):
+        ss = sim.session("x", prof, duration=60.0)
+        sess = featurize(ss, "x", prof)
+        _, S2, _ = score_with(s1, lstm, [sess], idx, cfg["seq_len"])
+        offline = combine(run_gate(S2, [sess], cfg["threshold"]),
+                          run_gate(rule_scores([sess]), [sess], 0.5))["x"]
+        det = StreamingDetector(s1, lstm, PolicyEngine(cfg["threshold"], cfg["k"], cfg["n"]),
+                                feature_idx=idx, seq_len=cfg["seq_len"], human_max_rps=30)
+        det.attach(ss.descriptor, "x")
+        live = None
+        for t0, b in window_events(list(SimulatedSource(ss).events()), duration=ss.duration):
+            v = det.observe_window("x", t0, b)
+            if v.action is not None and live is None:
+                live = t0 + 1.0
+        assert live == offline, (prof, live, offline)
+
+
+def test_rule_flags_alone_need_their_own_k_of_n():
+    from iudbms.contract import DeviceDescriptor, Endpoint, Interface
+    from iudbms.policy import PolicyEngine
+    kbd = DeviceDescriptor(bus=1, devnum=3, vid=1, pid=1,
+                           interfaces=(Interface(3, 1, 1, (Endpoint(0x81, "intr", 10),)),))
+    eng = PolicyEngine(threshold=0.9, k=4, n=6)
+    ctx = eng.new_device("k")
+    # two model windows and two rule windows interleaved: neither gate reaches 4
+    seq = [(0.95, False), (0.1, True), (0.95, False), (0.1, True), (0.1, False), (0.1, False)]
+    assert all(eng.step(ctx, float(i), 0, s, [], kbd, rule_hit=r) is None
+               for i, (s, r) in enumerate(seq))
+    ctx = eng.new_device("k2")
+    fired = [eng.step(ctx, float(i), 0, 0.1, [], kbd, rule_hit=True) for i in range(4)]
+    assert fired[-1] is not None and fired[-1].rule["fired_by"] == "capability rule"

@@ -71,7 +71,10 @@ __all__ = [
 #: 2.0.0 — appended feature 29, payload_seq_novelty. MAJOR: the vector changed
 #:         width, so every checkpoint trained against 1.x is invalid and
 #:         LSTMDetector.load refuses them. Feature ORDER is still append-only.
-CONTRACT_VERSION = "3.0.0"
+#: 3.0.0 — appended feature 30, concurrent_device_rate (host modality).
+#: 3.1.0 — added Interface.hid_usage_pages (append-only, defaulted None; no
+#:         feature changes, no checkpoint churn).
+CONTRACT_VERSION = "3.1.0"
 
 
 class ContractError(ValueError):
@@ -140,6 +143,11 @@ class Interface:
     bInterfaceProtocol: int = 0
     endpoints: tuple[Endpoint, ...] = ()
     first_seen_ts: float = 0.0
+    #: Usage pages declared by this interface's HID report descriptor (capture.hid),
+    #: or None when unknown (a non-HID interface, a simulated device, or a snapshot
+    #: taken without it). Added in 3.1.0: what a HID interface can SEND is declared
+    #: there, not by its class -- a tablet and a keyboard are both class 0x03.
+    hid_usage_pages: tuple[int, ...] | None = None
 
 
 @dataclass(slots=True, frozen=True)

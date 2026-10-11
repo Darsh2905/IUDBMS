@@ -57,7 +57,10 @@ LONG_SEED, LONG_N, LONG_DUR = 2031, 80, 3600.0
 
 
 def boot_keyboard(descriptor) -> bool:
-    return any(i.bInterfaceClass == 3 and i.bInterfaceProtocol == 1 for i in descriptor.interfaces)
+    """policy.support.is_keyboard: the report descriptor's Keyboard page when known,
+    else the boot-keyboard protocol (every simulated keyboard)."""
+    from iudbms.policy import is_keyboard
+    return is_keyboard(descriptor)
 
 
 def rule_scores(sessions) -> dict:

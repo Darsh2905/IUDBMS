@@ -86,10 +86,15 @@ class DeviceContext:
     history: deque = field(default_factory=lambda: deque(maxlen=6))
     state: TrustState = "observe"
     hits: int = 0
+    #: The capability rule's own k-of-n history. It is a SEPARATE gate OR-ed with the
+    #: model's, exactly as evaluated (eval.analysis_hybrid.combine): pooling both
+    #: kinds of flag into one history could fire on 2 model + 2 rule windows, which
+    #: neither detector does alone and nothing measured.
+    rule_history: deque = field(default_factory=lambda: deque(maxlen=6))
 
     @property
     def hits_in_window(self) -> int:
-        return sum(self.history)
+        return max(sum(self.history), sum(self.rule_history))
 
 
 class PolicyEngine:
@@ -116,7 +121,8 @@ class PolicyEngine:
         self.support = support
 
     def new_device(self, device_id: str) -> DeviceContext:
-        return DeviceContext(device_id=device_id, history=deque(maxlen=self.n))
+        return DeviceContext(device_id=device_id, history=deque(maxlen=self.n),
+                             rule_history=deque(maxlen=self.n))
 
     @staticmethod
     def kill_switch_engaged() -> bool:
@@ -130,14 +136,21 @@ class PolicyEngine:
         stage2: float,
         evidence: list[tuple[str, float]],
         descriptor: DeviceDescriptor,
+        rule_hit: bool = False,
     ) -> Action | None:
-        """Advance one window. Returns an Action when the ladder escalates."""
+        """Advance one window. Returns an Action when the ladder escalates.
+
+        ``rule_hit``: the human-capability rule flagged this window (live.detector).
+        It feeds its own k-of-n gate, OR-ed with the model's.
+        """
         ctx.history.append(1 if stage2 >= self.threshold else 0)
+        ctx.rule_history.append(1 if rule_hit else 0)
         if self.support is not None and not self.support.covers(descriptor):
             ctx.state = "unmodelled"          # outside the model's competence: never escalate
             return None
-        if ctx.hits_in_window < self.k:
+        if sum(ctx.history) < self.k and sum(ctx.rule_history) < self.k:
             return None
+        trigger = ("model" if sum(ctx.history) >= self.k else "capability rule")
 
         if ctx.device_id in self.allowlist:
             return None                       # interlock 2
@@ -156,7 +169,8 @@ class PolicyEngine:
 
         return Action(
             action=action, severity=severity, ts=ts, device_id=ctx.device_id,
-            rule=self._rule(ctx, action, ts, stage1, stage2, evidence, descriptor),
+            rule=self._rule(ctx, action, ts, stage1, stage2, evidence, descriptor) | {
+                "fired_by": trigger},
         )
 
     def _rule(self, ctx, action, ts, stage1, stage2, evidence, descriptor: DeviceDescriptor) -> dict:
