@@ -1187,6 +1187,95 @@ mice (idle after enumeration, 8-20 s and 20-60 s gaps) are not flagged.
 What this does NOT change: the paper's Corpus-A headline (89.2%) is still the Corpus-A
 model's, and the Stage-1 OR path (finding 33) is a measured option, not deployed.
 
+### Finding 36 — long sessions: ~0.2 false alarms per keyboard-hour, and the obvious fix did not work (10-11 Oct)
+
+Every reported number came from 40-85 s sessions. `eval/analysis_long_sessions.py`
+(sessions to 60 min, ~100 device-hours) found the deployed model raising **0.149 false
+alarms per keyboard-hour** (other classes: zero) -- a 0.0% session FP on short sessions
+simply had too few hours to show it. Every late-attack "miss" was a session that had
+already false-alarmed during its benign prefix. On the fresh 80 keyboard-hour benchmark
+the deployed seed gives 0.175/h and seeds 8/9 give 0.362/0.188.
+
+The alarm windows held two events (one keystroke: press and release), so `cv_iat` and
+`iat_entropy` were exactly 0 -- the "perfectly regular" injection signature -- and
+freezing either at its early-session value removed 3/3 alarms. **Retraining with
+sample-size-robust replacements did not help** (`eval/analysis_robust_features.py`,
+pre-registered, 3 seeds): R_both 71 alarms vs base 58 pooled (p = 0.89), Corpus-C FP up.
+Not adopted. Lesson: a counterfactual on a trained model does not license a fix;
+the retrained model finds another route to the same windows. The real cause was the
+unit of the operating point (finding 39).
+
+### Finding 37 — real kernels: the testbed, and three open-world defects (10-11 Oct)
+
+`testbed/` boots Ubuntu 24.04 (6.8), Debian 13 (6.12), Fedora 44 (6.19) and
+AlmaLinux 9 (5.14) under QEMU/HVF with 11 emulated USB device types (boot keyboard,
+mouse, tablet, Wacom pen, BOT and UAS storage, audio, CDC network, FTDI serial, CCID,
+hub) and drives them for 75 min with **replayed human input**: keystroke press/release
+timing from 1,972 real people (Aalto 136M Keystrokes, CHI 2018; research licence,
+fetched by range requests, never committed) and mouse/tablet motion from Balabit's 10
+users. Captures are scored through the DEPLOYED monitor loop (`testbed/score.py`, via
+the new event-paced `--fast` replay, proven verdict-identical to wall-clock replay).
+What it is not: physical devices or live users -- `scripts/field_capture.py` exists so
+real people can contribute that, with payloads pseudonymised as they are read.
+
+Defects found only here:
+1. **Unmodelled classes.** A CDC-Ethernet adapter's link-status endpoint sends an
+   identical 8-byte interrupt report every 32 ms: perfectly regular and repetitive,
+   i.e. the injection signature. All 181 of its windows scored over threshold; the
+   FTDI serial converter alarmed too. Fixed by `policy/support.py`: deploy.json
+   records the interface classes of the benign training devices; others are
+   `unmodelled` (scored, stored, never escalated).
+2. **Class is not capability.** The VM tablet (HID class, 6-byte absolute reports --
+   a shape no training device had) and real mouse motion alarmed in every session.
+   Contract **3.1.0** adds `Interface.hid_usage_pages`, read from the kernel's HID
+   report descriptor: a device that may send keystrokes (Keyboard 0x07 or Consumer
+   0x0C page, or descriptor unknown) is always judged; a pure pointer is outside the
+   keystroke threat model. Abstention can never remove keystroke coverage.
+3. **The simulator's descriptors are not real ones.** Real audio devices declare an
+   AudioControl interface (1,1,0) beside streaming; the simulator's do not, and its
+   webcam puts the isochronous endpoint on VideoControl. Support is therefore matched
+   by interface class, not by exact triple.
+
+Environment differences: Ubuntu's and Fedora's cloud kernels ship without
+`snd-usb-audio`, `cdc_ether` and `ftdi_sio` (separate module packages), so the same
+emulated hardware is silent after enumeration there; Ubuntu's cloud kernel also lacks
+`usbmon` itself (linux-modules-extra), which is why its first session captured nothing.
+
+### Finding 38 — usbmon timestamps wrap at 4096 s, not 2^32 us (10 Oct)
+
+`drivers/usb/mon/mon_text.c` truncates CLOCK_MONOTONIC seconds to 12 bits before
+scaling. The parser undid the wrap by adding 2^32 us, so every event after a wrap
+landed **+198.97 s in the future**. A wrap occurs whenever the monotonic clock crosses
+a multiple of 4096 s, so any capture can straddle one, and a running monitor meets
+one every 68 minutes. Every capture to date happened not to; the old test fed a value
+near 2^32 that the kernel never emits. Tests now generate stamps with the kernel's
+own formula (three-hour stream; a 20 s capture straddling a wrap).
+
+### Finding 39 — the operating point is calibrated in false alarms per device-hour (adopted)
+
+The deployed threshold was the (1 - 1e-4) quantile of benign window scores from short
+validation sessions. On long benign keyboards (`eval/analysis_session_fp.py`) that
+threshold puts **1.05e-3** of windows over (10x the pooled target), an over-threshold
+window is followed by another 38% of the time, and the independence model predicts
+6.5e-8 alarms/h against **0.225 observed** -- wrong by ~3.5 million. So the threshold
+is now chosen on gate firings: `eval/analysis_calibration.py` picks the smallest
+threshold with <= 0.01 alarms per benign device-hour on 80 h of long sessions (seed
+4049), using the gate's exact critical threshold (tested against PolicyEngine).
+Pre-registered and evaluated once (fresh seed 2029; Corpus C):
+
+| | per-window threshold | calibrated |
+|---|---|---|
+| keyboard false alarms / h | 0.225 (18 in 80 h) | **0.013** (1 in 80 h) |
+| Corpus-C benign FP | 2/3000 | **0/3000** |
+| Corpus-C detection | 82.7% | **74.7%** |
+| mimicry (replay loop) | 95% | **48%** |
+| every other family | 100% | 100% |
+
+The whole detection cost is the replay loop -- the one family the model caught and
+the rules did not. Deployed threshold 0.994336 -> 0.999648, weights untouched,
+history kept in deploy.json; `make train-deployed` now recalibrates, and a test
+refuses an uncalibrated deployed threshold.
+
 ### Live monitoring — wired 10 Sep, never yet run on real traffic
 
 Until now **nothing called `UsbmonSource.live()`.** It existed and was
