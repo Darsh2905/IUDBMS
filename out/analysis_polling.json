@@ -1,0 +1,79 @@
+{
+ "deployed": {
+  "threshold": 0.9996482133865358,
+  "corpus_c_v2": {
+   "detect": 0.7466666666666667,
+   "detect_k": 448,
+   "n_attack": 600,
+   "fp_k": 0,
+   "n_benign": 3000,
+   "per_family": {
+    "class_exfil": 1.0,
+    "hid_injection": 1.0,
+    "identity_switch": 1.0,
+    "mimicry": 0.48,
+    "mimicry_adaptive": 0.0,
+    "staged_delay": 1.0
+   }
+  },
+  "corpus_c_v3": {
+   "detect": 0.75,
+   "detect_k": 450,
+   "n_attack": 600,
+   "fp_k": 0,
+   "n_benign": 3000,
+   "per_family": {
+    "class_exfil": 1.0,
+    "hid_injection": 1.0,
+    "identity_switch": 1.0,
+    "mimicry": 0.5,
+    "mimicry_adaptive": 0.0,
+    "staged_delay": 1.0
+   }
+  }
+ },
+ "polling_v3": {
+  "threshold": 0.9997918009757997,
+  "corpus_c_v2": {
+   "detect": 0.715,
+   "detect_k": 429,
+   "n_attack": 600,
+   "fp_k": 0,
+   "n_benign": 3000,
+   "per_family": {
+    "class_exfil": 1.0,
+    "hid_injection": 1.0,
+    "identity_switch": 1.0,
+    "mimicry": 0.29,
+    "mimicry_adaptive": 0.0,
+    "staged_delay": 1.0
+   }
+  },
+  "corpus_c_v3": {
+   "detect": 0.7233333333333334,
+   "detect_k": 434,
+   "n_attack": 600,
+   "fp_k": 0,
+   "n_benign": 3000,
+   "per_family": {
+    "class_exfil": 1.0,
+    "hid_injection": 1.0,
+    "identity_switch": 1.0,
+    "mimicry": 0.34,
+    "mimicry_adaptive": 0.0,
+    "staged_delay": 1.0
+   }
+  },
+  "fresh_long_keyboard": {
+   "alarms": 0,
+   "hours": 80.0,
+   "rate": 0.0,
+   "upper95": 0.03744665341942488
+  }
+ },
+ "criteria_c_d": {
+  "c_detection": false,
+  "c_fp": true,
+  "d_long_keyboard": true
+ }
+}
