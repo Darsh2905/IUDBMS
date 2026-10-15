@@ -1136,9 +1136,18 @@ cp = doc.core_properties
 cp.title = TITLE
 cp.author = ", ".join(n for n, _ in AUTHORS)
 cp.subject = "IEEE conference format"
+# python-docx's default template carries a 2013 creation date; stamp the real build time,
+# so Word shows when this version was produced.
+import datetime as _dt
+cp.created = cp.modified = _dt.datetime.now(_dt.timezone.utc).replace(microsecond=0)
+cp.last_modified_by = cp.author
+cp.revision = 1
 cp.keywords = "BadUSB, behavioural anomaly detection, false alarms per device-hour, LSTM, USB security"
 
 DEST.parent.mkdir(parents=True, exist_ok=True)
+# Replace the file instead of overwriting it in place: macOS keeps a file's original
+# creation date across in-place writes, so the first build's date stayed on it.
+DEST.unlink(missing_ok=True)
 doc.save(DEST)
 print(f"  wrote {DEST}")
 print(f"  tables: {_TABLE_N[0]}   figure: {FIG.name}")
