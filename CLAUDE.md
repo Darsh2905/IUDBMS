@@ -42,7 +42,13 @@ claim below.
   model alone caught 1/40 at its calibrated threshold** (finding 40).
 * **Not adopted** (pre-registered and failed): robust timing features (36),
   polling-limited retraining (40). Keep them as negative results.
-* Reviewer comments of 10 Oct drove this round; the paper still needs rewriting to match.
+* **The paper's wording is now partly the authors' own** (16 Oct): the abstract, introduction,
+  contributions, II-A, IV-C/D, V and VI-A to VII are paragraphs the authors edited in Word,
+  extracted verbatim into `scripts/paper_supplied_text.json` by
+  `scripts/extract_supplied_text.py` and used as written by `scripts/build_paper.py`. **Do not
+  reword, re-punctuate or 'fix' them**; `scripts/check_paper_text.py` (run by `make paper`)
+  fails if the built .docx differs from them. The build checks every number they state against
+  `out/*.json` and prints discrepancies as NOTE lines (a typo is reported, never silently fixed).
 
 ### Novelty scorecard (current, 05 Oct)
 
