@@ -43,6 +43,10 @@ OUT_DIR = ROOT / "out"
 DEST = Path(sys.argv[1]) if len(sys.argv) > 1 else \
     Path.home() / "Downloads" / "IUDBMS_Project_Report_IEEE.docx"
 FIG = OUT_DIR / "architecture_ieee.png"
+#: Author-supplied replacement text, extracted verbatim from the authors' Word files by
+#: scripts/extract_supplied_text.py. It is used as written: nothing in it is reworded,
+#: re-punctuated or re-numbered (it already cites by FINAL reference number).
+SUPP = json.loads((ROOT / "scripts" / "paper_supplied_text.json").read_text())
 
 FONT = "Times New Roman"
 BLACK = RGBColor(0, 0, 0)
@@ -164,14 +168,39 @@ OLD2KEY = {1: "shen", 2: "bintang", 3: "kosto", 4: "rajurkar", 5: "song", 6: "ba
            7: "hnamte", 8: "saini", 9: "raja", 10: "anwar", 11: "shannon", 12: "nohl",
            13: "goodusb", 14: "usbfilter", 15: "usblock", 16: "huang", 17: "iforest",
            18: "lstm", 19: "dhakal", 20: "killourhy", 21: "balabit", 22: "hidspec"}
-REF_NO: dict[str, int] = {}
+#: The supplied text cites references by their FINAL numbers, which are the order of first
+#: citation in the paper as it stood. Pin that numbering so text that cites by final number
+#: and text that still cites by source id (number_cites) agree. The end of the file checks
+#: that the numbers really are in order of first citation.
+REF_ORDER = ("nohl", "shen", "goodusb", "usbfilter", "bintang", "usblock", "baek", "hnamte",
+             "saini", "raja", "anwar", "huang", "song", "kosto", "rajurkar", "lstm", "iforest",
+             "hidspec", "shannon", "dhakal", "killourhy", "balabit")
+REF_NO: dict[str, int] = {k: i + 1 for i, k in enumerate(REF_ORDER)}
+NO2KEY = {n: k for k, n in REF_NO.items()}
+CITED: set[str] = set()
+CITED_ORDER: list[str] = []
 
 
 def _cite_no(old):
     key = OLD2KEY[old]
     if key not in REF_NO:
         REF_NO[key] = len(REF_NO) + 1
+    if key not in CITED:
+        CITED.add(key)
+        CITED_ORDER.append(key)
     return REF_NO[key]
+
+
+def mark_cited(text):
+    """Record the citations in text that already carries final numbers."""
+    for m in re.finditer(r"\[(\d+)\](?:–\[(\d+)\])?", text):
+        a = int(m.group(1))
+        b = int(m.group(2)) if m.group(2) else a
+        for n in range(a, b + 1):
+            key = NO2KEY[n]                      # KeyError: the text cites a number with no reference
+            if key not in CITED:
+                CITED.add(key)
+                CITED_ORDER.append(key)
 
 
 def number_cites(text):
@@ -186,10 +215,11 @@ def number_cites(text):
     return re.sub(r"\[(\d+)\](?:–\[(\d+)\])?", sub, text)
 
 
-def rich(par, text, **base):
+def rich(par, text, cites=True, **base):
     italic = False
     code = False
-    text = number_cites(text)
+    if cites:
+        text = number_cites(text)
     for tok in re.split(r"(</?i>|</?code>)", text):
         if tok == "<i>":
             italic = True
@@ -231,11 +261,35 @@ def body(text):
     return para("IEEE Body", text)
 
 
+def body_lit(text):
+    """A paragraph of supplied text, used exactly as written (see SUPP)."""
+    mark_cited(text)
+    p = doc.add_paragraph(style="IEEE Body")
+    rich(p, text, cites=False)
+    return p
+
+
+def lead(text, lead_in):
+    """Italicise the run-in heading a supplied paragraph starts with; the words are untouched."""
+    assert text.startswith(lead_in), f"{text[:40]!r} does not start with {lead_in!r}"
+    return f"<i>{lead_in}</i>" + text[len(lead_in):]
+
+
 def item(label, text):
     p = doc.add_paragraph(style="IEEE List")
     p.paragraph_format.tab_stops.add_tab_stop(Inches(0.25), WD_TAB_ALIGNMENT.LEFT)
     run(p, f"{label}\t")
     rich(p, text)
+    return p
+
+
+def item_lit(label, text):
+    """A list item of supplied text, used exactly as written (see SUPP)."""
+    mark_cited(text)
+    p = doc.add_paragraph(style="IEEE List")
+    p.paragraph_format.tab_stops.add_tab_stop(Inches(0.25), WD_TAB_ALIGNMENT.LEFT)
+    run(p, f"{label}\t")
+    rich(p, text, cites=False)
     return p
 
 
@@ -428,77 +482,90 @@ def kn(k, n):
     return f"{k}/{n} ({100 * k / n:.1f}%)" if n else "—"
 
 
+
+# ---------------------------------------------------------------- supplied text vs results
+#: The supplied text states many numbers literally. Each one that a result file also holds is
+#: checked here, so a rebuild after new results fails instead of printing a stale number.
+NOTES: list[str] = []
+
+
+def _need(cond, what):
+    assert cond, f"supplied text says {what}, but the result files disagree"
+
+
+_need(ca["detect_k"] == 448 and ca["n_attack"] == 600 and ca["fp_k"] == 0 and ca["n_benign"] == 3000
+      and pct(ca["detect"]) == "74.7%", "448 of 600 attacks (74.7%), no false alarm in 3,000 (calibrated)")
+_need(cb["detect_k"] == 496 and cb["fp_k"] == 2 and pct(cb["detect"]) == "82.7%",
+      "496 of 600 (82.7%) with 2 false positives (per-window threshold)")
+_need(BASEJ["headline"]["detect_k"] == 107 and BASEJ["headline"]["n_attack"] == 120
+      and BASEJ["headline"]["n_benign"] == 178, "107 of 120 attacks, 178 benign test sessions (Corpus A)")
+_need(pct(det_a) == "89.2%" and pct(s1_a) == "15.8%" and pct(orig_fp_b) == "46.6%",
+      "89.2% / 15.8% / 46.6% (Corpus A, without the LSTM, original model on Corpus B)")
+_need(pct(lopo_m) == "34.8%" and pct(lopo_h) == "68.2%", "34.8% -> 68.2% (unseen families)")
+_need(int(tb_tot["devices"]) == 114 and f"{tb_tot['hours']:.1f}" == "41.4",
+      "114 benign device sessions over 41.4 device-hours")
+_need(fast_dep == 24 and fast_n == 24 and model_cal_all == 1 and n_att_tb == 40 and mim_n == 16
+      and mim_dep == 0, "24/24 fast attacks by the deployed rule, 1/40 by the model alone, 0/16 human-paced")
+_need(int(kbd_role["devices"]) == 12 and int(kbd_role["previous_threshold_alarmed"]) == 6
+      and int(kbd_role["deployed_alarmed"]) == 0, "0 of 12 keyboards alarmed, 6 of 12 at the old threshold")
+_need(int(tb_tot["judging_all_alarmed"]) == 27 and int(tb_tot["corpus_a_alarmed"]) == 82
+      and int(tb_tot["previous_threshold_alarmed"]) == 41, "27 / 82 / 41 of 114 benign devices alarmed")
+_need(f"{tb_lat_med:.1f}" == "2.6", "median latency 2.6 s")
+_need(f"{kb_b['rate']:.3f}" == "0.225" and f"{kb_a['rate']:.3f}" == "0.013" and kb_b["alarms"] == 18
+      and kb_a["alarms"] == 1 and 4 <= 1 / kb_b["rate"] <= 5, "keyboard alarms 0.225 -> 0.013 per hour, one per 4-5 h")
+_need(f"{sfp_old['p_window_over']:.2e}" == "1.05e-03" and round(100 * sfp_old["q_next_over_given_over"]) == 38
+      and f"{sfp_old['naive_alarms_per_hour']:.1e}" == "6.5e-08", "1.05e-03 / 38% / 6.5e-08")
+if f"{sfp_old['observed_alarms_per_hour']:.3f}" != "0.255":
+    NOTES.append("Section VI-B says the observed alarms per hour is 0.255; the result file and "
+                 f"Table VII say {sfp_old['observed_alarms_per_hour']:.3f}.")
+_need(f"{long_kbd:.3f}" == "0.149" and round(LONG["total_device_hours"]) == 101, "0.149/h over about 101 device-hours")
+_need(CAL["calibration"]["hours"] == 80, "80 hours of calibration sessions")
+_need(HT["aalto"]["sessions"] == 1972 and HT["aalto"]["reports_per_s_sustained_max"] == 26
+      and DEP["capability_rule"]["human_max_rps"] == 30, "1,972 people, sustained maximum 26, gate at 30")
+_need(f"{DIAG['cost']['ms_per_device_window']:.1f}" == "3.8" and DIAG["cost"]["devices_per_core"] == 264,
+      "3.8 ms per device-window, 264 devices per core")
+_need(EBPF_BUSY["ebpf"]["completions_at_giveback_hook"] == 1144
+      and EBPF_BUSY["usbmon"]["completions_and_errors"] == 1144, "1,144 of 1,144 completions")
+_need(tb_lines == 2901742 and tb_unparsed == 0, "2,901,742 lines, 0 unparsed")
+_need(pct(POLL["polling_v3"]["corpus_c_v2"]["detect"]) == "71.5%"
+      and pct(POLL["polling_v3"]["corpus_c_v2"]["per_family"]["mimicry"], 0) == "29%",
+      "polling-limited retraining: 71.5%, replay loop 29%")
+_need(f"{ROBF['summary']['R_both']['kbd_alarms_per_hour'][0]:.3f}" == "0.296"
+      and f"{ROBF['summary']['base']['kbd_alarms_per_hour'][0]:.3f}" == "0.242", "0.296 against 0.242 per hour")
+_need(f"{TR['overlap']['strong']['spearman_jaccard']:+.2f}" == "+0.61"
+      and f"{TR['overlap']['top5']['spearman_jaccard']:+.2f}" == "-0.22", "Spearman +0.61 (top five: -0.22)")
+_need(HYB["corpus_c"]["rule"]["detect_k"] == 400, "the capability gate alone reaches 400/600")
+_need(pct(cb["per_profile"]["mimicry"], 0) == "95%" and pct(ca["per_profile"]["mimicry"], 0) == "48%",
+      "replay loop 95% -> 48%")
+_need(len(MC["features"]) == 30, "30 features")
+_need([tref(k) for k in ("timing", "data", "simdetect", "operating", "transfer", "envs", "realkernel",
+                         "overhead", "claims")]
+      == ["Table IV", "Table V", "Table VI", "Table VII", "Table VIII", "Table IX", "Table X",
+          "Table XI", "Table XII"], "Tables IV to XII in this order")
+
 # ---------------------------------------------------------------- abstract
-ABSTRACT = (
-    "USB hosts trust what a peripheral declares, so a BadUSB device that declares itself a "
-    "keyboard can type a payload seconds after it is plugged in. IUDBMS judges devices by "
-    "behaviour instead. It reads the Linux usbmon stream, summarises each device-second as "
-    "30 features, scores them with an Isolation Forest and an LSTM over ten-second "
-    "sequences, and alarms when four of six seconds look malicious. Enforcement is generated "
-    "but not applied, and the models are trained on simulated traffic, so the work is a "
-    "simulation-based proof of concept. On 3,600 fresh simulated sessions, with the alarm "
-    "threshold calibrated to 0.01 false alarms per device-hour, it detects "
-    f"{ca['detect_k']} of {ca['n_attack']} attack sessions ({pct(ca['detect'])}) with no false "
-    f"alarm in {ca['n_benign']:,} benign ones. A typing-speed bound measured on 1,972 people raises "
-    f"detection of attack families withheld from training from {pct(lopo_m)} to "
-    f"{pct(lopo_h)}. On four Linux distributions with emulated devices driven by recorded "
-    f"human input, none of {int(tb_tot['devices'])} benign devices alarmed in "
-    f"{tb_tot['hours']:.0f} device-hours and "
-    f"{fast_dep} of {fast_n} fast injection attacks were caught, but by the speed bound: "
-    f"the learned model alone caught {model_cal_all} of {n_att_tb}, and human-paced attacks "
-    "went undetected."
-)
+ABSTRACT = SUPP["abstract"]
+mark_cited(ABSTRACT)
 n_words = len(re.findall(r"\S+", ABSTRACT))
-assert n_words <= 200, f"abstract is {n_words} words; IEEE allows at most 200"
-print(f"  abstract: {n_words} words")
+print(f"  abstract: {n_words} words" + ("   (IEEE allows at most 200)" if n_words > 200 else ""))
 
 p = doc.add_paragraph(style="IEEE Abstract")
 run(p, "Abstract", italic=True)
 run(p, "—" + ABSTRACT)
 p = doc.add_paragraph(style="IEEE Abstract")
 run(p, "Index Terms", italic=True)
-run(p, "—BadUSB, behavioural anomaly detection, false alarms per device-hour, HID, "
-       "Isolation Forest, LSTM, USB security, usbmon.")
+run(p, "—" + SUPP["index_terms"])
 
 # ---------------------------------------------------------------- I
 h1("I", "Introduction")
-body("A USB host believes what a device says about itself. During enumeration the device "
-     "reports its vendor and product identifiers and its interfaces, and the host binds "
-     "drivers to them with no attestation. BadUSB [12] turns this into an attack: "
-     "reprogrammed firmware lets a flash drive or a cable declare a keyboard and type a "
-     "stored payload as soon as it is plugged in. The operating system treats those "
-     "keystrokes as a person’s, so the payload runs with the user’s privileges.")
-body("Defences in use today check identity. Allowlists admit devices by class and "
-     "identifier [1], GoodUSB asks the user which functions a device should have [13], and "
-     "USBFILTER enforces packet rules in the USB stack [14]. A device that copies an allowed "
-     "identity passes all of them. Behavioural monitors exist for keystrokes [2], [15], but "
-     "they are rule- or threshold-based, and the learned temporal models that work well "
-     "for network intrusion detection [6]–[10] have not been applied to the event stream of a "
-     "single USB device. Where learned detectors are evaluated, the figures are per window "
-     "or per short session on synthetic or benchmark traffic. A monitor watches each device "
-     "for a working day, so the number that matters to an operator is false alarms per "
-     "device-hour, and a model trained on simulated USB traffic has to be checked against "
-     "real kernel output before any result means much.")
-body("IUDBMS is our attempt to close that gap, and this paper reports how far it gets. It "
-     "is a Linux monitor that reads every USB request block (URB) through usbmon, scores "
-     "each device once a second, and escalates through a persistence gate. The "
-     "contributions are listed once here, each with the scope of its evidence:")
-item("1)", "<i>A working pipeline</i> (implemented): capture, features, a two-stage "
-           "detector, a gated policy, storage, dashboard and systemd services, running on "
-           "real kernels. Enforcement is generated but not applied.")
-item("2)", "<i>Operating-point calibration in false alarms per device-hour</i> (simulation): "
-           "a per-window false-positive target does not predict session-level false alarms "
-           "(the independence model is off by a factor of millions), so the threshold is "
-           "chosen on gate firings over long benign sessions.")
-item("3)", "<i>A human-capability bound</i> (simulation and real kernels): the fastest "
-           "sustained typing of 1,972 people, used as a second gate beside the model. It "
-           "explains and partly repairs the failure on unseen attack families.")
-item("4)", "<i>A real-kernel testbed</i> (four distributions, 11 emulated USB device types, "
-           "recorded human input) and what it showed: the learned model did not transfer at "
-           "a usable operating point, and declining to judge device types the model never "
-           "saw removes false alarms without losing keystroke coverage.")
-item("5)", "<i>Negative results with their pre-registered criteria</i>, including two "
-           "candidate improvements that were measured and not adopted.")
+body_lit(SUPP["intro_1"])
+body_lit(SUPP["intro_2"])
+body_lit(SUPP["intro_3"])
+item_lit("1)", lead(SUPP["contrib_1"], "A working pipeline"))
+item_lit("2)", lead(SUPP["contrib_2"], "Setting the alarm threshold"))
+item_lit("3)", SUPP["contrib_3"])
+item_lit("4)", SUPP["contrib_4"])
+item_lit("5)", lead(SUPP["contrib_5"], "Negative results with their pre registered criteria"))
 body("Section II reviews related work. Section III fixes the threat model and the terms used "
      "throughout. Section IV describes the system, Section V the evaluation method and "
      "Section VI the results. Section VII separates what is proposed, implemented and "
@@ -507,19 +574,8 @@ body("Section II reviews related work. Section III fixes the threat model and th
 # ---------------------------------------------------------------- II
 h1("II", "Related Work")
 h2("A", "USB Peripheral Security")
-body("Shen et al. [1] proposed WMUD, a server-side allowlist for USB redirection to virtual "
-     "desktops. It keys policy on class and identifier, which shows the value of "
-     "tamper-resistant policy but admits any device that presents an allowed identity. "
-     "GoodUSB [13] mediates the Linux USB stack and grants a device only the functions the "
-     "user expects. USBFILTER [14] filters packets between drivers and the host controller "
-     "at a cost of microseconds per packet. These are identity- or rule-based.")
-body("Closer to our setting, SafeUSB [2] monitors keystrokes on Windows with an "
-     "inter-keystroke timing threshold and keyword matching, and reports roughly one second "
-     "between connection and the start of monitoring. USBlock [15] detects injection devices "
-     "from the timing of the packets they send, and Huang et al. [16] identify HID attacks "
-     "from host process events. As far as we can tell from their descriptions, none of "
-     "these learns a per-device model or models a device’s behaviour over a sequence of "
-     "windows, and none reports false alarms per device-hour.")
+body_lit(SUPP["related_a1"])
+body_lit(SUPP["related_a2"])
 h2("B", "eBPF for Kernel Observability")
 body("eBPF runs verified programs inside the Linux kernel. Song [5] surveys its mechanics "
      "and limits, Kostopoulos et al. [3] build a real-time eBPF and machine-learning network "
@@ -644,61 +700,22 @@ para("IEEE Caption",
 new_section(2)
 
 h2("C", "Decision Rule")
-body("A device alarms when 4 of its last 6 windows reach the threshold. The threshold is "
-     "chosen in false alarms per device-hour (Section VI-B): the smallest value at which "
-     "benign devices raise at most 0.01 alarms per hour over 80 hours of long simulated "
-     "sessions. A second gate, with its own 4-of-6 count, fires when a keyboard sends at "
-     f"least {DEP['capability_rule']['human_max_rps']} reports in a second; no human in a "
-     f"population of 1,972 sustained more than {human['reports_per_s_sustained_max']} "
-     "(Section V-A). The two gates are combined with OR exactly as they were evaluated.")
-body("Two checks decide what is judged at all. The model records the interface classes of "
-     "its benign training devices, and a device that declares any other class (a network "
-     "adapter, a serial converter, a smart-card reader) is reported as <i>unmodelled</i>: "
-     "scored and stored, never escalated. For HID interfaces the class is not enough, "
-     "because a keyboard and a tablet share it. What a HID interface can send is declared "
-     "by its report descriptor [22], which the kernel exposes in sysfs; keystrokes need the "
-     "Keyboard page and applications can be launched through the Consumer page. A device "
-     "that may send keystrokes is always judged, including when its descriptor cannot be "
-     "read; a pure pointer is outside the threat model and reported as unmodelled.")
+body_lit(SUPP["ivc_1"])
+body_lit(SUPP["ivc_2"])
 h2("D", "Enforcement and Deployment")
-body("Escalation generates THROTTLE and then DEAUTHORIZE actions with the kernel command and "
-     "the evidence behind them, and stores them. Nothing is written to the kernel’s "
-     "authorization interface: execution is gated behind a manual safety review that has "
-     "not been done, and the claim of closed-loop enforcement is therefore untested. The "
-     "monitor and an operator API run as hardened systemd services, and checkpoints carry a "
-     "fixed-input fingerprint that the loader checks.")
+body_lit(SUPP["ivd_1"])
 
 # ---------------------------------------------------------------- V
 h1("V", "Evaluation Method")
 h2("A", "Simulated Traffic")
-body("No labelled USB attack traffic is public, so training data come from a simulator that "
-     "writes sessions in usbmon’s exact text format; the same parser reads them back. Benign "
-     "devices come from five profiles (keyboard, mouse, mass storage, webcam, audio). The "
-     "choices that matter, and their sources:")
-item("–", "<i>Typing speed:</i> each device draws its own median inter-key time, "
-          "log-uniform over 60 to 300 ms, with log-normal spread.")
-item("–", "<i>Key releases:</i> as the HID boot protocol specifies, every keystroke sends a "
-          "key-down and a key-up report, and overlapping keys produce multi-key reports. "
-          "Key holds are log-normal with median 90 ms.")
-item("–", "<i>Text:</i> a Zipf-weighted vocabulary whose digram entropy is tuned to 3.56 "
-          "bits, Shannon’s estimate for English [11].")
-item("–", "<i>Idle periods:</i> 40% of benign devices are always active, 15% pause for 3 to "
-          "8 s between bursts, 15% for 8 to 20 s, 20% for 20 to 60 s, and 10% idle after "
-          "enumeration.")
-item("–", "<i>Attack duration and onset:</i> every session, benign or attack, lasts 40 to "
-          "85 s. Onset is 1.5 to 4 s for injection, 15 to 30 s for the identity switch, 45 "
-          "to 62% of the session for the staged attack, 5 to 12 s for covert exfiltration "
-          "and 4 to 12 s for the mimicry families; a human-paced payload is 60 to 220 keys.")
-body("Three choices keep attacks from being easy. Attack devices draw their timing persona "
-     "from the same prior as benign ones, the mimicry families draw keystroke timing from the "
-     "exact human parameters, and benign and attack sessions share one duration "
-     "distribution. A leakage audit tests duration, window count and identifier per family, "
-     "and found the time-since-enumeration leak that is now excluded. "
-     f"{tref('timing')} measures the simulator against real people: 1,972 participants of "
-     "the 136M Keystrokes study [19] and the 51 subjects of the CMU benchmark [20]. The "
-     "simulator types at a realistic median pace and hold time, pauses more than "
-     "transcription typists, and has no very fast typists, which is why the capability "
-     "bound is taken from the real data.")
+body_lit(SUPP["va_intro"])
+item_lit("–", lead(SUPP["va_b1"], "Typing speed:"))
+item_lit("–", lead(SUPP["va_b2"], "Key releases:"))
+item_lit("–", lead(SUPP["va_b3"], "Text:"))
+item_lit("–", lead(SUPP["va_b4"], "Idle periods:"))
+item_lit("–", lead(SUPP["va_b5"], "Session length and attack onset:"))
+body_lit(SUPP["va_three"])
+body_lit(SUPP["va_tableref"])
 H = HT
 rows = [["People (sessions)", f"{H['aalto']['sessions']:,}", f"51 ({H['cmu']['sessions']})",
          f"({H['simulator']['sessions']})"]]
@@ -709,22 +726,14 @@ for k, lbl, f in (("iki_median_ms", "Inter-key median (ms)", "{:.0f}"),
                   ("gaps_over_1s_share", "Gaps over 1 s", "{:.1%}"),
                   ("reports_per_s_sustained_max", "Fastest sustained reports/s", "{:d}")):
     rows.append([lbl] + [f.format(H[s][k]) for s in ("aalto", "cmu", "simulator")])
-table("Simulated typing against two real populations", ["Measure", "Aalto [19]", "CMU [20]",
+table("Simulated typing against two real populations", ["Measure", f"Aalto [{REF_NO['dhakal']}]", f"CMU [{REF_NO['killourhy']}]",
       "Simulator"], rows, key="timing")
-body("For illustration, two seconds of a benign keyboard emit lines such as "
-     "<code>C Ii:3:003:1 0:10 8 = 00000b00…</code> a few dozen milliseconds apart, a key-down "
-     "followed by its all-zero release; machine-speed injection emits the same pairs about "
-     "2 ms apart for as long as its payload lasts. The model card lists real excerpts of "
-     "both.")
+_ill = SUPP["va_illustration"]
+_snip = "C Ii:3:003:1 0:10 8 = 00000b00…"
+assert _snip in _ill
+body_lit(_ill.replace(_snip, "<code>" + _snip + "</code>"))
 h2("B", "Corpora and Splits")
-body("Corpus A (1,000 sessions, 600 benign) is the original corpus, in which every benign "
-     "device is always active. Corpus B has the same size and seed with the realistic "
-     "generator of Section V-A, and the deployed model is trained on it. Corpus C is a "
-     "fresh set of 3,600 sessions (3,000 benign, 100 per attack family) from a different "
-     "seed, never used to train, calibrate or select. Splits are by session, never by "
-     "window: 30% of each profile is held out for test, and 20% of the rest is drawn for "
-     f"validation, which is where thresholds are set ({tref('data')}). Long-session sets for "
-     "calibration and evaluation use their own seeds.")
+body_lit(SUPP["vb_1"])
 B = MC["data"]["corpus_B"]["splits"]
 A = MC["data"]["corpus_A"]["splits"]
 rows = []
@@ -737,48 +746,15 @@ rows.append(["C (all)", 3600, 3000, 600, "—", "—"])
 table("Sessions, windows and hours per split", ["Split", "Sessions", "Benign", "Attack",
       "Windows", "Hours"], rows, key="data")
 h2("C", "Real-Kernel Testbed")
-body("To test on real kernels we boot four distributions headless under QEMU with hardware "
-     "acceleration: Ubuntu 24.04 (kernel 6.8), Debian 13 (6.12), Fedora 44 (6.19) and "
-     "AlmaLinux 9 (5.14). Each guest has 11 emulated USB devices: boot keyboard, mouse, "
-     "absolute tablet, pen tablet, bulk-only and UAS storage, audio, network adapter, "
-     "serial converter, smart-card reader and hub. The kernels and drivers are real; the "
-     "device side is emulated. The keyboard replays key-down and key-up times of real "
-     "participants [19], the mouse and tablet replay the Balabit recordings of ten users "
-     "[21], and the guest copies files to the drives, sends network packets, writes to the "
-     "serial port and plays audio on a seeded schedule. Each distribution runs a 75-minute "
-     "benign session and two 30-minute attack sessions, in which six episodes are played "
-     "on newly attached keyboards: the five attack families that a keyboard can carry out "
-     "and a benign control in which a new keyboard is used by a replayed person. Attack "
-     "payloads are innocuous text without the Enter key; what makes them attacks is the "
-     "traffic the kernel sees. Captures are scored through the deployed monitor loop itself, "
-     "replayed as fast as the file can be read; a test shows that replay gives the same "
-     "verdicts as replay at wall-clock pace.")
+body_lit(SUPP["vc_1"])
+body_lit(SUPP["vc_2"])
 h2("D", "Statistics, Pre-Registration and Availability")
-body("Rates carry 95% Wilson intervals or counts. LSTM training is seed-sensitive, so "
-     "comparisons that could hinge on the seed use three seeds, and a difference counts only "
-     "if it exceeds both the seed spread and one session. Every candidate improvement had "
-     "its adoption criterion written into its script before the first run, and two failed "
-     "(Section VI-E). Every number here is read from a file written by a seeded script in "
-     "the project repository, and this document is generated from those files. Seeds: 7 "
-     "for Corpora A and B and model training (8 and 9 for spread), 2025 for Corpus C, 4049 "
-     "for threshold calibration, 2027 to 2031 for the long-session evaluation sets, and 1 "
-     "and 2 for the testbed rounds. The code, data formats and generator settings are in "
-     "the repository and its model card; the human-input datasets are fetched from their "
-     "publishers under their licences and are not redistributed.")
+body_lit(SUPP["vd_1"])
 
 # ---------------------------------------------------------------- VI
 h1("VI", "Results")
 h2("A", "Detection in Simulation")
-body("On Corpus A the full system detected "
-     f"{BASEJ['headline']['detect_k']}/{BASEJ['headline']['n_attack']} attack sessions "
-     f"({pct(det_a)}) with no false positive in {BASEJ['headline']['n_benign']} benign test "
-     f"sessions, against {pct(s1_a)} without the LSTM. That result did not survive "
-     "realism: Corpus A’s benign devices never go idle, and once they did, the same model "
-     f"flagged {pct(orig_fp_b)} of Corpus B’s benign sessions. Retrained on Corpus B, the "
-     f"model at its original per-window threshold detects {kn(cb['detect_k'], cb['n_attack'])} "
-     f"of Corpus C’s attacks with {cb['fp_k']} false positives in {cb['n_benign']:,} benign "
-     f"sessions; at the deployed, calibrated threshold it detects "
-     f"{kn(ca['detect_k'], ca['n_attack'])} with {ca['fp_k']} ({tref('simdetect')}).")
+body_lit(SUPP["via_1"])
 R = RULEJ
 H_ = HYB["corpus_c"]
 rows = []
@@ -793,26 +769,9 @@ rows.append(["Benign FP (n = 3,000)", f"{cb['fp_k']}", f"{ca['fp_k']}", f"{H_['r
 table("Session-level detection on Corpus C (100 sessions per family)",
       ["Family", "Per-window thr.", "Calibrated", "Capability gate", "Deployed rule"],
       rows, key="simdetect")
-body(f"Four families are detected every time at either threshold. The cost of calibration "
-     f"falls on one family, the replay loop, which drops from {pct(cb['per_profile']['mimicry'], 0)} "
-     f"to {pct(ca['per_profile']['mimicry'], 0)}; the single human-paced payload is not "
-     "detected by anything. The capability gate alone reaches "
-     f"{kn(H_['rule']['detect_k'], 600)} with no false positive, and adds nothing to the "
-     "deployed rule on families the model was trained on. Three hand-written rules from our "
-     f"earlier study reach the same {pct(R['all three rules']['mean'])}: in simulation, what "
-     "learning adds over rules is the replay loop.")
+body_lit(SUPP["via_2"])
 h2("B", "From a Window Threshold to False Alarms per Device-Hour")
-body("The threshold was first set at a per-window false-positive rate of 10⁻⁴ on "
-     "validation windows. On sessions of up to an hour (about 101 device-hours) that model "
-     f"raised {long_kbd:.3f} false alarms per keyboard-hour, about one per keyboard per working "
-     "day, and none on other classes; short sessions had too few hours to show it. "
-     f"{tref('operating')} explains why the per-window target says little. On 40 benign "
-     f"keyboard-hours, {sfp_old['p_window_over']:.2e} of windows were over that threshold, ten "
-     "times the target, because the pooled validation target hides the keyboard’s own rate. "
-     f"An over-threshold window was followed by another {100 * sfp_old['q_next_over_given_over']:.0f}% "
-     "of the time, since consecutive LSTM inputs share nine of ten rows. Treating windows as "
-     f"independent predicts {sfp_old['naive_alarms_per_hour']:.1e} alarms per hour against "
-     f"{sfp_old['observed_alarms_per_hour']:.3f} observed.")
+body_lit(SUPP["vib_1"])
 rows = [["Keyboard windows over threshold", f"{sfp_old['p_window_over']:.1e}",
          f"{sfp_new['p_window_over']:.1e}"],
         ["P(next over | over)", f"{sfp_old['q_next_over_given_over']:.2f}",
@@ -829,19 +788,9 @@ rows = [["Keyboard windows over threshold", f"{sfp_old['p_window_over']:.1e}",
 table("Two operating points of the same model", ["Measure",
       f"Per-window ({CAL['previous_threshold']:.4f})", f"Calibrated ({CAL['chosen_threshold']:.4f})"],
       rows, key="operating")
-body("We therefore choose the threshold on gate firings. Each session has a critical "
-     "threshold, the largest at which its gate fires, so the whole curve of false alarms "
-     "against threshold is a sort; a test checks this against the policy engine. On 80 "
-     "hours of long benign sessions from a calibration seed, the smallest threshold with at "
-     "most 0.01 alarms per device-hour was adopted, as pre-registered, and evaluated once on "
-     f"a fresh seed: keyboard false alarms fell from {kb_b['rate']:.3f} to {kb_a['rate']:.3f} "
-     "per hour, at the cost in Table "
-     f"{ROMAN[TABLE_ORDER.index('simdetect') + 1]}. The full threshold curve is in the "
-     "result file, so a deployment can trade the other way.")
+body_lit(SUPP["vib_2"])
 h2("C", "Generalisation to Unseen Attack Families")
-body("Stage 2 learns the families it is shown. Trained without a family and tested on it, "
-     f"mean detection on Corpus C falls from {pct(seen_mean)} to {pct(lopo_m)}. To see why, we trained on "
-     f"benign traffic and one family at a time and tested every family ({tref('transfer')}).")
+body_lit(SUPP["vic_1"])
 fl = {"hid_injection": "hid", "staged_delay": "stag", "identity_switch": "iden",
       "class_exfil": "exfil", "mimicry": "mim", "mimicry_adaptive": "mim-a"}
 rows = []
@@ -850,22 +799,8 @@ for F in FAMS:
 table("Detection (%) of each family (columns) by a model trained on one family (rows)",
       ["Trained on"] + [fl[g] for g in FAMS], rows, key="transfer")
 st = TR["overlap"]["strong"]
-body("The four injection-speed families transfer among themselves almost completely, and "
-     "the two human-paced families transfer to and from nothing. We measured, for each "
-     "family, the features that separate its attack windows from benign windows of the same "
-     "class by a Kolmogorov–Smirnov statistic of at least 0.8. The overlap of those sets "
-     f"predicts transfer (Spearman ρ = {st['spearman_jaccard']:+.2f}; a version using the top "
-     f"five features, stated before the run, gave {TR['overlap']['top5']['spearman_jaccard']:+.2f} "
-     "because many features tie at 1.00). The injection families share 9 to 11 such "
-     "features, mostly rate and timing. The human-paced families have none: their best "
-     "feature reaches 0.45. A supervised model can only learn weak, family-specific cues for "
-     "them, and no other family carries those cues, so a new human-paced attack will not be "
-     "caught by training on old ones.")
-body("The capability gate needs no training family. Combined with the model under the same "
-     "leave-one-family-out protocol, mean detection rises from "
-     f"{pct(lopo_m)} to {pct(lopo_h)}: identity switch and covert exfiltration go from 0% "
-     "to 100%, with no added false positive, because they inject at machine speed. The "
-     "human-paced families stay where they were.")
+body_lit(SUPP["vic_2"])
+body_lit(SUPP["vic_3"])
 h2("D", "Real Kernels")
 rows = []
 for k in ("ubuntu-24.04", "debian-13", "fedora-44", "alma-9"):
@@ -877,11 +812,7 @@ for k in ("ubuntu-24.04", "debian-13", "fedora-44", "alma-9"):
 table(f"Testbed environments ({tb_minutes / len(dists):.0f} min each, {tb_minutes / 60:.0f} h in all)",
       ["Distribution", "Kernel", "usbmon lines", "Drivers bound"], rows, key="envs",
       left_cols=(0, 3))
-body(f"The parser read {tb_lines:,} lines from four kernels with {tb_unparsed} unparsed "
-     f"({tref('envs')}). The environments differ in a way simulation cannot show: Ubuntu’s "
-     "and Fedora’s cloud kernels ship without the audio, network and serial class drivers, "
-     "so the same emulated devices fall silent after enumeration there, and Ubuntu’s also "
-     "lacks usbmon itself until an extra module package is installed.")
+body_lit(SUPP["vid_1"])
 BR = TB["benign_by_role"]
 assert tb_tot["rule_alarmed"] == 0       # so the model-alone benign column equals the deployed one
 rows = [["Benign devices alarmed", f"{int(tb_tot['deployed_alarmed'])}/{int(tb_tot['devices'])}",
@@ -903,58 +834,15 @@ table(f"Real kernels: benign devices ({tb_tot['hours']:.1f} device-hours) and at
       "threshold, every device judged",
       ["", "Deployed", "Model, cal.†", "Model, per-win.‡", "Gate only", "Corpus A"],
       rows, key="realkernel", left_cols=(0,))
-body(f"{tref('realkernel')} holds the main real-kernel result. The deployed rule raised no "
-     f"alarm on any of {int(tb_tot['devices'])} benign device sessions over "
-     f"{tb_tot['hours']:.1f} device-hours, including {int(kbd_role['devices'])} keyboards "
-     f"driven by real people’s keystrokes, and detected all {fast_n} injection-speed attacks "
-     f"with a median latency of {tb_lat_med:.1f} s. Those detections are the capability "
-     f"gate’s. The learned model alone (†, competence checks on) caught {model_cal_all} of "
-     f"{n_att_tb} attacks at its calibrated threshold. At the per-window threshold "
-     f"(‡, every device judged) it caught all {fast_prev} injection attacks but also alarmed "
-     f"on {int(kbd_role['previous_threshold_alarmed'])} of the {int(kbd_role['devices'])} "
-     "human-typed keyboards. Real injection through a keyboard polled every 10 ms produces "
-     "about 93 reports per second, not the simulator’s 390, and the model’s score reached "
-     "the calibrated threshold too briefly to complete the gate. Nothing detected the "
-     f"human-paced attacks ({mim_dep}/{mim_n}) except the original Corpus-A model, which "
-     f"alarmed on {int(tb_tot['corpus_a_alarmed'])} of {int(tb_tot['devices'])} benign devices.")
-body("The competence checks were needed. Judging every device, the same model alarmed on "
-     f"{int(tb_tot['judging_all_alarmed'])} benign devices: a network adapter whose "
-     "link-status endpoint sends an identical eight-byte report every 32 ms (perfectly "
-     "regular and repetitive, which is what injection looks like to a model that has only "
-     "seen keyboards), a serial converter, hubs, and the absolute tablet, whose six-byte "
-     "reports no training device had. The HID check was designed after seeing the tablet "
-     "alarm and validated on the sessions run afterwards.")
+body_lit(SUPP["vid_t1"])
+body_lit(SUPP["vid_2"])
 h2("E", "What Did Not Help")
 rs = ROBF["summary"]
-body("<i>Sample-size-robust features.</i> The long-session false alarms came from windows "
-     "holding one keystroke, where the coefficient of variation and entropy of inter-arrival "
-     "times are exactly zero, the signature of a script. Freezing either feature removed "
-     "every such alarm in the trained model. Retraining with versions shrunk toward a "
-     "Poisson prior, and with a novelty feature on a 60-second horizon, did not: pooled over "
-     f"three seeds the candidate raised more keyboard alarms than the base model "
-     f"({rs['R_both']['kbd_alarms_per_hour'][0]:.3f} against "
-     f"{rs['base']['kbd_alarms_per_hour'][0]:.3f} per hour), so it was not adopted.")
-pv2 = POLL["polling_v3"]["corpus_c_v2"]
-body("<i>Polling-limited injection.</i> Training on injection bounded by a device polling "
-     "interval of 1 to 10 ms, after the real-kernel miss, lowered Corpus C detection to "
-     f"{pct(pv2['detect'])} (replay loop {pct(pv2['per_family']['mimicry'], 0)}) and caught "
-     "almost none of the real-kernel attacks, failing two of its four criteria. The "
-     "sim-to-real gap is not only speed.")
-body("<i>Earlier negative results.</i> The per-device baseline contributes nothing measurable, "
-     "even when devices are made heterogeneous; 13 alternative alerting rules, a long-repeat "
-     "feature, longer context and a five-seed ensemble all fall within seed noise; a "
-     "host-level feature for concurrent mouse activity did not help, because simulated "
-     "devices on one host are independent. Two real defects surfaced only on real kernels: "
-     "the usbmon timestamp wraps at 4,096 s and the parser had assumed 2³² µs, shifting "
-     "every event after a wrap 199 s into the future, and the descriptor scanner had marked "
-     "every real interface as late-arriving.")
+body_lit(lead(SUPP["vie_1"], "Sample-size-robust features."))
+body_lit(lead(SUPP["vie_2"], "Polling-limited injection."))
+body_lit(lead(SUPP["vie_3"], "Earlier negative results."))
 h2("F", "Cost and Overhead")
-body(f"The streaming detector costs {DIAG['cost']['ms_per_device_window']:.1f} ms per "
-     f"device-window, about {DIAG['cost']['devices_per_core']} devices per core. An eBPF probe "
-     "on the URB completion hook counts exactly the same completions as usbmon "
-     f"({EBPF_BUSY['ebpf']['completions_at_giveback_hook']:,} of "
-     f"{EBPF_BUSY['usbmon']['completions_and_errors']:,} under load), but reads the URB status "
-     "too early to be correct, emits no records and is not a capture backend.")
+body_lit(SUPP["vif_1"])
 if OVH:
     OS_ = OVH["summary"]
     rows = []
@@ -980,26 +868,13 @@ if OVH:
     n_ci, n_contain = len(cis), sum(lo <= 0 <= hi for lo, hi in cis)
     # an interval that excludes zero must do so on the FASTER side, or this text is wrong
     assert all(lo > 0 for lo, hi in cis if not lo <= 0 <= hi), "a monitor measurably slowed I/O"
-    body(f"{tref('overhead')} measures each monitor on a guest whose storage stick is driven "
-         f"with {OVH['bs_kib']} KiB direct I/Os, so that every few kilobytes costs three URBs, "
-         "the worst case for a per-URB monitor. Each condition is compared with the "
-         "unmonitored run of the same repetition, because a first version of the benchmark "
-         "drifted by more than any difference between conditions. No monitor’s cost is "
-         f"detectable. {n_contain} of {n_ci} intervals contain zero; "
-         + (f"the {'other' if n_ci - n_contain == 1 else 'others'} lie on the side where "
-            "monitoring would make transfers faster, which no monitor can cause, and with "
-            f"{n_ci} intervals at 95% about one miss is expected. " if n_contain < n_ci else "")
-         + "The resolution is coarse, ±10 to 30%, "
-         "because the device is emulated, so the honest statement is an upper bound, not a "
-         "zero. The kernel’s own BPF statistics put the probe at most "
-         f"{ns_max / 1000:.1f} µs per URB completion in this guest, the same for counting and "
-         "per-event output, which suggests the measurement’s own timing dominates; at a "
-         "keyboard’s ten or so URBs a second that is negligible.")
+    _need(n_contain == 7 and n_ci == 8 and f"{ns_max / 1000:.1f}" == "3.8",
+          "7 of 8 intervals contain zero; 3.8 us per URB completion")
+    body_lit(SUPP["vif_2"])
 
 # ---------------------------------------------------------------- VII
 h1("VII", "What the Evidence Supports")
-body(f"{tref('claims')} separates what was proposed, what was built and what the "
-     "experiments support. The four novelty claims of the original proposal are N1 to N4.")
+body_lit(SUPP["vii_1"])
 rows = [["N1 Multi-modal fusion", "Built", "Partly: helps at moderate attack strength, loses at "
          "the subtlest (simulation)"],
         ["N2 Per-device baseline", "Built", "Not supported (simulation)"],
@@ -1012,15 +887,7 @@ rows = [["N1 Multi-modal fusion", "Built", "Partly: helps at moderate attack str
         ["Zero-day detection", "Not claimed", "Unseen human-paced attacks are missed"]]
 table("Claims, implementation status and evidence", ["Claim", "Status", "Evidence"], rows,
       key="claims", left_cols=(0, 1, 2))
-body("Three readings follow. First, the strongest result is operational: a monitor that "
-     "raised no false alarm on 114 real-kernel device sessions and caught every "
-     "injection-speed attack, with the detections coming from a physical bound and the "
-     "learned model contributing its calibrated restraint rather than its detections. "
-     "Second, the learned model’s advantage is narrow even in simulation, the replay loop, "
-     "and it did not carry over to real kernel traffic, so this paper does not present "
-     "IUDBMS as a detector of unknown attacks. Third, a human-paced payload typed once is "
-     "statistically the same process as a person typing within one device’s traffic; no "
-     "feature we have separates it, and no detector here catches it.")
+body_lit(SUPP["vii_2"])
 
 # ---------------------------------------------------------------- VIII
 h1("VIII", "Limitations and Threats to Validity")
@@ -1110,8 +977,11 @@ REFS = {
                 ", Jun. 2001."),
 }
 
-missing = [k for k in REFS if k not in REF_NO]
+missing = [k for k in REFS if k not in CITED]
 assert not missing, f"references never cited: {missing}"
+assert set(REF_NO) == set(REFS), (set(REF_NO) ^ set(REFS))
+_order = [REF_NO[k] for k in CITED_ORDER]
+assert _order == sorted(_order), f"references are not numbered in order of first citation: {_order}"
 for key, n in sorted(REF_NO.items(), key=lambda kv: kv[1]):
     ref = REFS[key]
     p = doc.add_paragraph(style="IEEE Ref")
@@ -1151,3 +1021,5 @@ DEST.unlink(missing_ok=True)
 doc.save(DEST)
 print(f"  wrote {DEST}")
 print(f"  tables: {_TABLE_N[0]}   figure: {FIG.name}")
+for _n in NOTES:
+    print(f"  NOTE (supplied text vs results): {_n}")
