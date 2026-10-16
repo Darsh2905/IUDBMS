@@ -37,6 +37,7 @@ report:  ## regenerate docs/report/ from the last eval (charts + numbers)
 paper:  ## rebuild the IEEE .docx; supplied text is verbatim, every number is checked against out/*.json
 	python3 scripts/build_paper.py
 	python3 scripts/check_paper_text.py
+	python3 scripts/check_paper_layout.py
 
 diagrams:  ## architecture + gate diagrams as PNG/PDF (needs `make eval` first)
 	python3 -m eval.render_architecture
