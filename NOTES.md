@@ -49,6 +49,10 @@ claim below.
   reword, re-punctuate or 'fix' them**; `scripts/check_paper_text.py` (run by `make paper`)
   fails if the built .docx differs from them. The build checks every number they state against
   `out/*.json` and prints discrepancies as NOTE lines (a typo is reported, never silently fixed).
+  House style (no hyphens in ordinary compounds, no colons joining clauses) is applied on top of
+  that text by `scripts/paper_style.py`, so the authors' wording stays recoverable and every change
+  is listed in one file. `scripts/check_paper_layout.py` checks that every paragraph, table and the
+  figure are in the authors' order, and that each table follows the paragraph that first mentions it.
 
 ### Novelty scorecard (current, 05 Oct)
 

@@ -1,5 +1,6 @@
 """
-Check that a built paper contains every author-supplied paragraph verbatim.
+Check that a built paper contains every author-supplied paragraph, with exactly the house
+style of scripts/paper_style.py applied and nothing else changed.
 
     python3 scripts/check_paper_text.py [paper.docx]
 
@@ -17,6 +18,9 @@ import sys
 from pathlib import Path
 
 import docx
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from paper_style import style, supplied  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 SUPP = json.loads((ROOT / "scripts" / "paper_supplied_text.json").read_text())
@@ -38,7 +42,7 @@ def main() -> int:
         if key.startswith("_") or key.startswith("verify_"):
             continue
         n += 1
-        want = PREFIX.get(key, "") + text
+        want = PREFIX.get(key, "") + supplied(key, text)
         if want in present:
             continue
         bad += 1
@@ -54,10 +58,10 @@ def main() -> int:
         return re.sub(r"\s+", " ", t.replace("–", "-").replace("—", "-")).strip()
     items = [p for p in paras if re.match(r"^[1-7]\)\t", p)]
     lim = norm(" ".join(p.replace("\t", " ", 1) for p in items[5:]))   # the five contributions come first
-    ok_lim = norm(SUPP["verify_limitations"]) in lim or lim in norm(SUPP["verify_limitations"])
+    ok_lim = norm(style(SUPP["verify_limitations"])) in lim or lim in norm(style(SUPP["verify_limitations"]))
     concl = next((p for p in paras if p.startswith("IUDBMS treats USB trust")), "")
-    ok_con = norm(concl) == norm(SUPP["verify_conclusion"])
-    print(f"{n - bad} of {n} supplied paragraphs present verbatim; "
+    ok_con = norm(concl) == norm(style(SUPP["verify_conclusion"]))
+    print(f"{n - bad} of {n} supplied paragraphs present (house style applied, nothing else changed); "
           f"limitations {'match' if ok_lim else 'DIFFER'}, conclusion {'matches' if ok_con else 'DIFFERS'} the edited pages")
     return 1 if bad else 0
 

@@ -38,6 +38,9 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Inches, Pt, RGBColor
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from paper_style import style, supplied  # noqa: E402  (hyphen and colon rules, see paper_style.py)
+
 ROOT = Path(__file__).resolve().parent.parent
 OUT_DIR = ROOT / "out"
 DEST = Path(sys.argv[1]) if len(sys.argv) > 1 else \
@@ -47,6 +50,11 @@ FIG = OUT_DIR / "architecture_ieee.png"
 #: scripts/extract_supplied_text.py. It is used as written: nothing in it is reworded,
 #: re-punctuated or re-numbered (it already cites by FINAL reference number).
 SUPP = json.loads((ROOT / "scripts" / "paper_supplied_text.json").read_text())
+
+
+def sup(key):
+    """A supplied paragraph with the house style applied (paper_style.py); otherwise as written."""
+    return supplied(key, SUPP[key])
 
 FONT = "Times New Roman"
 BLACK = RGBColor(0, 0, 0)
@@ -218,6 +226,7 @@ def number_cites(text):
 def rich(par, text, cites=True, **base):
     italic = False
     code = False
+    text = style(text)
     if cites:
         text = number_cites(text)
     for tok in re.split(r"(</?i>|</?code>)", text):
@@ -247,13 +256,13 @@ def para(style, text="", **kw):
 def h1(roman, title):
     p = doc.add_paragraph(style="IEEE H1")
     run(p, f"{roman}. ")
-    run(p, title, small_caps=True)
+    run(p, style(title), small_caps=True)
     return p
 
 
 def h2(letter, title):
     p = doc.add_paragraph(style="IEEE H2")
-    run(p, f"{letter}. {title}")
+    run(p, f"{letter}. {style(title)}")
     return p
 
 
@@ -313,7 +322,7 @@ def table(caption, header, rows, *, widths=None, key=None, left_cols=(0,)):
             f"table {key!r} is #{_TABLE_N[0]} but TABLE_ORDER puts it at #{TABLE_ORDER.index(key) + 1}"
     p = doc.add_paragraph(style="IEEE TableCaption")
     run(p, f"Table {ROMAN[_TABLE_N[0]]}.  ", small_caps=True)
-    run(p, caption, small_caps=True)
+    run(p, style(caption), small_caps=True)
 
     t = doc.add_table(rows=1 + len(rows), cols=len(header))
     t.alignment = WD_TABLE_ALIGNMENT.CENTER
@@ -322,7 +331,7 @@ def table(caption, header, rows, *, widths=None, key=None, left_cols=(0,)):
         cell = t.rows[0].cells[j]
         cp = cell.paragraphs[0]
         cp.style = doc.styles["IEEE TableCell"]
-        run(cp, htxt, bold=True)
+        run(cp, style(htxt), bold=True)
     for i, r in enumerate(rows, start=1):
         for j, v in enumerate(r):
             cell = t.rows[i].cells[j]
@@ -330,7 +339,7 @@ def table(caption, header, rows, *, widths=None, key=None, left_cols=(0,)):
             cp.style = doc.styles["IEEE TableCell"]
             if j in left_cols:
                 cp.alignment = L
-            run(cp, str(v))
+            run(cp, style(str(v)))
     # Keep the table on one page: every row but the last holds with the next, and no
     # row may split. IEEE tables are short; a table broken across pages reads badly.
     for ri, row in enumerate(t.rows):
@@ -544,7 +553,7 @@ _need([tref(k) for k in ("timing", "data", "simdetect", "operating", "transfer",
           "Table XI", "Table XII"], "Tables IV to XII in this order")
 
 # ---------------------------------------------------------------- abstract
-ABSTRACT = SUPP["abstract"]
+ABSTRACT = sup("abstract")
 mark_cited(ABSTRACT)
 n_words = len(re.findall(r"\S+", ABSTRACT))
 print(f"  abstract: {n_words} words" + ("   (IEEE allows at most 200)" if n_words > 200 else ""))
@@ -554,18 +563,18 @@ run(p, "Abstract", italic=True)
 run(p, "—" + ABSTRACT)
 p = doc.add_paragraph(style="IEEE Abstract")
 run(p, "Index Terms", italic=True)
-run(p, "—" + SUPP["index_terms"])
+run(p, "—" + sup("index_terms"))
 
 # ---------------------------------------------------------------- I
 h1("I", "Introduction")
-body_lit(SUPP["intro_1"])
-body_lit(SUPP["intro_2"])
-body_lit(SUPP["intro_3"])
-item_lit("1)", lead(SUPP["contrib_1"], "A working pipeline"))
-item_lit("2)", lead(SUPP["contrib_2"], "Setting the alarm threshold"))
-item_lit("3)", SUPP["contrib_3"])
-item_lit("4)", SUPP["contrib_4"])
-item_lit("5)", lead(SUPP["contrib_5"], "Negative results with their pre registered criteria"))
+body_lit(sup("intro_1"))
+body_lit(sup("intro_2"))
+body_lit(sup("intro_3"))
+item_lit("1)", lead(sup("contrib_1"), "A working pipeline"))
+item_lit("2)", lead(sup("contrib_2"), "Setting the alarm threshold"))
+item_lit("3)", sup("contrib_3"))
+item_lit("4)", sup("contrib_4"))
+item_lit("5)", lead(sup("contrib_5"), "Negative results with their pre registered criteria"))
 body("Section II reviews related work. Section III fixes the threat model and the terms used "
      "throughout. Section IV describes the system, Section V the evaluation method and "
      "Section VI the results. Section VII separates what is proposed, implemented and "
@@ -574,8 +583,8 @@ body("Section II reviews related work. Section III fixes the threat model and th
 # ---------------------------------------------------------------- II
 h1("II", "Related Work")
 h2("A", "USB Peripheral Security")
-body_lit(SUPP["related_a1"])
-body_lit(SUPP["related_a2"])
+body_lit(sup("related_a1"))
+body_lit(sup("related_a2"))
 h2("B", "eBPF for Kernel Observability")
 body("eBPF runs verified programs inside the Linux kernel. Song [5] surveys its mechanics "
      "and limits, Kostopoulos et al. [3] build a real-time eBPF and machine-learning network "
@@ -601,12 +610,12 @@ body("The attacker supplies a USB device that presents a HID interface able to s
      f"six attack families ({tref('families')}) cover machine-speed injection, injection "
      "after a long benign dwell, a storage device that comes back as a keyboard, a keyboard "
      "that sends covert bulk data, and two human-paced attacks. The defender runs Linux "
-     "with usbmon available and no special hardware. Out of scope: attacks that never send "
+     "with usbmon available and no special hardware. Attacks that never send "
      "keystrokes (a network adapter that hijacks traffic, a drive carrying malware), "
-     "attacks below the USB protocol, and physical or electrical attacks. Section IV-C "
+     "attacks below the USB protocol, and physical or electrical attacks are out of scope. Section IV-C "
      "shows how the system reports devices outside this scope rather than judging them.")
 table("The six attack families", ["Family", "What the device does", "Main signal"],
-      [["hid_injection", "Types a scripted payload at machine speed soon after plug-in",
+      [["hid_injection", "Types a scripted payload at machine speed soon after being plugged in",
         "Speed, regularity"],
        ["staged_delay", "Types like a person for about half the session, then injects",
         "Burst after a dwell"],
@@ -636,18 +645,19 @@ for term, meaning in (
          "gate."),
         ("Learned model alone / deployed decision rule", "the model’s own gate, versus the "
          "full rule of Section IV-C, which adds the capability gate and competence check.")):
-    item("–", f"<i>{term}:</i> {meaning}")
+    item("–", f"<i>{term}.</i> {meaning[0].upper()}{meaning[1:]}")
 
 # ---------------------------------------------------------------- IV
 h1("IV", "System")
 h2("A", "Capture and Features")
-body("usbmon, a passive kernel tap, writes one text line per URB submission, completion or "
+body("Fig. 1 shows the whole pipeline, from kernel capture to enforcement. usbmon, a passive "
+     "kernel tap, writes one text line per URB submission, completion or "
      "error. A parser turns each line into a typed event; completions and errors are used "
      "for features, submissions are not. Events are bucketed by kernel timestamp into "
      "one-second windows per device. The text timestamp is the monotonic clock with its "
      "seconds truncated to 12 bits, so it wraps every 4,096 s; the parser undoes that wrap "
      "(Section VI-E records the defect we found here). Each window becomes 30 features in "
-     f"five modalities ({tref('features')}). Two are not given to the model: time since "
+     f"five modalities ({tref('features')}). Two are not given to the model. These are time since "
      "enumeration, which a Kolmogorov–Smirnov test showed to encode session position and "
      "hence the label, and the host-level rate, which is constant on single-device training "
      "data. Payload bytes are compared only for equality, so a stored trace replaces each "
@@ -659,7 +669,7 @@ table("Input features in their frozen order (definitions and normalisation in th
       ["#", "Feature", "Unit", "Used"], rows, key="features", left_cols=(1,))
 h2("B", "Two-Stage Detector")
 body("<i>Stage 1</i> is unsupervised and trained on benign windows only. Each feature is "
-     "z-scored with the benign training mean and standard deviation, with the deviation "
+     "standardised with the benign training mean and standard deviation, with the deviation "
      "floored at 0.01 and the result clipped to ±10, so a feature that is constant in benign "
      "traffic cannot explode when it changes. An Isolation Forest per declared class group "
      "scores the window against devices of the same kind, and a per-device exponentially "
@@ -682,7 +692,7 @@ rows = [["Stage 1", "Isolation Forest", f"{S1C['n_estimators']} trees, contamina
         ["", "Optimiser", "Adam, lr 2×10⁻³, no weight decay, grad-norm clip 5"],
         ["", "Batch, epochs", f"{S2C['batch_size']}, {S2C['epochs']} (fixed; no early stopping)"],
         ["", "Seed", "7 (seeds 8, 9 for spread)"],
-        ["Decision", "Threshold", f"{DEP['threshold']:.6f}, ≤ 0.01 false alarms/device-h"],
+        ["Decision", "Threshold", f"{DEP['threshold']:.6f}, ≤ 0.01 false alarms per device hour"],
         ["", "Gate", "4 of last 6 windows; 8 qualifying → revoke"],
         ["", "Capability gate", f"keyboard ≥ {DEP['capability_rule']['human_max_rps']} "
                                 "reports/s, own 4-of-6"]]
@@ -700,22 +710,22 @@ para("IEEE Caption",
 new_section(2)
 
 h2("C", "Decision Rule")
-body_lit(SUPP["ivc_1"])
-body_lit(SUPP["ivc_2"])
+body_lit(sup("ivc_1"))
+body_lit(sup("ivc_2"))
 h2("D", "Enforcement and Deployment")
-body_lit(SUPP["ivd_1"])
+body_lit(sup("ivd_1"))
 
 # ---------------------------------------------------------------- V
 h1("V", "Evaluation Method")
 h2("A", "Simulated Traffic")
-body_lit(SUPP["va_intro"])
-item_lit("–", lead(SUPP["va_b1"], "Typing speed:"))
-item_lit("–", lead(SUPP["va_b2"], "Key releases:"))
-item_lit("–", lead(SUPP["va_b3"], "Text:"))
-item_lit("–", lead(SUPP["va_b4"], "Idle periods:"))
-item_lit("–", lead(SUPP["va_b5"], "Session length and attack onset:"))
-body_lit(SUPP["va_three"])
-body_lit(SUPP["va_tableref"])
+body_lit(sup("va_intro"))
+item_lit("–", lead(sup("va_b1"), "Typing speed."))
+item_lit("–", lead(sup("va_b2"), "Key releases."))
+item_lit("–", lead(sup("va_b3"), "Text."))
+item_lit("–", lead(sup("va_b4"), "Idle periods."))
+item_lit("–", lead(sup("va_b5"), "Session length and attack onset."))
+body_lit(sup("va_three"))
+body_lit(sup("va_tableref"))
 H = HT
 rows = [["People (sessions)", f"{H['aalto']['sessions']:,}", f"51 ({H['cmu']['sessions']})",
          f"({H['simulator']['sessions']})"]]
@@ -728,12 +738,12 @@ for k, lbl, f in (("iki_median_ms", "Inter-key median (ms)", "{:.0f}"),
     rows.append([lbl] + [f.format(H[s][k]) for s in ("aalto", "cmu", "simulator")])
 table("Simulated typing against two real populations", ["Measure", f"Aalto [{REF_NO['dhakal']}]", f"CMU [{REF_NO['killourhy']}]",
       "Simulator"], rows, key="timing")
-_ill = SUPP["va_illustration"]
+_ill = sup("va_illustration")
 _snip = "C Ii:3:003:1 0:10 8 = 00000b00…"
 assert _snip in _ill
 body_lit(_ill.replace(_snip, "<code>" + _snip + "</code>"))
 h2("B", "Corpora and Splits")
-body_lit(SUPP["vb_1"])
+body_lit(sup("vb_1"))
 B = MC["data"]["corpus_B"]["splits"]
 A = MC["data"]["corpus_A"]["splits"]
 rows = []
@@ -746,15 +756,15 @@ rows.append(["C (all)", 3600, 3000, 600, "—", "—"])
 table("Sessions, windows and hours per split", ["Split", "Sessions", "Benign", "Attack",
       "Windows", "Hours"], rows, key="data")
 h2("C", "Real-Kernel Testbed")
-body_lit(SUPP["vc_1"])
-body_lit(SUPP["vc_2"])
+body_lit(sup("vc_1"))
+body_lit(sup("vc_2"))
 h2("D", "Statistics, Pre-Registration and Availability")
-body_lit(SUPP["vd_1"])
+body_lit(sup("vd_1"))
 
 # ---------------------------------------------------------------- VI
 h1("VI", "Results")
 h2("A", "Detection in Simulation")
-body_lit(SUPP["via_1"])
+body_lit(sup("via_1"))
 R = RULEJ
 H_ = HYB["corpus_c"]
 rows = []
@@ -769,9 +779,9 @@ rows.append(["Benign FP (n = 3,000)", f"{cb['fp_k']}", f"{ca['fp_k']}", f"{H_['r
 table("Session-level detection on Corpus C (100 sessions per family)",
       ["Family", "Per-window thr.", "Calibrated", "Capability gate", "Deployed rule"],
       rows, key="simdetect")
-body_lit(SUPP["via_2"])
+body_lit(sup("via_2"))
 h2("B", "From a Window Threshold to False Alarms per Device-Hour")
-body_lit(SUPP["vib_1"])
+body_lit(sup("vib_1"))
 rows = [["Keyboard windows over threshold", f"{sfp_old['p_window_over']:.1e}",
          f"{sfp_new['p_window_over']:.1e}"],
         ["P(next over | over)", f"{sfp_old['q_next_over_given_over']:.2f}",
@@ -788,9 +798,9 @@ rows = [["Keyboard windows over threshold", f"{sfp_old['p_window_over']:.1e}",
 table("Two operating points of the same model", ["Measure",
       f"Per-window ({CAL['previous_threshold']:.4f})", f"Calibrated ({CAL['chosen_threshold']:.4f})"],
       rows, key="operating")
-body_lit(SUPP["vib_2"])
+body_lit(sup("vib_2"))
 h2("C", "Generalisation to Unseen Attack Families")
-body_lit(SUPP["vic_1"])
+body_lit(sup("vic_1"))
 fl = {"hid_injection": "hid", "staged_delay": "stag", "identity_switch": "iden",
       "class_exfil": "exfil", "mimicry": "mim", "mimicry_adaptive": "mim-a"}
 rows = []
@@ -799,9 +809,10 @@ for F in FAMS:
 table("Detection (%) of each family (columns) by a model trained on one family (rows)",
       ["Trained on"] + [fl[g] for g in FAMS], rows, key="transfer")
 st = TR["overlap"]["strong"]
-body_lit(SUPP["vic_2"])
-body_lit(SUPP["vic_3"])
+body_lit(sup("vic_2"))
+body_lit(sup("vic_3"))
 h2("D", "Real Kernels")
+body_lit(sup("vid_1"))
 rows = []
 for k in ("ubuntu-24.04", "debian-13", "fedora-44", "alma-9"):
     d = dists[k]
@@ -812,7 +823,7 @@ for k in ("ubuntu-24.04", "debian-13", "fedora-44", "alma-9"):
 table(f"Testbed environments ({tb_minutes / len(dists):.0f} min each, {tb_minutes / 60:.0f} h in all)",
       ["Distribution", "Kernel", "usbmon lines", "Drivers bound"], rows, key="envs",
       left_cols=(0, 3))
-body_lit(SUPP["vid_1"])
+body_lit(sup("vid_t1"))
 BR = TB["benign_by_role"]
 assert tb_tot["rule_alarmed"] == 0       # so the model-alone benign column equals the deployed one
 rows = [["Benign devices alarmed", f"{int(tb_tot['deployed_alarmed'])}/{int(tb_tot['devices'])}",
@@ -829,20 +840,20 @@ for f in FAST + ["mimicry", "mimicry_adaptive"]:
     v = tb_att[f]
     rows.append([f.replace("_", " "), f"{v['deployed']}/{v['n']}", f"{v['model_calibrated']}/{v['n']}",
                  f"{v['model_previous']}/{v['n']}", f"{v['rule']}/{v['n']}", f"{v['corpus_a']}/{v['n']}"])
-table(f"Real kernels: benign devices ({tb_tot['hours']:.1f} device-hours) and attack episodes. "
+table(f"Real kernels. Benign devices ({tb_tot['hours']:.1f} device hours) and attack episodes. "
       "† model alone, calibrated threshold, competence checks on; ‡ model alone, per-window "
       "threshold, every device judged",
       ["", "Deployed", "Model, cal.†", "Model, per-win.‡", "Gate only", "Corpus A"],
       rows, key="realkernel", left_cols=(0,))
-body_lit(SUPP["vid_t1"])
-body_lit(SUPP["vid_2"])
+body_lit(sup("vid_2"))
 h2("E", "What Did Not Help")
 rs = ROBF["summary"]
-body_lit(lead(SUPP["vie_1"], "Sample-size-robust features."))
-body_lit(lead(SUPP["vie_2"], "Polling-limited injection."))
-body_lit(lead(SUPP["vie_3"], "Earlier negative results."))
+body_lit(lead(sup("vie_1"), "Sample size robust features."))
+body_lit(lead(sup("vie_2"), "Polling limited injection."))
+body_lit(lead(sup("vie_3"), "Earlier negative results."))
 h2("F", "Cost and Overhead")
-body_lit(SUPP["vif_1"])
+body_lit(sup("vif_1"))
+body_lit(sup("vif_2"))
 if OVH:
     OS_ = OVH["summary"]
     rows = []
@@ -870,24 +881,23 @@ if OVH:
     assert all(lo > 0 for lo, hi in cis if not lo <= 0 <= hi), "a monitor measurably slowed I/O"
     _need(n_contain == 7 and n_ci == 8 and f"{ns_max / 1000:.1f}" == "3.8",
           "7 of 8 intervals contain zero; 3.8 us per URB completion")
-    body_lit(SUPP["vif_2"])
 
 # ---------------------------------------------------------------- VII
 h1("VII", "What the Evidence Supports")
-body_lit(SUPP["vii_1"])
-rows = [["N1 Multi-modal fusion", "Built", "Partly: helps at moderate attack strength, loses at "
+body_lit(sup("vii_1"))
+rows = [["N1 Multi-modal fusion", "Built", "Partly. Helps at moderate attack strength, loses at "
          "the subtlest (simulation)"],
         ["N2 Per-device baseline", "Built", "Not supported (simulation)"],
         ["N3 Closed-loop enforcement", "Generated, not executed", "Untested"],
         ["N4 Temporal modelling", "Built", f"Supported in simulation ({pct(s1_a)} → {pct(det_a)}); "
          "did not transfer to real kernels at a usable threshold"],
-        ["Device-hour calibration", "Built, deployed", "Supported: simulation and real kernels"],
+        ["Device-hour calibration", "Built, deployed", "Supported. Simulation and real kernels"],
         ["Competence checks", "Built, deployed", "Supported on real kernels"],
-        ["Capability gate", "Built, deployed", "Supported: unseen families, real kernels"],
+        ["Capability gate", "Built, deployed", "Supported. Unseen families, real kernels"],
         ["Zero-day detection", "Not claimed", "Unseen human-paced attacks are missed"]]
 table("Claims, implementation status and evidence", ["Claim", "Status", "Evidence"], rows,
       key="claims", left_cols=(0, 1, 2))
-body_lit(SUPP["vii_2"])
+body_lit(sup("vii_2"))
 
 # ---------------------------------------------------------------- VIII
 h1("VIII", "Limitations and Threats to Validity")
@@ -1003,7 +1013,7 @@ for key, n in sorted(REF_NO.items(), key=lambda kv: kv[1]):
         run(p, t_)
 
 cp = doc.core_properties
-cp.title = TITLE
+cp.title = style(TITLE)
 cp.author = ", ".join(n for n, _ in AUTHORS)
 cp.subject = "IEEE conference format"
 # python-docx's default template carries a 2013 creation date; stamp the real build time,
