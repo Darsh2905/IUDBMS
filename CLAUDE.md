@@ -15,7 +15,9 @@ taken since* the plan was written.
 Milestones 1-7, 9 and 10 are done. Only M8 (eBPF) remains, deferred by plan §7.
 Run the dashboard with `iudbms-api` (or `make dashboard`) and open http://127.0.0.1:8000.
 Deploy with `sudo ./deploy/install.sh` -- see `docs/DEPLOYMENT.md` and finding 25.
-`iudbms.live.StreamingDetector` is the long-lived detector a deployment runs:
+The live demo page is `/demo` (`make demo-dashboard`; `api/demo.py` streams the deployed
+`StreamingDetector` as SSE, one window per second; `tests/test_demo_api.py`). It includes the
+known misses on purpose -- do not drop them. `iudbms.live.StreamingDetector` is the long-lived detector a deployment runs:
 per-device extractor, baseline, sequence window and gate, advanced one window at
 a time. `scripts/live_replay.py` drives it at wall-clock speed
 (`make demo` / `make demo-hard`).
