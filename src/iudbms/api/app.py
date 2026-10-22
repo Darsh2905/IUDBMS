@@ -36,6 +36,7 @@ from pydantic import BaseModel, Field
 from ..contract import CONTRACT_VERSION
 from ..policy import ENFORCEMENT_REVIEWED, KILL_SWITCH_ENV, PolicyEngine
 from ..storage import Store
+from .demo import router as demo_router
 
 __all__ = ["app", "get_db_path"]
 
@@ -57,6 +58,8 @@ app = FastAPI(
 # API whose POST /devices/{id}/authorize records operator trust decisions: any
 # web page the operator happened to visit could have called it. The dashboard is
 # served by this app and is same-origin, so it needs no CORS at all.
+app.include_router(demo_router)
+
 _CORS = [o.strip() for o in os.environ.get("IUDBMS_CORS_ORIGINS", "").split(",")
          if o.strip()]
 if _CORS:

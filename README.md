@@ -64,6 +64,19 @@ replaying a keystroke loop at human speed — and calibrating for a quiet workin
 halves that (95% → 48%); on real kernels it caught none of them. Nothing here detects a
 payload typed once at human speed.
 
+## Live demo
+
+```bash
+make demo-dashboard        # then open http://localhost:8000/demo
+```
+
+Plug in simulated devices (a person typing, a mouse, a drive, several injectors, and the
+two cases that are not caught) or recorded real-kernel devices, and watch each one's
+Stage 2 score, the 4-of-6 gate and the policy state advance once a second. The page
+streams the deployed models through the same `StreamingDetector` the monitor runs
+(`tests/test_demo_api.py` checks the streamed scores equal the detector's own). Enforcement
+is dry-run and the page says so. Rehearsal shortcut: `/demo?run=kbd,mouse,inject&speed=4`.
+
 ## Reproduce
 
 ```bash

@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IUDBMS live demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  color-scheme: light;
+  --surface-0: #f2f2f0;
+  --surface-1: #fcfcfb;
+  --surface-2: #eeeeec;
+  --line: #dedddA;
+  --grid: #e8e8e5;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #7a7975;
+  --accent: #2a78d6;
+  --accent-ink: #ffffff;
+  --good: #0a8a0a;
+  --good-bg: #e3f3e3;
+  --warn: #9a6a00;
+  --warn-bg: #fdf0cf;
+  --crit: #c22f2f;
+  --crit-bg: #fbe3e3;
+  --idle: #6b6a66;
+  --idle-bg: #e6e5e1;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --surface-0: #121211;
+    --surface-1: #1a1a19;
+    --surface-2: #232322;
+    --line: #333331;
+    --grid: #2a2a28;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #8d8c85;
+    --accent: #3987e5;
+    --accent-ink: #0b0b0b;
+    --good: #4cc24c;
+    --good-bg: #17301a;
+    --warn: #f0b429;
+    --warn-bg: #352a0b;
+    --crit: #f06262;
+    --crit-bg: #3a1717;
+    --idle: #a3a29b;
+    --idle-bg: #2a2a28;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface-0: #121211;
+  --surface-1: #1a1a19;
+  --surface-2: #232322;
+  --line: #333331;
+  --grid: #2a2a28;
+  --text-primary: #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted: #8d8c85;
+  --accent: #3987e5;
+  --accent-ink: #0b0b0b;
+  --good: #4cc24c;
+  --good-bg: #17301a;
+  --warn: #f0b429;
+  --warn-bg: #352a0b;
+  --crit: #f06262;
+  --crit-bg: #3a1717;
+  --idle: #a3a29b;
+  --idle-bg: #2a2a28;
+}
+
+* { box-sizing: border-box; }
+html { font-size: 16px; }
+body {
+  margin: 0; background: var(--surface-0); color: var(--text-primary);
+  font: 400 1rem/1.45 "IBM Plex Sans", system-ui, sans-serif;
+}
+.mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+header.top {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px;
+  padding: 14px 24px; background: var(--surface-1); border-bottom: 1px solid var(--line);
+}
+header.top h1 { font-size: 1.25rem; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+header.top h1 span { color: var(--text-muted); font-weight: 500; }
+.badge {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+  font-size: 0.8125rem; font-weight: 600; border: 1px solid transparent;
+}
+.badge.dry { background: var(--warn-bg); color: var(--warn); border-color: var(--warn); }
+.spacer { flex: 1; }
+.ctrl { display: flex; align-items: center; gap: 8px; font-size: 0.875rem; color: var(--text-secondary); }
+select, button { font: inherit; }
+select {
+  background: var(--surface-2); color: var(--text-primary); border: 1px solid var(--line);
+  border-radius: 6px; padding: 5px 8px;
+}
+button {
+  cursor: pointer; border-radius: 6px; border: 1px solid var(--line);
+  background: var(--surface-2); color: var(--text-primary); padding: 6px 12px;
+}
+button:hover { border-color: var(--text-muted); }
+button:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+
+.pipeline {
+  display: flex; flex-wrap: wrap; gap: 4px 0; padding: 10px 24px; font-size: 0.8125rem;
+  color: var(--text-secondary); background: var(--surface-0); border-bottom: 1px solid var(--line);
+}
+.pipeline .stage { display: flex; align-items: center; }
+.pipeline .stage b { color: var(--text-primary); font-weight: 600; margin-right: 6px; }
+.pipeline .stage + .stage::before { content: "→"; margin: 0 10px; color: var(--text-muted); }
+
+.layout { display: grid; grid-template-columns: 300px 1fr; gap: 24px; padding: 20px 24px 32px; align-items: start; }
+@media (max-width: 900px) { .layout { grid-template-columns: 1fr; padding: 16px; } }
+
+aside h2 { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin: 18px 0 8px; font-weight: 600; }
+aside h2:first-of-type { margin-top: 0; }
+.scn {
+  display: block; width: 100%; text-align: left; margin-bottom: 6px; padding: 8px 10px;
+  background: var(--surface-1);
+}
+.scn .l { font-weight: 600; font-size: 0.9375rem; }
+.scn .n { display: block; color: var(--text-muted); font-size: 0.8125rem; margin-top: 2px; }
+.scn .src { float: right; font-size: 0.6875rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.preset { width: 100%; margin-bottom: 4px; padding: 10px 12px; }
+
+main { min-width: 0; }
+.empty {
+  border: 1px dashed var(--line); border-radius: 10px; padding: 36px 24px; text-align: center;
+  color: var(--text-secondary); background: var(--surface-1);
+}
+.empty b { color: var(--text-primary); }
+.lanes { display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 16px; }
+@media (max-width: 520px) { .lanes { grid-template-columns: 1fr; } }
+
+.lane { background: var(--surface-1); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; min-width: 0; }
+.lane.alarm { border-color: var(--crit); }
+.lh { display: flex; align-items: flex-start; gap: 10px; }
+.lh .t { flex: 1; min-width: 0; }
+.lh .t .name { font-weight: 600; font-size: 1.0625rem; }
+.lh .t .sub { color: var(--text-muted); font-size: 0.8125rem; }
+.x { padding: 0 8px; line-height: 1.5; color: var(--text-muted); }
+.pill {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+  font-size: 0.8125rem; font-weight: 600; white-space: nowrap;
+}
+.pill.observe { background: var(--good-bg); color: var(--good); }
+.pill.throttled { background: var(--warn-bg); color: var(--warn); }
+.pill.revoked { background: var(--crit-bg); color: var(--crit); }
+.pill.unmodelled, .pill.waiting { background: var(--idle-bg); color: var(--idle); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
+.chip { font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; background: var(--surface-2); color: var(--text-secondary); }
+.chip.atk { background: var(--crit-bg); color: var(--crit); }
+.chip.ok { background: var(--good-bg); color: var(--good); }
+
+.cap { font-size: 0.75rem; color: var(--text-muted); margin: 10px 0 2px; display: flex; justify-content: space-between; gap: 8px; }
+svg.ch { width: 100%; display: block; }
+svg.ch text { fill: var(--text-muted); font: 400 10.5px "IBM Plex Mono", monospace; }
+svg.ch .g { stroke: var(--grid); stroke-width: 1; }
+svg.ch .ax { stroke: var(--line); stroke-width: 1; }
+svg.ch .thr { stroke: var(--crit); stroke-width: 1.25; stroke-dasharray: 5 4; }
+svg.ch .on { stroke: var(--text-secondary); stroke-width: 1; stroke-dasharray: 2 3; }
+svg.ch .al { stroke: var(--crit); stroke-width: 1.5; }
+svg.ch .ln { stroke: var(--accent); stroke-width: 2; fill: none; stroke-linejoin: round; }
+svg.ch .ar { fill: var(--accent); opacity: 0.14; }
+svg.ch .pt { fill: var(--accent); stroke: var(--surface-1); stroke-width: 2; }
+svg.ch .pt.hot { fill: var(--crit); }
+svg.ch .bar { fill: var(--accent); opacity: 0.75; }
+svg.ch .bar.hot { fill: var(--crit); opacity: 0.9; }
+svg.ch .lab { fill: var(--text-secondary); }
+svg.ch .labc { fill: var(--crit); }
+
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
+.stat { background: var(--surface-2); border-radius: 6px; padding: 6px 10px; min-width: 0; }
+.stat .k { font-size: 0.6875rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.stat .v { font-size: 1.125rem; font-weight: 600; }
+.pips { display: flex; gap: 4px; margin-top: 3px; }
+.pips i { width: 14px; height: 14px; border-radius: 3px; background: var(--grid); display: block; }
+.pips i.on { background: var(--crit); }
+
+.alert { margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: var(--crit-bg); color: var(--text-primary); border-left: 4px solid var(--crit); }
+.alert b { color: var(--crit); }
+.alert .by { color: var(--text-secondary); font-size: 0.875rem; margin-top: 2px; }
+.alert details { margin-top: 6px; font-size: 0.8125rem; }
+.alert summary { cursor: pointer; color: var(--text-secondary); }
+.alert pre { margin: 6px 0 0; padding: 8px; background: var(--surface-1); border-radius: 6px; overflow-x: auto; font: 400 0.75rem/1.4 "IBM Plex Mono", monospace; color: var(--text-primary); }
+.outcome { margin-top: 12px; font-size: 0.9375rem; padding: 8px 12px; border-radius: 8px; background: var(--surface-2); }
+.outcome.good { background: var(--good-bg); }
+.outcome.bad { background: var(--warn-bg); }
+.outcome b { font-weight: 600; }
+
+footer { padding: 14px 24px 28px; color: var(--text-muted); font-size: 0.8125rem; border-top: 1px solid var(--line); background: var(--surface-1); }
+footer p { margin: 0 0 4px; max-width: 110ch; }
+@media (prefers-reduced-motion: no-preference) {
+  .lane { transition: border-color .25s; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>IUDBMS <span>live demo</span></h1>
+  <span class="badge dry" title="Enforcement actions are generated and logged. Nothing is written to /sys/bus/usb/.../authorized.">
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1 13 12H1z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7 5.5v3M7 10v.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    Dry run. No device is actually blocked.
+  </span>
+  <span class="spacer"></span>
+  <label class="ctrl">Speed
+    <select id="speed">
+      <option value="1">1× real time</option>
+      <option value="2" selected>2×</option>
+      <option value="4">4×</option>
+      <option value="8">8×</option>
+    </select>
+  </label>
+  <button id="clear" type="button">Clear all</button>
+</header>
+<div class="pipeline" id="pipe" aria-label="Pipeline">
+  <span class="stage"><b>usbmon</b> every USB transfer</span>
+  <span class="stage"><b>1 s windows</b> per device</span>
+  <span class="stage"><b>28 features</b> timing, payload, protocol, identity</span>
+  <span class="stage"><b>Stage 1</b> isolation forest</span>
+  <span class="stage"><b>Stage 2</b> LSTM over 10 windows</span>
+  <span class="stage"><b>Gate</b> 4 of last 6</span>
+  <span class="stage"><b>Policy</b> observe, throttle, revoke</span>
+</div>
+
+<div class="layout">
+  <aside>
+    <h2>Quick start</h2>
+    <button class="preset primary" id="host" type="button">Plug in a typical host</button>
+    <button class="preset" id="hostatk" type="button">Same host, with an injector</button>
+    <div id="groups"></div>
+  </aside>
+  <main>
+    <div id="empty" class="empty">
+      <p><b>Plug in a device to watch the real pipeline judge it.</b></p>
+      <p>Each card below is a live stream from the deployed models. The score climbs when a device stops behaving like a person. The alarm fires when 4 of its last 6 seconds are over the line, or when a keyboard types faster than any of 1,972 measured people.</p>
+    </div>
+    <div class="lanes" id="lanes"></div>
+  </main>
+</div>
+
+<footer>
+  <p>This page streams the deployed Stage 1 and Stage 2 models, the calibrated threshold, the 4 of 6 gate, the model support list and the human speed rule. It uses the same detector code as the systemd monitor. Only the source of the USB traffic differs.</p>
+  <p>Simulated devices come from the generator the models were trained on, so their results show the pipeline working, not real world accuracy. Real kernel devices are recorded from emulated USB hardware on Debian 13, driven by replayed human input. No physical BadUSB has been tested.</p>
+  <p>Fast injection is caught mostly by the human speed rule. A payload typed once at human speed is not detected by anything here, and the demo shows that on purpose.</p>
+</footer>
+
+<script>
+"use strict";
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const lanes = new Map();
+let SCN = [], seq = 0;
+
+const GROUPS = [
+  ["Normal devices", s => s.kind === "benign" && s.source === "simulated"],
+  ["Attacks", s => s.kind === "attack" && s.source === "simulated" && s.expect !== "miss" && s.expect !== "partial"],
+  ["Where it falls short", s => s.expect === "miss" || s.expect === "partial"],
+  ["Recorded on real kernels", s => s.source !== "simulated"],
+];
+
+function speed() { return parseFloat($("#speed").value); }
+
+async function boot() {
+  const r = await fetch("/demo/scenarios");
+  SCN = await r.json();
+  const g = $("#groups");
+  g.innerHTML = "";
+  const placed = new Set();
+  for (const [title, test] of GROUPS) {
+    const items = SCN.filter(s => !placed.has(s.id) && test(s));
+    if (!items.length) continue;
+    items.forEach(s => placed.add(s.id));
+    const h = document.createElement("h2"); h.textContent = title; g.appendChild(h);
+    for (const s of items) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "scn";
+      b.innerHTML = `<span class="src">${s.source === "simulated" ? "sim" : "real"}</span><span class="l">${esc(s.label)}</span><span class="n">${esc(s.note)}</span>`;
+      b.onclick = () => add(s.id);
+      g.appendChild(b);
+    }
+  }
+}
+
+function add(id) {
+  const s = SCN.find(x => x.id === id);
+  if (!s) return;
+  const key = ++seq;
+  const el = document.createElement("section");
+  el.className = "lane";
+  el.innerHTML = `
+    <div class="lh">
+      <div class="t"><div class="name">${esc(s.label)}</div><div class="sub">connecting…</div></div>
+      <span class="pill waiting">waiting</span>
+      <button class="x" type="button" aria-label="Remove this device" title="Remove">✕</button>
+    </div>
+    <div class="chips"></div>
+    <div class="cap"><span>Stage 2 suspicion, higher is worse</span><span class="capr"></span></div>
+    <div class="c1"></div>
+    <div class="cap"><span>USB reports per second</span><span class="capr2"></span></div>
+    <div class="c2"></div>
+    <div class="stats"></div>
+    <div class="slot"></div>`;
+  $("#lanes").prepend(el);
+  $("#empty").style.display = "none";
+  const L = { key, s, el, pts: [], init: null, alert: null, end: null };
+  const seed = 1 + Math.floor(Math.random() * 90);
+  const es = new EventSource(`/demo/stream?scenario=${encodeURIComponent(id)}&speed=${speed()}&seed=${seed}`);
+  L.es = es;
+  es.addEventListener("init", e => { L.init = JSON.parse(e.data); head(L); draw(L); });
+  es.addEventListener("window", e => {
+    const w = JSON.parse(e.data);
+    L.pts.push(w);
+    if (w.action && !L.alert) L.alert = w;
+    draw(L);
+  });
+  es.addEventListener("end", e => { L.end = JSON.parse(e.data); es.close(); draw(L); });
+  es.onerror = () => {
+    if (!L.end) {
+      es.close();
+      el.querySelector(".sub").textContent = "stream failed. Is the server running with trained models in out/models?";
+    }
+  };
+  $(".x", el).onclick = () => { es.close(); el.remove(); lanes.delete(key); if (!lanes.size) $("#empty").style.display = ""; };
+  lanes.set(key, L);
+}
+
+function isKeyboard(init) {
+  return init.interfaces.some(i => i.cls === 3 && (i.pages == null || i.pages.includes(7) || i.pages.includes(12)));
+}
+const CLS = { 1: "audio", 2: "comms", 3: "HID", 8: "storage", 9: "hub", 10: "CDC data", 11: "smart card", 14: "video", 255: "vendor" };
+
+function head(L) {
+  const i = L.init, el = L.el;
+  el.querySelector(".sub").textContent = `${i.product || "USB device"} · ${i.vid}:${i.pid} · ${i.device}`;
+  const classes = [...new Set(i.interfaces.map(x => CLS[x.cls] || "class " + x.cls))].join(", ");
+  const exp = { quiet: "should stay quiet", alarm: "should raise an alarm", partial: "may be caught late", miss: "known to be missed" }[i.expect];
+  el.querySelector(".chips").innerHTML =
+    `<span class="chip">${esc(i.source)}</span><span class="chip">${esc(classes)}</span>` +
+    `<span class="chip ${i.kind === "attack" ? "atk" : "ok"}">${i.kind === "attack" ? "attack" : "benign"}</span>` +
+    `<span class="chip">${esc(exp)}</span>`;
+}
+
+const NINES = s2 => -Math.log10(Math.max(1e-5, 1 - Math.min(s2, 1 - 1e-5)));
+
+function chart1(L) {
+  const W = L.w, H = 150, pl = 54, pr = 10, pt = 10, pb = 20, iw = W - pl - pr, ih = H - pt - pb;
+  const N = Math.max(L.init?.windows || 60, 10), YM = 5;
+  const X = t => pl + (t / N) * iw, Y = v => pt + ih - (Math.min(v, YM) / YM) * ih;
+  let s = `<svg class="ch" viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="Stage 2 suspicion over time">`;
+  for (let v = 0; v <= YM; v++) {
+    s += `<line class="g" x1="${pl}" x2="${W - pr}" y1="${Y(v)}" y2="${Y(v)}"/>`;
+    s += `<text x="${pl - 6}" y="${Y(v) + 3}" text-anchor="end">${v === 0 ? "0" : "0." + "9".repeat(v)}</text>`;
+  }
+  for (let t = 0; t <= N; t += N > 80 ? 20 : 10) s += `<text x="${X(t)}" y="${H - 5}" text-anchor="middle">${t}s</text>`;
+  s += `<line class="ax" x1="${pl}" x2="${pl}" y1="${pt}" y2="${pt + ih}"/><line class="ax" x1="${pl}" x2="${W - pr}" y1="${pt + ih}" y2="${pt + ih}"/>`;
+  if (L.init) {
+    const ty = Y(NINES(L.init.threshold));
+    s += `<line class="thr" x1="${pl}" x2="${W - pr}" y1="${ty}" y2="${ty}"/><text class="labc" x="${W - pr - 2}" y="${ty - 4}" text-anchor="end">alarm line</text>`;
+    if (L.init.onset != null) s += `<line class="on" x1="${X(L.init.onset)}" x2="${X(L.init.onset)}" y1="${pt}" y2="${pt + ih}"/><text class="lab" x="${X(L.init.onset) + 4}" y="${pt + 10}">attack starts</text>`;
+  }
+  if (L.alert) s += `<line class="al" x1="${X(L.alert.t + 1)}" x2="${X(L.alert.t + 1)}" y1="${pt}" y2="${pt + ih}"/><text class="labc" x="${X(L.alert.t + 1) - 4}" y="${pt + ih - 5}" text-anchor="end">alarm</text>`;
+  if (L.pts.length) {
+    const xy = L.pts.map(p => [X(p.t + 1), Y(NINES(p.s2))]);
+    s += `<path class="ar" d="M${xy[0][0]},${pt + ih} L${xy.map(p => p.join(",")).join(" L")} L${xy.at(-1)[0]},${pt + ih}Z"/>`;
+    s += `<path class="ln" d="M${xy.map(p => p.join(",")).join(" L")}"/>`;
+    const last = L.pts.at(-1), q = xy.at(-1);
+    s += `<circle class="pt ${last.over ? "hot" : ""}" cx="${q[0]}" cy="${q[1]}" r="4"/>`;
+  }
+  return s + "</svg>";
+}
+
+function chart2(L) {
+  const W = L.w, H = 76, pl = 54, pr = 10, pt = 6, pb = 14, iw = W - pl - pr, ih = H - pt - pb;
+  const N = Math.max(L.init?.windows || 60, 10), YM = Math.log10(1 + 600);
+  const X = t => pl + (t / N) * iw, Y = v => pt + ih - (Math.log10(1 + v) / YM) * ih;
+  const bw = Math.max(1.5, iw / N - 1);
+  let s = `<svg class="ch" viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="Reports per second">`;
+  for (const v of [1, 10, 100]) s += `<line class="g" x1="${pl}" x2="${W - pr}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${pl - 6}" y="${Y(v) + 3}" text-anchor="end">${v}</text>`;
+  s += `<line class="ax" x1="${pl}" x2="${W - pr}" y1="${pt + ih}" y2="${pt + ih}"/>`;
+  const lim = L.init?.human_max_rps, kb = L.init && isKeyboard(L.init);
+  if (kb && lim) s += `<line class="thr" x1="${pl}" x2="${W - pr}" y1="${Y(lim)}" y2="${Y(lim)}"/><text class="labc" x="${W - pr - 2}" y="${Y(lim) - 3}" text-anchor="end">fastest person ${lim}/s</text>`;
+  for (const p of L.pts) {
+    const hot = kb && lim && p.events >= lim;
+    s += `<rect class="bar ${hot ? "hot" : ""}" x="${X(p.t) + 0.5}" y="${Y(p.events)}" width="${bw}" height="${pt + ih - Y(p.events)}"/>`;
+  }
+  return s + "</svg>";
+}
+
+function draw(L) {
+  const el = L.el, last = L.pts.at(-1);
+  L.w = Math.max(320, Math.round($(".c1", el).clientWidth || 520));
+  $(".c1", el).innerHTML = chart1(L);
+  $(".c2", el).innerHTML = chart2(L);
+  if (last) {
+    const st = last.state;
+    const pill = $(".pill", el);
+    pill.className = "pill " + st;
+    pill.textContent = ({ observe: "● Observing", throttled: "▲ Throttled", revoked: "■ Revoked", unmodelled: "○ Not modelled" })[st] || st;
+    $(".capr", el).textContent = `t = ${(last.t + 1).toFixed(0)} s`;
+    const hits = last.hits, n = last.n;
+    $(".stats", el).innerHTML = `
+      <div class="stat"><div class="k">Reports/s</div><div class="v mono">${last.events}</div></div>
+      <div class="stat"><div class="k">Stage 1</div><div class="v mono">${last.s1.toFixed(2)}</div></div>
+      <div class="stat"><div class="k">Stage 2</div><div class="v mono">${last.s2 >= 0.99999 ? "&gt;0.9999" : last.s2.toFixed(4)}</div></div>
+      <div class="stat"><div class="k">Gate ${hits} of ${n}</div><div class="pips">${Array.from({ length: n }, (_, i) => `<i class="${i < hits ? "on" : ""}"></i>`).join("")}</div></div>`;
+    const top = last.evidence.map(e => e[0]).join(", ");
+    $(".capr2", el).textContent = top ? `top signals: ${top}` : "";
+  }
+  el.classList.toggle("alarm", !!L.alert);
+  const slot = $(".slot", el);
+  let h = "";
+  if (L.alert) {
+    const a = L.alert.action, by = a.fired_by || "model";
+    h += `<div class="alert"><b>${a.name}</b> at ${(L.alert.t + 1).toFixed(0)} s, severity ${esc(a.severity)}
+      <div class="by">Raised by the ${esc(by === "capability rule" ? "human speed rule: this keyboard exceeded what any measured person types" : "learned model: the score stayed over the line")}.
+      Dry run, nothing was blocked.</div>
+      <details><summary>Generated rule</summary><pre>${esc(JSON.stringify(a.rule, null, 2))}</pre></details></div>`;
+  }
+  if (L.end) {
+    const e = L.end;
+    let cls = "good", msg;
+    if (e.kind === "benign") {
+      msg = e.alarmed ? `<b>False alarm.</b> A benign device was escalated.` :
+        (e.final_state === "unmodelled" ? `<b>No alarm, by design.</b> The model has not seen this class of device, so it scores but never escalates.` :
+          `<b>No alarm.</b> The device was correctly left alone.`);
+      if (e.alarmed) cls = "bad";
+    } else if (e.alarmed) {
+      msg = e.latency != null ? `<b>Detected ${e.latency.toFixed(1)} s after the attack began.</b>` : `<b>Alarm raised.</b>`;
+      if (e.expect === "partial") msg += ` Slow in simulation. On real kernels this case was not caught.`;
+    } else {
+      cls = "bad";
+      msg = `<b>Not detected.</b> ${e.expect === "miss" ? "This is a known limit of the system, shown on purpose." : "Unexpected miss."}`;
+    }
+    h += `<div class="outcome ${cls}">${msg}</div>`;
+  }
+  slot.innerHTML = h;
+}
+
+window.addEventListener("resize", () => lanes.forEach(draw));
+function startMany(ids, gap = 350) { ids.forEach((id, i) => setTimeout(() => add(id), i * gap)); }
+
+$("#host").onclick = () => startMany(["kbd", "mouse", "drive"]);
+$("#hostatk").onclick = () => startMany(["kbd", "mouse", "drive", "inject"]);
+$("#clear").onclick = () => { lanes.forEach(L => { L.es.close(); L.el.remove(); }); lanes.clear(); $("#empty").style.display = ""; };
+// /demo?run=kbd,inject&speed=4 starts devices on load (handy for rehearsal)
+boot().then(() => {
+  const q = new URLSearchParams(location.search);
+  if (q.get("speed")) { const o = new Option(q.get("speed") + "×", q.get("speed")); $("#speed").add(o); $("#speed").value = o.value; }
+  if (q.get("run")) startMany(q.get("run").split(",").filter(Boolean), 150);
+}).catch(() => { $("#empty").innerHTML = "<p><b>The demo service did not answer.</b></p><p>Start it with <span class='mono'>iudbms-api</span> and open /demo.</p>"; });
+</script>
+</body>
+</html>
