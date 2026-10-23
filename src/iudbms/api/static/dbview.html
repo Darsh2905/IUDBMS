@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IUDBMS database explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  color-scheme: light;
+  --surface-0: #f2f2f0;
+  --surface-1: #fcfcfb;
+  --surface-2: #eeeeec;
+  --line: #dedddA;
+  --grid: #e8e8e5;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #7a7975;
+  --accent: #2a78d6;
+  --accent-ink: #ffffff;
+  --good: #0a8a0a;
+  --good-bg: #e3f3e3;
+  --warn: #9a6a00;
+  --warn-bg: #fdf0cf;
+  --crit: #c22f2f;
+  --crit-bg: #fbe3e3;
+  --idle: #6b6a66;
+  --idle-bg: #e6e5e1;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --surface-0: #121211;
+    --surface-1: #1a1a19;
+    --surface-2: #232322;
+    --line: #333331;
+    --grid: #2a2a28;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #8d8c85;
+    --accent: #3987e5;
+    --accent-ink: #0b0b0b;
+    --good: #4cc24c;
+    --good-bg: #17301a;
+    --warn: #f0b429;
+    --warn-bg: #352a0b;
+    --crit: #f06262;
+    --crit-bg: #3a1717;
+    --idle: #a3a29b;
+    --idle-bg: #2a2a28;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface-0: #121211;
+  --surface-1: #1a1a19;
+  --surface-2: #232322;
+  --line: #333331;
+  --grid: #2a2a28;
+  --text-primary: #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted: #8d8c85;
+  --accent: #3987e5;
+  --accent-ink: #0b0b0b;
+  --good: #4cc24c;
+  --good-bg: #17301a;
+  --warn: #f0b429;
+  --warn-bg: #352a0b;
+  --crit: #f06262;
+  --crit-bg: #3a1717;
+  --idle: #a3a29b;
+  --idle-bg: #2a2a28;
+}
+
+
+* { box-sizing: border-box; }
+body { margin:0; background:var(--surface-0); color:var(--text-primary); font:400 1rem/1.45 "IBM Plex Sans", system-ui, sans-serif; }
+.mono { font-family:"IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+header.top { display:flex; flex-wrap:wrap; align-items:center; gap:10px 24px; padding:14px 24px; background:var(--surface-1); border-bottom:1px solid var(--line); }
+header.top h1 { font-size:1.25rem; font-weight:700; margin:0; letter-spacing:-.01em; } header.top h1 span { color:var(--text-muted); font-weight:500; }
+.badge { display:inline-flex; gap:6px; align-items:center; padding:3px 10px; border-radius:999px; font-size:.8125rem; font-weight:600; background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn); }
+.spacer { flex:1; } .path { color:var(--text-muted); font-size:.8125rem; }
+.truth { padding:10px 24px; background:var(--surface-1); border-bottom:1px solid var(--line); font-size:.875rem; color:var(--text-secondary); } .truth b { color:var(--text-primary); }
+nav { display:flex; gap:4px; padding:10px 24px 0; border-bottom:1px solid var(--line); background:var(--surface-0); }
+nav button { border:0; border-bottom:3px solid transparent; border-radius:0; background:none; padding:8px 14px; font:inherit; font-weight:600; color:var(--text-secondary); cursor:pointer; }
+nav button[aria-selected="true"] { color:var(--text-primary); border-bottom-color:var(--accent); }
+button:focus-visible, select:focus-visible, input:focus-visible, tr:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+main { padding:20px 24px 36px; max-width:1500px; }
+section.tab[hidden] { display:none; }
+.tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin-bottom:18px; }
+.tile { background:var(--surface-1); border:1px solid var(--line); border-radius:10px; padding:10px 14px; }
+.tile .k { font-size:.6875rem; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); } .tile .v { font-size:1.75rem; font-weight:600; } .tile .s { font-size:.8125rem; color:var(--text-secondary); }
+.grid2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(420px,1fr)); gap:16px; }
+.card { background:var(--surface-1); border:1px solid var(--line); border-radius:10px; padding:14px 16px; min-width:0; }
+.card h3 { margin:0 0 4px; font-size:1rem; } .card p.note { margin:0 0 10px; color:var(--text-muted); font-size:.8125rem; }
+.bar { display:flex; align-items:center; gap:10px; font-size:.875rem; margin:5px 0; } .bar .n { width:150px; color:var(--text-secondary); flex-shrink:0; }
+.bar .track { flex:1; display:flex; height:16px; background:var(--grid); border-radius:3px; overflow:hidden; gap:2px; } .bar .track i { display:block; height:100%; }
+.bar .v { width:110px; text-align:right; color:var(--text-secondary); flex-shrink:0; font-size:.8125rem; }
+.cb { background:var(--accent); } .ca { background:var(--crit); }
+.legend { display:flex; gap:14px; font-size:.8125rem; color:var(--text-secondary); margin-bottom:6px; } .legend i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:5px; }
+.bars { display:flex; flex-direction:column; gap:3px; }
+.filters { display:flex; flex-wrap:wrap; gap:10px; align-items:end; margin-bottom:12px; }
+.filters label { display:flex; flex-direction:column; gap:3px; font-size:.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; }
+input, select { font:inherit; background:var(--surface-1); color:var(--text-primary); border:1px solid var(--line); border-radius:6px; padding:6px 8px; }
+button.b { font:inherit; background:var(--surface-1); color:var(--text-primary); border:1px solid var(--line); border-radius:6px; padding:6px 12px; cursor:pointer; } button.b:disabled { opacity:.4; cursor:default; }
+.tw { overflow-x:auto; border:1px solid var(--line); border-radius:10px; background:var(--surface-1); }
+table { border-collapse:collapse; width:100%; font-size:.875rem; }
+th { text-align:left; font-size:.6875rem; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); padding:8px 12px; border-bottom:1px solid var(--line); white-space:nowrap; position:sticky; top:0; background:var(--surface-1); }
+th.s { cursor:pointer; } td { padding:7px 12px; border-bottom:1px solid var(--grid); white-space:nowrap; max-width:420px; overflow:hidden; text-overflow:ellipsis; }
+tbody tr.row { cursor:pointer; } tbody tr.row:hover, tbody tr.sel { background:var(--surface-2); }
+.pill { display:inline-flex; gap:5px; align-items:center; padding:2px 9px; border-radius:999px; font-size:.75rem; font-weight:600; }
+.pill.observe,.pill.benign { background:var(--good-bg); color:var(--good); } .pill.throttled { background:var(--warn-bg); color:var(--warn); } .pill.revoked,.pill.attack { background:var(--crit-bg); color:var(--crit); }
+.pager { display:flex; gap:10px; align-items:center; margin-top:10px; font-size:.875rem; color:var(--text-secondary); }
+.detail { margin-top:18px; }
+svg.ch { width:100%; display:block; } svg.ch text { fill:var(--text-muted); font:400 10.5px "IBM Plex Mono", monospace; } svg.ch .g { stroke:var(--grid); } svg.ch .ax { stroke:var(--line); }
+svg.ch .thr { stroke:var(--crit); stroke-dasharray:5 4; stroke-width:1.25; } svg.ch .ln { stroke:var(--accent); stroke-width:2; fill:none; } svg.ch .l1 { stroke:var(--text-muted); stroke-width:1.25; fill:none; }
+svg.ch .atk { fill:var(--crit); opacity:.12; } svg.ch .al { stroke:var(--crit); stroke-width:1.5; } svg.ch .labc { fill:var(--crit); } svg.ch .cur { stroke:var(--text-primary); stroke-width:1; }
+.two { display:grid; grid-template-columns:minmax(0,1.6fr) minmax(0,1fr); gap:16px; } @media (max-width:980px){ .two { grid-template-columns:1fr; } }
+pre { margin:6px 0 0; padding:8px; background:var(--surface-2); border-radius:6px; overflow-x:auto; font:400 .75rem/1.4 "IBM Plex Mono", monospace; }
+.kv { display:grid; grid-template-columns:auto 1fr; gap:3px 14px; font-size:.875rem; } .kv dt { color:var(--text-muted); } .kv dd { margin:0; }
+.muted { color:var(--text-muted); } .err { color:var(--crit); }
+footer { padding:14px 24px 28px; color:var(--text-muted); font-size:.8125rem; border-top:1px solid var(--line); background:var(--surface-1); } footer p { margin:0 0 4px; max-width:110ch; }
+
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>IUDBMS <span>database explorer</span></h1>
+  <span class="badge">Simulated data, not real USB traffic</span>
+  <span class="spacer"></span><span class="path mono" id="path"></span>
+</header>
+<div class="truth"><b>What this is.</b> The SQLite store written by the evaluation: 1,000 simulated device sessions from the development corpus, every one-second window scored by the evaluated model, and the alerts and dry-run actions it raised. The database is opened read-only.</div>
+<nav role="tablist">
+  <button role="tab" aria-selected="true" data-t="overview">Overview</button>
+  <button role="tab" aria-selected="false" data-t="sessions">Sessions</button>
+  <button role="tab" aria-selected="false" data-t="tables">Tables</button>
+</nav>
+<main>
+<section class="tab" id="t-overview">
+  <div class="tiles" id="tiles"></div>
+  <div class="grid2">
+    <div class="card"><h3>Sessions by device class</h3><p class="note">Benign and attack sessions in each class.</p><div class="legend"><span><i class="cb"></i>benign</span><span><i class="ca"></i>attack</span></div><div id="cls"></div></div>
+    <div class="card"><h3>Stage 2 score by window label</h3><p class="note">Each bar is the share of that label's windows. Attack windows pile up at the top, which is why a threshold can separate them.</p><div class="legend"><span><i class="cb"></i>benign windows</span><span><i class="ca"></i>attack windows</span></div><div id="hist"></div></div>
+    <div class="card"><h3>What the monitor did</h3><p class="note">Final trust state per session, alerts by severity, and the dry-run actions generated.</p><div id="outc"></div></div>
+    <div class="card"><h3>Tables</h3><p class="note">Row counts. The raw trace tables are empty because this run did not record URBs.</p><div id="tabs"></div></div>
+  </div>
+</section>
+<section class="tab" id="t-sessions" hidden>
+  <div class="filters">
+    <label>Search<input id="q" placeholder="S0349 or 046d:c31c"></label>
+    <label>Label<select id="label"><option value="all">All</option><option value="benign">Benign</option><option value="attack">Attack</option></select></label>
+    <label>Class<select id="cls-f"><option value="all">All</option></select></label>
+    <label>Alerted<select id="alerted"><option value="all">All</option><option value="yes">Yes</option><option value="no">No</option></select></label>
+  </div>
+  <div class="tw"><table><thead><tr id="dh"></tr></thead><tbody id="db"></tbody></table></div>
+  <div class="pager"><button class="b" id="prev">Previous</button><span id="pg"></span><button class="b" id="next">Next</button></div>
+  <div class="detail" id="detail"></div>
+</section>
+<section class="tab" id="t-tables" hidden>
+  <div class="filters"><label>Table<select id="tsel"></select></label></div>
+  <div class="tw"><table><thead id="th"></thead><tbody id="tb"></tbody></table></div>
+  <div class="pager"><button class="b" id="tprev">Previous</button><span id="tpg"></span><button class="b" id="tnext">Next</button></div>
+</section>
+</main>
+<footer>
+  <p>These sessions come from the simulator, so they show how the pipeline behaves, not accuracy on real devices. Results on real kernels are in the live lab.</p>
+  <p>Benign and attack labels are the simulator's ground truth. A session counts as attack when any of its windows is labelled attack.</p>
+</footer>
+<script>
+"use strict";
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmt = n => n == null ? "n/a" : Number(n).toLocaleString();
+const get = async u => { const r = await fetch(u); if (!r.ok) throw new Error((await r.json()).detail || r.statusText); return r.json(); };
+const NINES = s => -Math.log10(Math.max(1e-5, 1 - Math.min(s, 1 - 1e-5)));
+
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("nav button").forEach(x => x.setAttribute("aria-selected", x === b));
+  document.querySelectorAll("section.tab").forEach(s => s.hidden = s.id !== "t-" + b.dataset.t);
+  if (b.dataset.t === "sessions" && !S.loaded) loadSessions();
+  if (b.dataset.t === "tables" && !T.loaded) loadTable();
+});
+
+let THR = 0.9915531;
+/* ---------- overview ---------- */
+function bar(name, parts, value) {
+  const tot = parts.reduce((a, p) => a + p.v, 0) || 1;
+  return `<div class="bar"><span class="n">${esc(name)}</span><span class="track">${parts.map(p => `<i class="${p.c}" style="width:${(100 * p.v / tot)}%"></i>`).join("")}</span><span class="v mono">${value}</span></div>`;
+}
+async function overview() {
+  const o = await get("/db/overview");
+  if (o.threshold) THR = o.threshold;
+  $("#path").textContent = `${o.path} · ${o.size_mb} MB`;
+  const pct = (a, b) => b ? (100 * a / b).toFixed(1) + "%" : "n/a";
+  $("#tiles").innerHTML = [
+    ["Sessions", fmt(o.sessions), `${fmt(o.benign)} benign · ${fmt(o.attack)} attack`],
+    ["Windows", fmt(o.windows.total), `${fmt(o.windows.attack_windows)} labelled attack`],
+    ["Attack sessions alerted", pct(o.attack_alerted, o.attack), `${fmt(o.attack_alerted)} of ${fmt(o.attack)}`],
+    ["Benign sessions alerted", pct(o.benign_alerted, o.benign), `${fmt(o.benign_alerted)} of ${fmt(o.benign)}`],
+    ["Alerts", fmt(o.tables.alerts), `${fmt(o.tables.actions)} dry-run actions`],
+  ].map(([k, v, s]) => `<div class="tile"><div class="k">${k}</div><div class="v mono">${v}</div><div class="s">${s}</div></div>`).join("");
+  $("#cls").innerHTML = o.by_class.map(c => bar(c.cls, [{ v: c.benign, c: "cb" }, { v: c.attack, c: "ca" }], `${c.benign} / ${c.attack}`)).join("");
+  const tb = o.stage2_hist.reduce((a, h) => a + h.benign, 0) || 1, ta = o.stage2_hist.reduce((a, h) => a + h.attack, 0) || 1;
+  $("#hist").innerHTML = o.stage2_hist.map(h => `<div class="bar"><span class="n">${esc(h.bin)}</span><span class="track" style="flex-direction:column;height:30px;gap:2px"><i class="cb" style="height:14px;width:${100 * h.benign / tb}%"></i><i class="ca" style="height:14px;width:${100 * h.attack / ta}%"></i></span><span class="v mono">${(100 * h.benign / tb).toFixed(1)}% / ${(100 * h.attack / ta).toFixed(1)}%</span></div>`).join("");
+  const sev = o.severity.map(s => `${esc(s.severity)} ${fmt(s.n)}`).join(" · ") || "none";
+  $("#outc").innerHTML = `<div class="kv"><dt>Final state</dt><dd>${o.states.map(s => `<span class="pill ${esc(s.state)}">${esc(s.state)} ${fmt(s.n)}</span>`).join(" ")}</dd><dt>Alerts</dt><dd>${sev}</dd><dt>Actions</dt><dd>${o.actions.map(a => `${esc(a.action)} ${fmt(a.n)}`).join(" · ") || "none"}</dd></div>`;
+  $("#tabs").innerHTML = `<div class="kv">${Object.entries(o.tables).map(([k, v]) => `<dt class="mono">${k}</dt><dd class="mono">${fmt(v)}</dd>`).join("")}</div>`;
+  $("#cls-f").innerHTML = `<option value="all">All</option>` + o.by_class.map(c => `<option>${esc(c.cls)}</option>`).join("");
+  $("#tsel").innerHTML = Object.keys(o.tables).map(t => `<option>${t}</option>`).join("");
+}
+
+/* ---------- sessions ---------- */
+const S = { page: 1, size: 20, sort: "id", desc: false, loaded: false, sel: null };
+const COLS = [["id", "Session"], ["class", "Class"], ["", "Vendor:product"], ["windows", "Windows"], ["peak", "Peak Stage 2"], ["alerts", "Alerts"], ["state", "Final state"], ["", "Label"]];
+async function loadSessions() {
+  S.loaded = true;
+  $("#dh").innerHTML = COLS.map(([k, n]) => k ? `<th class="s" data-k="${k}">${n}${S.sort === k ? (S.desc ? " ▼" : " ▲") : ""}</th>` : `<th>${n}</th>`).join("");
+  $("#dh").querySelectorAll("th.s").forEach(h => h.onclick = () => { S.desc = S.sort === h.dataset.k ? !S.desc : false; S.sort = h.dataset.k; S.page = 1; loadSessions(); });
+  const p = new URLSearchParams({ q: $("#q").value, label: $("#label").value, cls: $("#cls-f").value, alerted: $("#alerted").value, sort: S.sort, desc: S.desc, page: S.page, size: S.size });
+  const r = await get("/db/devices?" + p);
+  $("#db").innerHTML = r.rows.map(d => `<tr class="row ${S.sel === d.id ? "sel" : ""}" tabindex="0" data-id="${esc(d.id)}">
+    <td class="mono">${esc(d.id)}</td><td>${esc(d.cls)}</td><td class="mono">${d.vidpid}</td><td class="mono">${fmt(d.windows)}</td>
+    <td class="mono">${d.s2max == null ? "n/a" : d.s2max.toFixed(4)}</td><td class="mono">${d.alerts}</td>
+    <td><span class="pill ${esc(d.state)}">${esc(d.state)}</span></td><td><span class="pill ${d.lab === 1 ? "attack" : "benign"}">${d.lab === 1 ? "attack" : "benign"}</span></td></tr>`).join("") || `<tr><td colspan="8" class="muted">No sessions match.</td></tr>`;
+  document.querySelectorAll("#db tr.row").forEach(tr => { tr.onclick = () => openDevice(tr.dataset.id); tr.onkeydown = e => { if (e.key === "Enter") openDevice(tr.dataset.id); }; });
+  const pages = Math.max(1, Math.ceil(r.total / S.size));
+  $("#pg").textContent = `${fmt(r.total)} sessions · page ${S.page} of ${pages}`;
+  $("#prev").disabled = S.page <= 1; $("#next").disabled = S.page >= pages;
+}
+["q", "label", "cls-f", "alerted"].forEach(id => $("#" + id).addEventListener(id === "q" ? "input" : "change", () => { S.page = 1; loadSessions(); }));
+$("#prev").onclick = () => { S.page--; loadSessions(); }; $("#next").onclick = () => { S.page++; loadSessions(); };
+
+async function openDevice(id) {
+  S.sel = id;
+  document.querySelectorAll("#db tr.row").forEach(tr => tr.classList.toggle("sel", tr.dataset.id === id));
+  const d = await get("/db/device/" + encodeURIComponent(id));
+  const dv = d.device, w = d.windows;
+  const el = $("#detail");
+  el.innerHTML = `<div class="two"><div class="card"><h3>${esc(id)} <span class="pill ${dv.lab === 1 ? "attack" : "benign"}">${dv.lab === 1 ? "attack" : "benign"}</span> <span class="pill ${esc(dv.state)}">${esc(dv.state)}</span></h3>
+      <p class="note">${esc(dv.cls)} · ${dv.vidpid} · ${fmt(dv.windows)} windows. Shaded: windows the simulator labelled attack. Click the chart to read a window's features.</p><div id="dc"></div></div>
+    <div class="card"><h3>Window features</h3><div id="wf" class="muted">Click a point on the chart.</div></div></div>
+    <div class="grid2" style="margin-top:16px"><div class="card"><h3>Alerts</h3><div id="al"></div></div><div class="card"><h3>Generated actions (dry run)</h3><div id="ac"></div></div></div>`;
+  d.W = w; drawDetail(d, null);
+  $("#dc").onclick = e => {
+    const svg = $("#dc svg"); if (!svg || !w.length) return;
+    const r = svg.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * svg.viewBox.baseVal.width;
+    const t0 = w[0].t, t1 = w.at(-1).t || 1, pl = 54, iw = svg.viewBox.baseVal.width - pl - 10;
+    const t = t0 + (x - pl) / iw * (t1 - t0);
+    const nearest = w.reduce((a, b) => Math.abs(b.t - t) < Math.abs(a.t - t) ? b : a);
+    drawDetail(d, nearest.t); showWindow(id, nearest.t);
+  };
+  el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+function drawDetail(d, cur) {
+  const w = d.W, W = Math.max(380, $("#dc").clientWidth || 640), H = 210, pl = 54, pr = 10, pt = 10, pb = 22, iw = W - pl - pr, ih = H - pt - pb, YM = 5;
+  const t0 = w[0]?.t ?? 0, t1 = Math.max(w.at(-1)?.t ?? 1, t0 + 1);
+  const X = t => pl + ((t - t0) / (t1 - t0)) * iw, Y = v => pt + ih - (Math.min(v, YM) / YM) * ih;
+  let s = `<svg class="ch" viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="Scores over time">`;
+  for (let v = 0; v <= YM; v++) s += `<line class="g" x1="${pl}" x2="${W - pr}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${pl - 6}" y="${Y(v) + 3}" text-anchor="end">${v ? "0." + "9".repeat(v) : "0"}</text>`;
+  const step = Math.max(10, Math.ceil((t1 - t0) / 8 / 10) * 10);
+  for (let t = Math.ceil(t0 / step) * step; t <= t1; t += step) s += `<text x="${X(t)}" y="${H - 6}" text-anchor="middle">${t}s</text>`;
+  s += `<line class="ax" x1="${pl}" x2="${pl}" y1="${pt}" y2="${pt + ih}"/><line class="ax" x1="${pl}" x2="${W - pr}" y1="${pt + ih}" y2="${pt + ih}"/>`;
+  const bw = Math.max(1, iw / Math.max(w.length, 1));
+  w.forEach(p => { if (p.lab === 1) s += `<rect class="atk" x="${X(p.t)}" y="${pt}" width="${bw}" height="${ih}"/>`; });
+  if (w.length) {
+    s += `<path class="l1" d="M${w.map(p => X(p.t + 0.5) + "," + Y(NINES(p.s1 ?? 0))).join(" L")}"/><path class="ln" d="M${w.map(p => X(p.t + 0.5) + "," + Y(NINES(p.s2 ?? 0))).join(" L")}"/>`;
+  }
+  const thr = THR;
+  s += `<line class="thr" x1="${pl}" x2="${W - pr}" y1="${Y(NINES(thr))}" y2="${Y(NINES(thr))}"/><text class="labc" x="${W - pr - 2}" y="${Y(NINES(thr)) - 4}" text-anchor="end">alarm line</text>`;
+  d.alerts.slice(0, 1).forEach(a => s += `<line class="al" x1="${X(a.ts)}" x2="${X(a.ts)}" y1="${pt}" y2="${pt + ih}"/><text class="labc" x="${X(a.ts) + 4}" y="${pt + 12}">first alert</text>`);
+  if (cur != null) s += `<line class="cur" x1="${X(cur + 0.5)}" x2="${X(cur + 0.5)}" y1="${pt}" y2="${pt + ih}"/>`;
+  s += `</svg><div class="muted" style="font-size:.75rem;margin-top:4px"><b style="color:var(--accent)">Blue</b> Stage 2 · <b>Grey</b> Stage 1</div>`;
+  $("#dc").innerHTML = s;
+  $("#al").innerHTML = d.alerts.length ? `<div class="tw"><table><thead><tr><th>t</th><th>Stage 2</th><th>Severity</th><th>Evidence</th></tr></thead><tbody>${d.alerts.map(a => `<tr><td class="mono">${a.ts}s</td><td class="mono">${a.stage2.toFixed(4)}</td><td>${esc(a.severity)}</td><td>${a.evidence.map(e => esc(e[0]) + " " + e[1]).join(", ")}</td></tr>`).join("")}</tbody></table></div>` : `<span class="muted">No alerts. The monitor left this session alone.</span>`;
+  $("#ac").innerHTML = d.actions.length ? d.actions.map(a => `<div><b>${esc(a.action)}</b> at ${a.ts}s<details><summary class="muted">Generated rule</summary><pre>${esc(JSON.stringify(a.rule, null, 2))}</pre></details></div>`).join("") : `<span class="muted">No actions.</span>`;
+}
+async function showWindow(id, t) {
+  const w = await get(`/db/device/${encodeURIComponent(id)}/window?t=${t}`);
+  $("#wf").innerHTML = `<div class="kv" style="margin-bottom:8px"><dt>Window</dt><dd class="mono">${w.t}s</dd><dt>Stage 1 / 2</dt><dd class="mono">${w.stage1?.toFixed(3)} / ${w.stage2?.toFixed(4)}</dd><dt>Label</dt><dd>${w.label === 1 ? "attack" : "benign"}</dd></div>
+   <div class="tw" style="max-height:300px;overflow:auto"><table><tbody>${w.features.map(f => `<tr><td class="mono">${esc(f.name)}</td><td class="mono">${f.value}</td></tr>`).join("")}</tbody></table></div>`;
+}
+
+/* ---------- tables ---------- */
+const T = { page: 1, size: 25, loaded: false };
+async function loadTable() {
+  T.loaded = true;
+  const r = await get(`/db/table/${$("#tsel").value}?page=${T.page}&size=${T.size}`);
+  $("#th").innerHTML = `<tr>${r.columns.map(c => `<th>${esc(c)}</th>`).join("")}</tr>`;
+  $("#tb").innerHTML = r.rows.map(row => `<tr>${row.map(v => `<td class="mono" title="${esc(v)}">${esc(v)}</td>`).join("")}</tr>`).join("") || `<tr><td class="muted">This table is empty.</td></tr>`;
+  const pages = Math.max(1, Math.ceil(r.total / T.size));
+  $("#tpg").textContent = `${fmt(r.total)} rows · page ${T.page} of ${pages}`;
+  $("#tprev").disabled = T.page <= 1; $("#tnext").disabled = T.page >= pages;
+}
+$("#tsel").onchange = () => { T.page = 1; loadTable(); };
+$("#tprev").onclick = () => { T.page--; loadTable(); }; $("#tnext").onclick = () => { T.page++; loadTable(); };
+
+overview().then(() => {            // deep link: #sessions/A0001
+  const [tab, id] = location.hash.slice(1).split("/");
+  if (tab) document.querySelector(`nav button[data-t="${tab}"]`)?.click();
+  if (id) setTimeout(() => openDevice(id), 600);
+}).catch(e => { $("#tiles").innerHTML = `<div class="err">${esc(e.message)}</div>`; });
+</script>
+</body>
+</html>

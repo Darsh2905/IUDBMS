@@ -17,7 +17,7 @@ Run the dashboard with `iudbms-api` (or `make dashboard`) and open http://127.0.
 Deploy with `sudo ./deploy/install.sh` -- see `docs/DEPLOYMENT.md` and finding 25.
 The live demo page is `/demo` (`make demo-dashboard`; `api/demo.py` streams the deployed
 `StreamingDetector` as SSE, one window per second; `tests/test_demo_api.py`). It includes the
-known misses on purpose -- do not drop them. The live lab is `make lab` (:8001; `api/lab.py`): a QEMU Debian guest, its usbmon streamed over SSH into the
+known misses on purpose -- do not drop them. The database explorer is `make db-dashboard` (:8002; `api/dbview.py`, read-only over `out/iudbms.db`, the simulated Corpus-A store). The live lab is `make lab` (:8001; `api/lab.py`): a QEMU Debian guest, its usbmon streamed over SSH into the
 deployed `LiveMonitor`, input driven by QMP. Real kernel and traffic, emulated devices -- say so. `iudbms.live.StreamingDetector` is the long-lived detector a deployment runs:
 per-device extractor, baseline, sequence window and gate, advanced one window at
 a time. `scripts/live_replay.py` drives it at wall-clock speed
