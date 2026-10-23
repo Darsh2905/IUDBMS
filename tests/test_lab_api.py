@@ -44,3 +44,32 @@ def test_hub_history_is_bounded():
     for i in range(lab.HISTORY + 50):
         h.emit("window", {"device": "d", "t": float(i)})
     assert len(h.snapshot()["history"]["d"]) == lab.HISTORY
+
+
+def test_raw_tap_publishes_exactly_the_lines_the_parser_reads():
+    import io
+    from pathlib import Path
+
+    from iudbms.capture.usbmon import UsbmonSource
+    text = (Path(__file__).parent / "fixtures" / "usbmon" / "real_qemu_vm_capture.txt").read_text()
+    tap = lab.RawTap(io.StringIO(text))
+    src = UsbmonSource(stream=tap)
+    tap.source = src
+    events = list(src.events())
+    ref = list(UsbmonSource(stream=io.StringIO(text)).events())
+    assert events == ref                                    # the tap does not change what is parsed
+    lines = [ln for ln in text.splitlines() if ln.strip() and not ln.startswith("#")]
+    assert tap.total == len(lines) == src.stats.lines_seen
+    assert list(tap.ring)[-1] == lines[-1]                  # exact text, no re-formatting
+
+
+def test_raw_tap_batches_are_bounded_and_say_what_they_skipped():
+    import io
+    tap = lab.RawTap(io.StringIO(""))
+    for i in range(1000):
+        tap.pending.append(f"line {i}")
+    tap.added = tap.total = 1000
+    m = tap.flush()
+    assert len(m["lines"]) == lab.RawTap.MAX_BATCH and m["lines"][-1] == "line 999"
+    assert m["skipped"] == 1000 - lab.RawTap.MAX_BATCH
+    assert tap.flush() is None

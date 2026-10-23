@@ -90,6 +90,10 @@ drive, and trigger the two cases that are not caught. The kernel, drivers and us
 are real; the devices are QEMU's emulation. Needs QEMU and `testbed/images/debian-13.qcow2`
 (`sh testbed/fetch_images.sh`). Stops the VM when you stop the server.
 
+`http://localhost:8001/raw` shows the exact usbmon text the VM prints, as it arrives, with a decoded
+table, filters and a line-format legend. The page samples the newest lines of each quarter second when a
+device is very busy and says how many it skipped; the parser always receives every line.
+
 ## Database explorer
 
 ```bash

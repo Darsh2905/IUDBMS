@@ -43,6 +43,7 @@ from .demo import _detector
 
 REPO = Path(__file__).resolve().parents[3]
 PAGE = Path(str(files("iudbms.api").joinpath("static", "lab.html")))
+RAW_PAGE = Path(str(files("iudbms.api").joinpath("static", "raw.html")))
 GUEST_DIR = "/var/tmp/tb"
 DEVICES = ("kbd", "mouse", "storage", "net")
 HISTORY = 240
@@ -101,6 +102,83 @@ class Hub:
                 self.subs.remove(q)
 
 
+class RawTap:
+    """Pass-through over the usbmon text stream that also publishes the EXACT lines.
+
+    The parser iterates this object instead of the raw pipe, so it reads precisely the
+    same lines it would have. Publishing is sampled: a bulk transfer can print thousands
+    of lines a second, so each 250 ms batch carries at most ``MAX_BATCH`` of the newest
+    lines plus a count of those it skipped. The skipping is only for the page; the
+    parser sees every line.
+    """
+
+    MAX_BATCH = 80
+    RING = 600
+
+    def __init__(self, stream) -> None:
+        self._stream = stream
+        self.lock = threading.Lock()
+        self.ring: deque = deque(maxlen=self.RING)
+        self.pending: list[str] = []
+        self.added = 0
+        self.total = 0
+        self.subs: list[queue.Queue] = []
+        self.source = None                      # UsbmonSource, for its loss counters
+
+    def __iter__(self):
+        for line in self._stream:
+            text = line.rstrip("\n")
+            if not text.strip() or text.lstrip().startswith("#"):
+                yield line                      # the parser skips these too; do not count or show them
+                continue
+            with self.lock:
+                self.total += 1
+                self.added += 1
+                self.ring.append(text)
+                self.pending.append(text)
+                if len(self.pending) > 4 * self.MAX_BATCH:      # bound memory under bulk load
+                    del self.pending[: -2 * self.MAX_BATCH]
+            yield line
+
+    def flush(self) -> dict | None:
+        with self.lock:
+            if not self.pending and not self.added:
+                return None
+            batch = self.pending[-self.MAX_BATCH:]
+            skipped = self.added - len(batch)
+            self.pending, self.added = [], 0
+            st = getattr(self.source, "stats", None)
+            return {"lines": batch, "skipped": skipped, "total": self.total,
+                    "unparsed": getattr(st, "lines_unparsed", 0),
+                    "seen": getattr(st, "lines_seen", 0)}
+
+    def snapshot(self) -> dict:
+        with self.lock:
+            st = getattr(self.source, "stats", None)
+            return {"lines": list(self.ring)[-200:], "total": self.total,
+                    "unparsed": getattr(st, "lines_unparsed", 0),
+                    "seen": getattr(st, "lines_seen", 0)}
+
+    def subscribe(self) -> queue.Queue:
+        q: queue.Queue = queue.Queue()
+        with self.lock:
+            self.subs.append(q)
+        return q
+
+    def unsubscribe(self, q: queue.Queue) -> None:
+        with self.lock:
+            if q in self.subs:
+                self.subs.remove(q)
+
+    def pump(self, stop: threading.Event) -> None:
+        while not stop.wait(0.25):
+            msg = self.flush()
+            if msg is None:
+                continue
+            for q in list(self.subs):
+                q.put(msg)
+
+
 class Lab:
     def __init__(self, distro: str) -> None:
         self.distro = distro
@@ -113,6 +191,7 @@ class Lab:
         self.atk_lock = threading.Lock()        # one hot-plugged attacker at a time (shared display)
         self.actions: dict[str, threading.Event] = {}
         self._cap: subprocess.Popen | None = None
+        self.tap: RawTap | None = None
         self._typing = None
         self._seq = 0
 
@@ -149,7 +228,10 @@ class Lab:
                  "-o", "LogLevel=ERROR", "-o", "ServerAliveInterval=5", "tb@127.0.0.1",
                  "sudo cat /sys/kernel/debug/usb/usbmon/0u"],
                 stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, bufsize=1)
-            source = UsbmonSource(stream=self._cap.stdout)
+            self.tap = RawTap(self._cap.stdout)
+            source = UsbmonSource(stream=self.tap)
+            self.tap.source = source
+            threading.Thread(target=self.tap.pump, args=(self.stop,), name="lab-raw", daemon=True).start()
             self.monitor = LiveMonitor(det, source, lambda k: self.cache.get(k), window=1.0)
             threading.Thread(target=self._descriptors, name="lab-desc", daemon=True).start()
             threading.Thread(target=self._monitor, name="lab-monitor", daemon=True).start()
@@ -376,6 +458,35 @@ ACTIONS = {"human", "mouse", "storage", "inject", "staged", "slow", "loop"}
 @app.get("/", include_in_schema=False)
 def page():
     return FileResponse(PAGE)
+
+
+@app.get("/raw", include_in_schema=False)
+def raw_page():
+    return FileResponse(RAW_PAGE)
+
+
+@app.get("/lab/raw/stream")
+def raw_stream():
+    tap = LAB.tap
+    if tap is None:
+        raise HTTPException(409, "the lab is not capturing yet")
+    q = tap.subscribe()
+
+    def gen():
+        try:
+            yield f"event: snap\ndata: {json.dumps(tap.snapshot())}\n\n"
+            while True:
+                try:
+                    msg = q.get(timeout=10)
+                except queue.Empty:
+                    yield ": keepalive\n\n"
+                    continue
+                yield f"event: raw\ndata: {json.dumps(msg)}\n\n"
+        finally:
+            tap.unsubscribe(q)
+
+    return StreamingResponse(gen(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
 
 
 @app.get("/lab/state")

@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IUDBMS raw usbmon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  color-scheme: light;
+  --surface-0: #f2f2f0;
+  --surface-1: #fcfcfb;
+  --surface-2: #eeeeec;
+  --line: #dedddA;
+  --grid: #e8e8e5;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #7a7975;
+  --accent: #2a78d6;
+  --accent-ink: #ffffff;
+  --good: #0a8a0a;
+  --good-bg: #e3f3e3;
+  --warn: #9a6a00;
+  --warn-bg: #fdf0cf;
+  --crit: #c22f2f;
+  --crit-bg: #fbe3e3;
+  --idle: #6b6a66;
+  --idle-bg: #e6e5e1;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --surface-0: #121211;
+    --surface-1: #1a1a19;
+    --surface-2: #232322;
+    --line: #333331;
+    --grid: #2a2a28;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #8d8c85;
+    --accent: #3987e5;
+    --accent-ink: #0b0b0b;
+    --good: #4cc24c;
+    --good-bg: #17301a;
+    --warn: #f0b429;
+    --warn-bg: #352a0b;
+    --crit: #f06262;
+    --crit-bg: #3a1717;
+    --idle: #a3a29b;
+    --idle-bg: #2a2a28;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface-0: #121211;
+  --surface-1: #1a1a19;
+  --surface-2: #232322;
+  --line: #333331;
+  --grid: #2a2a28;
+  --text-primary: #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted: #8d8c85;
+  --accent: #3987e5;
+  --accent-ink: #0b0b0b;
+  --good: #4cc24c;
+  --good-bg: #17301a;
+  --warn: #f0b429;
+  --warn-bg: #352a0b;
+  --crit: #f06262;
+  --crit-bg: #3a1717;
+  --idle: #a3a29b;
+  --idle-bg: #2a2a28;
+}
+
+
+* { box-sizing: border-box; }
+body { margin:0; background:var(--surface-0); color:var(--text-primary); font:400 1rem/1.45 "IBM Plex Sans", system-ui, sans-serif; }
+.mono { font-family:"IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+header.top { display:flex; flex-wrap:wrap; align-items:center; gap:10px 24px; padding:14px 24px; background:var(--surface-1); border-bottom:1px solid var(--line); }
+header.top h1 { font-size:1.25rem; font-weight:700; margin:0; letter-spacing:-.01em; } header.top h1 span { color:var(--text-muted); font-weight:500; }
+.badge { display:inline-flex; gap:6px; align-items:center; padding:3px 10px; border-radius:999px; font-size:.8125rem; font-weight:600; background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn); }
+.spacer { flex:1; } a { color:var(--accent); } .status { display:inline-flex; align-items:center; gap:8px; font-size:.875rem; color:var(--text-secondary); }
+.dot { width:9px; height:9px; border-radius:50%; background:var(--idle); } .dot.live { background:var(--good); } .dot.err { background:var(--crit); }
+.truth { padding:10px 24px; background:var(--surface-1); border-bottom:1px solid var(--line); font-size:.875rem; color:var(--text-secondary); } .truth b { color:var(--text-primary); }
+main { padding:18px 24px 36px; }
+.tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin-bottom:16px; }
+.tile { background:var(--surface-1); border:1px solid var(--line); border-radius:10px; padding:10px 14px; }
+.tile .k { font-size:.6875rem; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); } .tile .v { font-size:1.5rem; font-weight:600; } .tile .s { font-size:.8125rem; color:var(--text-secondary); }
+.bar { display:flex; flex-wrap:wrap; gap:10px 14px; align-items:end; margin-bottom:10px; }
+.bar label { display:flex; flex-direction:column; gap:3px; font-size:.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; }
+input, select, button { font:inherit; } input, select { background:var(--surface-1); color:var(--text-primary); border:1px solid var(--line); border-radius:6px; padding:6px 8px; }
+button { cursor:pointer; background:var(--surface-1); color:var(--text-primary); border:1px solid var(--line); border-radius:6px; padding:6px 12px; } button:hover { border-color:var(--text-muted); }
+button[aria-pressed="true"] { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); font-weight:600; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+.chip { cursor:pointer; padding:3px 10px; border-radius:999px; background:var(--surface-2); color:var(--text-secondary); border:1px solid var(--line); font-size:.8125rem; }
+.chip[aria-pressed="true"] { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+.term { height:520px; overflow:auto; background:var(--surface-1); border:1px solid var(--line); border-radius:10px; padding:8px 12px; font:400 .8125rem/1.5 "IBM Plex Mono", ui-monospace, monospace; white-space:pre; }
+.term div { padding:0; } .term .S { color:var(--text-muted); } .term .C { color:var(--text-primary); } .term .E { color:var(--crit); font-weight:600; }
+.tw { height:520px; overflow:auto; border:1px solid var(--line); border-radius:10px; background:var(--surface-1); }
+table { border-collapse:collapse; width:100%; font-size:.8125rem; } th { position:sticky; top:0; background:var(--surface-1); text-align:left; font-size:.6875rem; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); padding:7px 10px; border-bottom:1px solid var(--line); white-space:nowrap; }
+td { padding:4px 10px; border-bottom:1px solid var(--grid); white-space:nowrap; } td.d { max-width:520px; overflow:hidden; text-overflow:ellipsis; }
+tr.S td { color:var(--text-muted); } tr.E td { color:var(--crit); }
+.note { color:var(--text-muted); font-size:.8125rem; margin:8px 0 0; }
+details { margin-top:14px; background:var(--surface-1); border:1px solid var(--line); border-radius:10px; padding:10px 14px; } summary { cursor:pointer; font-weight:600; }
+.legend { display:grid; grid-template-columns:auto 1fr; gap:4px 16px; font-size:.875rem; margin-top:10px; } .legend dt { font-family:"IBM Plex Mono", monospace; color:var(--accent); } .legend dd { margin:0; color:var(--text-secondary); }
+pre.ex { margin:10px 0 0; padding:8px; background:var(--surface-2); border-radius:6px; overflow-x:auto; font:400 .8125rem/1.5 "IBM Plex Mono", monospace; }
+footer { padding:14px 24px 28px; color:var(--text-muted); font-size:.8125rem; border-top:1px solid var(--line); background:var(--surface-1); } footer p { margin:0 0 4px; max-width:110ch; }
+
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>IUDBMS <span>raw usbmon</span></h1>
+  <span class="badge">Exact lines from the VM's kernel</span>
+  <a href="/">Live lab</a>
+  <span class="spacer"></span>
+  <span class="status"><span class="dot" id="dot"></span><span id="stat">Connecting</span></span>
+</header>
+<div class="truth"><b>What this is.</b> The text the Linux kernel's <span class="mono">usbmon</span> prints for every USB transfer in the lab's Debian VM, shown as it arrives. The parser reads these same lines before anything is scored. <b>Emulated devices.</b> The devices are QEMU's, so the traffic is real kernel output for emulated hardware.</div>
+<main>
+  <div class="tiles" id="tiles"></div>
+  <div class="bar">
+    <button id="pause" aria-pressed="false" type="button">Pause</button>
+    <button id="clear" type="button">Clear</button>
+    <button id="v-text" aria-pressed="true" type="button">Exact text</button>
+    <button id="v-tab" aria-pressed="false" type="button">Decoded table</button>
+    <label>Search<input id="q" placeholder="hex, bus:dev, 0x…"></label>
+    <label>Event<select id="evt"><option value="">All</option><option value="S">S submitted</option><option value="C">C completed</option><option value="E">E error</option></select></label>
+    <label>Type<select id="typ"><option value="">All</option><option value="C">Control</option><option value="I">Interrupt</option><option value="B">Bulk</option><option value="Z">Isochronous</option></select></label>
+  </div>
+  <div class="chips" id="devs" aria-label="Filter by device"></div>
+  <div class="term mono" id="term" role="log" aria-live="off"></div>
+  <div class="tw" id="tw" hidden><table><thead><tr><th>Time (s)</th><th>Evt</th><th>Device</th><th>Type</th><th>Dir</th><th>EP</th><th>Status</th><th>Length</th><th>Data (hex)</th></tr></thead><tbody id="tb"></tbody></table></div>
+  <p class="note" id="samp"></p>
+  <details open>
+    <summary>How to read a line</summary>
+    <pre class="ex">ffff23020b450540 504930686 C Bi:1:006:1 0 13 = 55534253 43010000 00000000 00</pre>
+    <dl class="legend">
+      <dt>ffff23020b450540</dt><dd>URB tag: the kernel's address for this transfer request. A submission and its completion share it.</dd>
+      <dt>504930686</dt><dd>Timestamp in microseconds. The page shows it as seconds from the first line.</dd>
+      <dt>C</dt><dd>Event: S submitted, C completed, E error. The scoring uses completions and errors only.</dd>
+      <dt>Bi:1:006:1</dt><dd>Type and direction, bus, device number, endpoint. B bulk, I interrupt, C control, Z isochronous. i is device to host, o is host to device. So this is a bulk read from device 6 on bus 1, endpoint 1.</dd>
+      <dt>0</dt><dd>Status. 0 is success. -115 on a submission just means it is still in progress. A form like 0:8 adds the polling interval.</dd>
+      <dt>13</dt><dd>Length in bytes.</dd>
+      <dt>=</dt><dd>Data follows, as hexadecimal words. A &lt; or &gt; means no data was captured for this line. A control submission starts with "s" and its 8 byte setup packet.</dd>
+    </dl>
+  </details>
+</main>
+<footer>
+  <p>Lines are shown exactly as the kernel printed them. A busy device such as the USB drive can print thousands of lines a second, so each quarter second the page shows the newest lines of that batch and says how many it skipped. The parser and the models still receive every line.</p>
+</footer>
+<script>
+"use strict";
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const KEEP = 500;
+const TYPES = { C: "control", I: "interrupt", B: "bulk", Z: "isochronous" };
+const S = { rows: [], paused: false, view: "text", devs: new Set(), seenDevs: new Set(), t0: null, total: 0, unparsed: 0, seen: 0, skipped: 0,
+            lastTotal: 0, lastAt: performance.now(), rate: 0, counts: { S: 0, C: 0, E: 0 } };
+
+function decode(line) {
+  const t = line.trim().split(/\s+/);
+  if (t.length < 5) return null;
+  const m = /^([CIBZ])([io]):(\d+):(\d+):(\d+)$/.exec(t[3]);
+  if (!m) return null;
+  let i = 4, setup = null, status;
+  if (t[4] === "s") { setup = t.slice(5, 10).join(" "); i = 10; status = ""; }
+  else { status = t[4]; i = 5; }
+  const length = t[i]; const tag = t[i + 1];
+  const data = tag === "=" ? t.slice(i + 2).join(" ") : "";
+  return { line, ts: Number(t[1]), evt: t[2], type: m[1], dir: m[2], bus: Number(m[3]), dev: Number(m[4]), ep: Number(m[5]),
+           key: `${Number(m[3])}-${Number(m[4])}`, status, setup, length, tag, data };
+}
+function push(lines) {
+  for (const l of lines) {
+    const r = decode(l); if (!r) { S.rows.push({ line: l, evt: "?", key: "?" }); continue; }
+    if (S.t0 == null) S.t0 = r.ts;
+    S.rows.push(r); S.counts[r.evt] = (S.counts[r.evt] || 0) + 1;
+    if (!S.seenDevs.has(r.key)) { S.seenDevs.add(r.key); chips(); }
+  }
+  if (S.rows.length > KEEP) S.rows.splice(0, S.rows.length - KEEP);
+}
+function chips() {
+  const el = $("#devs"); el.innerHTML = "";
+  for (const k of [...S.seenDevs].sort()) {
+    const b = document.createElement("button"); b.className = "chip"; b.type = "button"; b.textContent = "device " + k;
+    b.setAttribute("aria-pressed", S.devs.has(k));
+    b.onclick = () => { S.devs.has(k) ? S.devs.delete(k) : S.devs.add(k); chips(); render(); };
+    el.appendChild(b);
+  }
+}
+function visible(r) {
+  if (S.devs.size && !S.devs.has(r.key)) return false;
+  const e = $("#evt").value, t = $("#typ").value, q = $("#q").value.trim().toLowerCase();
+  if (e && r.evt !== e) return false;
+  if (t && r.type !== t) return false;
+  if (q && !r.line.toLowerCase().includes(q)) return false;
+  return true;
+}
+function render() {
+  if (S.paused) return;
+  const rows = S.rows.filter(visible);
+  if (S.view === "text") {
+    const el = $("#term"), stick = el.scrollTop + el.clientHeight >= el.scrollHeight - 30;
+    el.innerHTML = rows.map(r => `<div class="${r.evt}">${esc(r.line)}</div>`).join("") || `<div class="S">Waiting for usbmon lines. Press a button in the live lab to make the devices move data.</div>`;
+    if (stick) el.scrollTop = el.scrollHeight;
+  } else {
+    const el = $("#tw"), stick = el.scrollTop + el.clientHeight >= el.scrollHeight - 30;
+    $("#tb").innerHTML = rows.map(r => r.type ? `<tr class="${r.evt}"><td class="mono">${((r.ts - S.t0) / 1e6).toFixed(6)}</td><td>${r.evt}</td><td class="mono">${r.key}</td><td>${TYPES[r.type]}</td><td>${r.dir === "i" ? "in" : "out"}</td><td class="mono">${r.ep}</td><td class="mono">${esc(r.setup ? "setup" : r.status)}</td><td class="mono">${esc(r.length)}</td><td class="mono d" title="${esc(r.setup || r.data)}">${esc(r.setup ? "setup: " + r.setup : r.data)}</td></tr>` : `<tr><td colspan="9" class="mono">${esc(r.line)}</td></tr>`).join("");
+    if (stick) el.scrollTop = el.scrollHeight;
+  }
+  tiles();
+}
+function tiles() {
+  const loss = S.seen ? (100 * S.unparsed / S.seen) : 0;
+  $("#tiles").innerHTML = [
+    ["Lines read", S.total.toLocaleString(), "since the lab started"],
+    ["Lines per second", S.rate.toFixed(0), "kernel output right now"],
+    ["Unparsed lines", S.unparsed.toLocaleString(), `${loss.toFixed(4)}% of ${S.seen.toLocaleString()} read`],
+    ["Devices seen", S.seenDevs.size, [...S.seenDevs].sort().join(", ") || "none yet"],
+    ["In view", `${S.counts.S || 0} / ${S.counts.C || 0} / ${S.counts.E || 0}`, "submitted / completed / error"],
+  ].map(([k, v, s]) => `<div class="tile"><div class="k">${k}</div><div class="v mono">${v}</div><div class="s">${esc(s)}</div></div>`).join("");
+  $("#samp").textContent = S.skipped ? `The page skipped ${S.skipped.toLocaleString()} lines to keep up. The parser received all of them.` : "";
+}
+function onBatch(m) {
+  const now = performance.now(), dt = (now - S.lastAt) / 1000;
+  if (dt > 0.4) { S.rate = (m.total - S.lastTotal) / dt; S.lastTotal = m.total; S.lastAt = now; }
+  S.total = m.total; S.unparsed = m.unparsed; S.seen = m.seen; S.skipped += m.skipped || 0;
+  push(m.lines); render();
+}
+function connect() {
+  const es = new EventSource("/lab/raw/stream");
+  es.addEventListener("snap", e => { const m = JSON.parse(e.data); S.rows = []; S.counts = { S: 0, C: 0, E: 0 }; S.t0 = null; S.lastTotal = m.total; push(m.lines); onBatch({ ...m, lines: [] }); $("#dot").className = "dot live"; $("#stat").textContent = "Streaming from the VM"; });
+  es.addEventListener("raw", e => onBatch(JSON.parse(e.data)));
+  es.onerror = () => { $("#dot").className = "dot err"; $("#stat").textContent = "Not connected. Is the live lab running and booted?"; es.close(); setTimeout(connect, 3000); };
+}
+$("#pause").onclick = e => { S.paused = !S.paused; e.target.setAttribute("aria-pressed", S.paused); e.target.textContent = S.paused ? "Resume" : "Pause"; if (!S.paused) render(); };
+$("#clear").onclick = () => { S.rows = []; S.counts = { S: 0, C: 0, E: 0 }; S.skipped = 0; render(); };
+for (const [id, v] of [["v-text", "text"], ["v-tab", "table"]]) $("#" + id).onclick = () => {
+  S.view = v; $("#v-text").setAttribute("aria-pressed", v === "text"); $("#v-tab").setAttribute("aria-pressed", v === "table");
+  $("#term").hidden = v !== "text"; $("#tw").hidden = v !== "table"; render();
+};
+["q", "evt", "typ"].forEach(id => $("#" + id).addEventListener(id === "q" ? "input" : "change", render));
+tiles(); connect();
+</script>
+</body>
+</html>
