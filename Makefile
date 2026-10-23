@@ -1,5 +1,5 @@
 # IUDBMS — development entry points.
-.PHONY: help install test test-fast lint eval zoo report monitor monitor-replay demo-dashboard demo demo-hard dashboard baseline clean
+.PHONY: help install test test-fast lint eval zoo report monitor monitor-replay demo-dashboard lab demo demo-hard dashboard baseline clean
 
 help:
 	@grep -E '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -83,6 +83,9 @@ verify-service:  ## post-install checks on this Linux host
 
 demo-dashboard:  ## the live demo page on http://localhost:8000/demo (deployed models, streamed window by window)
 	python3 -m uvicorn iudbms.api.app:app --port 8000
+
+lab:  ## live lab on http://localhost:8001: boots a Linux VM, scores its real usbmon live (~1 min to boot)
+	python3 -m iudbms.api.lab --port 8001
 
 demo:  ## live replay: watch the loop close in real time (needs `make eval` first)
 	python3 scripts/live_replay.py --profile staged_delay --speed 6

@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IUDBMS live lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  color-scheme: light;
+  --surface-0: #f2f2f0;
+  --surface-1: #fcfcfb;
+  --surface-2: #eeeeec;
+  --line: #dedddA;
+  --grid: #e8e8e5;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #7a7975;
+  --accent: #2a78d6;
+  --accent-ink: #ffffff;
+  --good: #0a8a0a;
+  --good-bg: #e3f3e3;
+  --warn: #9a6a00;
+  --warn-bg: #fdf0cf;
+  --crit: #c22f2f;
+  --crit-bg: #fbe3e3;
+  --idle: #6b6a66;
+  --idle-bg: #e6e5e1;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --surface-0: #121211;
+    --surface-1: #1a1a19;
+    --surface-2: #232322;
+    --line: #333331;
+    --grid: #2a2a28;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #8d8c85;
+    --accent: #3987e5;
+    --accent-ink: #0b0b0b;
+    --good: #4cc24c;
+    --good-bg: #17301a;
+    --warn: #f0b429;
+    --warn-bg: #352a0b;
+    --crit: #f06262;
+    --crit-bg: #3a1717;
+    --idle: #a3a29b;
+    --idle-bg: #2a2a28;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface-0: #121211;
+  --surface-1: #1a1a19;
+  --surface-2: #232322;
+  --line: #333331;
+  --grid: #2a2a28;
+  --text-primary: #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted: #8d8c85;
+  --accent: #3987e5;
+  --accent-ink: #0b0b0b;
+  --good: #4cc24c;
+  --good-bg: #17301a;
+  --warn: #f0b429;
+  --warn-bg: #352a0b;
+  --crit: #f06262;
+  --crit-bg: #3a1717;
+  --idle: #a3a29b;
+  --idle-bg: #2a2a28;
+}
+
+* { box-sizing: border-box; }
+html { font-size: 16px; }
+body {
+  margin: 0; background: var(--surface-0); color: var(--text-primary);
+  font: 400 1rem/1.45 "IBM Plex Sans", system-ui, sans-serif;
+}
+.mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+header.top {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px;
+  padding: 14px 24px; background: var(--surface-1); border-bottom: 1px solid var(--line);
+}
+header.top h1 { font-size: 1.25rem; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+header.top h1 span { color: var(--text-muted); font-weight: 500; }
+.badge {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+  font-size: 0.8125rem; font-weight: 600; border: 1px solid transparent;
+}
+.badge.dry { background: var(--warn-bg); color: var(--warn); border-color: var(--warn); }
+.spacer { flex: 1; }
+.ctrl { display: flex; align-items: center; gap: 8px; font-size: 0.875rem; color: var(--text-secondary); }
+select, button { font: inherit; }
+select {
+  background: var(--surface-2); color: var(--text-primary); border: 1px solid var(--line);
+  border-radius: 6px; padding: 5px 8px;
+}
+button {
+  cursor: pointer; border-radius: 6px; border: 1px solid var(--line);
+  background: var(--surface-2); color: var(--text-primary); padding: 6px 12px;
+}
+button:hover { border-color: var(--text-muted); }
+button:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+
+.pipeline {
+  display: flex; flex-wrap: wrap; gap: 4px 0; padding: 10px 24px; font-size: 0.8125rem;
+  color: var(--text-secondary); background: var(--surface-0); border-bottom: 1px solid var(--line);
+}
+.pipeline .stage { display: flex; align-items: center; }
+.pipeline .stage b { color: var(--text-primary); font-weight: 600; margin-right: 6px; }
+.pipeline .stage + .stage::before { content: "→"; margin: 0 10px; color: var(--text-muted); }
+
+.layout { display: grid; grid-template-columns: 300px 1fr; gap: 24px; padding: 20px 24px 32px; align-items: start; }
+@media (max-width: 900px) { .layout { grid-template-columns: 1fr; padding: 16px; } }
+
+aside h2 { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin: 18px 0 8px; font-weight: 600; }
+aside h2:first-of-type { margin-top: 0; }
+.scn {
+  display: block; width: 100%; text-align: left; margin-bottom: 6px; padding: 8px 10px;
+  background: var(--surface-1);
+}
+.scn .l { font-weight: 600; font-size: 0.9375rem; }
+.scn .n { display: block; color: var(--text-muted); font-size: 0.8125rem; margin-top: 2px; }
+.scn .src { float: right; font-size: 0.6875rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.preset { width: 100%; margin-bottom: 4px; padding: 10px 12px; }
+
+main { min-width: 0; }
+.empty {
+  border: 1px dashed var(--line); border-radius: 10px; padding: 36px 24px; text-align: center;
+  color: var(--text-secondary); background: var(--surface-1);
+}
+.empty b { color: var(--text-primary); }
+.lanes { display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 16px; }
+@media (max-width: 520px) { .lanes { grid-template-columns: 1fr; } }
+
+.lane { background: var(--surface-1); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; min-width: 0; }
+.lane.alarm { border-color: var(--crit); }
+.lh { display: flex; align-items: flex-start; gap: 10px; }
+.lh .t { flex: 1; min-width: 0; }
+.lh .t .name { font-weight: 600; font-size: 1.0625rem; }
+.lh .t .sub { color: var(--text-muted); font-size: 0.8125rem; }
+.x { padding: 0 8px; line-height: 1.5; color: var(--text-muted); }
+.pill {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+  font-size: 0.8125rem; font-weight: 600; white-space: nowrap;
+}
+.pill.observe { background: var(--good-bg); color: var(--good); }
+.pill.throttled { background: var(--warn-bg); color: var(--warn); }
+.pill.revoked { background: var(--crit-bg); color: var(--crit); }
+.pill.unmodelled, .pill.waiting { background: var(--idle-bg); color: var(--idle); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
+.chip { font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; background: var(--surface-2); color: var(--text-secondary); }
+.chip.atk { background: var(--crit-bg); color: var(--crit); }
+.chip.ok { background: var(--good-bg); color: var(--good); }
+
+.cap { font-size: 0.75rem; color: var(--text-muted); margin: 10px 0 2px; display: flex; justify-content: space-between; gap: 8px; }
+svg.ch { width: 100%; display: block; }
+svg.ch text { fill: var(--text-muted); font: 400 10.5px "IBM Plex Mono", monospace; }
+svg.ch .g { stroke: var(--grid); stroke-width: 1; }
+svg.ch .ax { stroke: var(--line); stroke-width: 1; }
+svg.ch .thr { stroke: var(--crit); stroke-width: 1.25; stroke-dasharray: 5 4; }
+svg.ch .on { stroke: var(--text-secondary); stroke-width: 1; stroke-dasharray: 2 3; }
+svg.ch .al { stroke: var(--crit); stroke-width: 1.5; }
+svg.ch .ln { stroke: var(--accent); stroke-width: 2; fill: none; stroke-linejoin: round; }
+svg.ch .ar { fill: var(--accent); opacity: 0.14; }
+svg.ch .pt { fill: var(--accent); stroke: var(--surface-1); stroke-width: 2; }
+svg.ch .pt.hot { fill: var(--crit); }
+svg.ch .bar { fill: var(--accent); opacity: 0.75; }
+svg.ch .bar.hot { fill: var(--crit); opacity: 0.9; }
+svg.ch .lab { fill: var(--text-secondary); }
+svg.ch .labc { fill: var(--crit); }
+
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
+.stat { background: var(--surface-2); border-radius: 6px; padding: 6px 10px; min-width: 0; }
+.stat .k { font-size: 0.6875rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.stat .v { font-size: 1.125rem; font-weight: 600; }
+.pips { display: flex; gap: 4px; margin-top: 3px; }
+.pips i { width: 14px; height: 14px; border-radius: 3px; background: var(--grid); display: block; }
+.pips i.on { background: var(--crit); }
+
+.alert { margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: var(--crit-bg); color: var(--text-primary); border-left: 4px solid var(--crit); }
+.alert b { color: var(--crit); }
+.alert .by { color: var(--text-secondary); font-size: 0.875rem; margin-top: 2px; }
+.alert details { margin-top: 6px; font-size: 0.8125rem; }
+.alert summary { cursor: pointer; color: var(--text-secondary); }
+.alert pre { margin: 6px 0 0; padding: 8px; background: var(--surface-1); border-radius: 6px; overflow-x: auto; font: 400 0.75rem/1.4 "IBM Plex Mono", monospace; color: var(--text-primary); }
+.outcome { margin-top: 12px; font-size: 0.9375rem; padding: 8px 12px; border-radius: 8px; background: var(--surface-2); }
+.outcome.good { background: var(--good-bg); }
+.outcome.bad { background: var(--warn-bg); }
+.outcome b { font-weight: 600; }
+
+footer { padding: 14px 24px 28px; color: var(--text-muted); font-size: 0.8125rem; border-top: 1px solid var(--line); background: var(--surface-1); }
+footer p { margin: 0 0 4px; max-width: 110ch; }
+@media (prefers-reduced-motion: no-preference) {
+  .lane { transition: border-color .25s; }
+}
+
+.status { display:inline-flex; align-items:center; gap:8px; font-size:.875rem; color:var(--text-secondary); }
+.dot { width:9px; height:9px; border-radius:50%; background:var(--idle); }
+.dot.ready { background:var(--good); } .dot.error { background:var(--crit); } .dot.booting { background:var(--warn); }
+.lanes { grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); }
+.act { display:block; width:100%; text-align:left; margin-bottom:6px; padding:8px 10px; background:var(--surface-1); }
+.act:disabled { opacity:.5; cursor:not-allowed; }
+.act .l { font-weight:600; font-size:.9375rem; } .act .n { display:block; color:var(--text-muted); font-size:.8125rem; margin-top:2px; }
+.feed { margin-top:8px; max-height:300px; overflow:auto; font-size:.8125rem; background:var(--surface-1); border:1px solid var(--line); border-radius:8px; padding:6px 10px; }
+.feed div { padding:3px 0; border-bottom:1px solid var(--grid); color:var(--text-secondary); }
+.feed div:last-child { border-bottom:0; }
+.feed .alarm { color:var(--crit); font-weight:600; } .feed .warn { color:var(--warn); } .feed .error { color:var(--crit); }
+.feed time { color:var(--text-muted); margin-right:8px; font-family:"IBM Plex Mono",monospace; }
+.gone { opacity:.6; }
+.truth { padding:10px 24px; background:var(--surface-1); border-bottom:1px solid var(--line); font-size:.875rem; color:var(--text-secondary); }
+.truth b { color:var(--text-primary); }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>IUDBMS <span>live lab</span></h1>
+  <span class="badge dry" title="Enforcement actions are generated and logged. Nothing is written to /sys/bus/usb/.../authorized.">
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1 13 12H1z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7 5.5v3M7 10v.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    Dry run. No device is actually blocked.
+  </span>
+  <span class="spacer"></span>
+  <span class="status"><span class="dot" id="dot"></span><span id="stat">Connecting</span></span>
+</header>
+<div class="truth"><b>What is live here.</b> A real Linux kernel (Debian 13) is running in a VM. Its USB traffic is captured by <span class="mono">usbmon</span> as it happens and scored every second by the deployed models. <b>What is emulated.</b> The USB devices are QEMU's, driven by replayed human typing, not hardware.</div>
+<div class="pipeline" aria-label="Pipeline">
+  <span class="stage"><b>VM kernel</b> usbmon over SSH</span>
+  <span class="stage"><b>1 s windows</b> per device</span>
+  <span class="stage"><b>28 features</b></span>
+  <span class="stage"><b>Stage 1</b> isolation forest</span>
+  <span class="stage"><b>Stage 2</b> LSTM over 10 windows</span>
+  <span class="stage"><b>Gate</b> 4 of last 6</span>
+  <span class="stage"><b>Policy</b> observe, throttle, revoke</span>
+</div>
+<div class="layout">
+  <aside>
+    <h2>Drive the VM</h2>
+    <button class="act scn" data-a="human" type="button" disabled><span class="l">Person types</span><span class="n">About 45 s of replayed keystroke timing from a real typist. Should stay quiet.</span></button>
+    <button class="act scn" data-a="mouse" type="button" disabled><span class="l">Move the mouse</span><span class="n">Pointer motion. Not a keystroke source, so it is never escalated.</span></button>
+    <button class="act scn" data-a="storage" type="button" disabled><span class="l">Read the USB drive</span><span class="n">Heavy bulk transfers from the emulated stick.</span></button>
+    <h2>Attacks</h2>
+    <button class="act scn" data-a="inject" type="button" disabled><span class="l">Plug in a keystroke injector</span><span class="n">A new keyboard appears and types at machine speed.</span></button>
+    <button class="act scn" data-a="staged" type="button" disabled><span class="l">Staged injector</span><span class="n">Plugged in, silent for 25 s, then types.</span></button>
+    <h2>Where it falls short</h2>
+    <button class="act scn" data-a="loop" type="button" disabled><span class="l">Replay loop at human speed</span><span class="n">60 s. Missed on real kernels.</span></button>
+    <button class="act scn" data-a="slow" type="button" disabled><span class="l">Payload typed once, human speed</span><span class="n">Nothing here detects it. Shown on purpose.</span></button>
+    <h2>Event log</h2>
+    <button id="stop" type="button">Stop running actions</button>
+    <div class="feed" id="feed"></div>
+  </aside>
+  <main>
+    <div id="empty" class="empty">
+      <p><b>Waiting for USB traffic from the VM.</b></p>
+      <p>Devices appear here when the guest's kernel first sees them move data. Press an action on the left.</p>
+    </div>
+    <div class="lanes" id="lanes"></div>
+  </main>
+</div>
+<footer>
+  <p>The kernel, xHCI controller, HID and storage drivers, and the usbmon capture are real. The devices are QEMU's emulation, driven by recorded human keystroke timing. No physical BadUSB has been tested.</p>
+  <p>The models were trained on simulated traffic. Fast injection is caught mainly by the human speed rule, which flags a keyboard sending more reports per second than any measured typist. A payload typed once at human speed is not detected by anything here.</p>
+</footer>
+<script>
+"use strict";
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const lanes = new Map();
+let CFG = { threshold: 0.9996, human_max_rps: 30, k: 4, n: 6 };
+const WIN = 90;
+const CLS = { 1: "audio", 2: "comms", 3: "HID", 8: "storage", 9: "hub", 10: "CDC data", 11: "smart card", 14: "video", 255: "vendor" };
+const NINES = s2 => -Math.log10(Math.max(1e-5, 1 - Math.min(s2, 1 - 1e-5)));
+
+function setStatus(s) {
+  $("#dot").className = "dot " + s.state;
+  $("#stat").textContent = s.message;
+  document.querySelectorAll(".act").forEach(b => b.disabled = s.state !== "ready");
+}
+function logLine(m) {
+  const f = $("#feed"), d = document.createElement("div");
+  d.className = m.level;
+  d.innerHTML = `<time>${new Date(m.t * 1000).toLocaleTimeString([], { hour12: false })}</time>${esc(m.msg)}`;
+  f.prepend(d);
+  while (f.children.length > 60) f.lastChild.remove();
+}
+function isKeyboard(info) {
+  return info.interfaces.some(i => i.cls === 3 && (i.pages == null || i.pages.includes(7) || i.pages.includes(12)));
+}
+function lane(id, info) {
+  if (lanes.has(id)) return lanes.get(id);
+  const el = document.createElement("section");
+  el.className = "lane";
+  const classes = [...new Set(info.interfaces.map(x => CLS[x.cls] || "class " + x.cls))].join(", ");
+  el.innerHTML = `
+    <div class="lh"><div class="t"><div class="name">${esc(info.product || "USB device")}</div>
+      <div class="sub">${info.vid}:${info.pid} · bus address ${esc(id)}</div></div><span class="pill waiting">waiting</span></div>
+    <div class="chips"><span class="chip">real kernel</span><span class="chip">${esc(classes)}</span></div>
+    <div class="cap"><span>Stage 2 suspicion, higher is worse</span><span class="capr"></span></div><div class="c1"></div>
+    <div class="cap"><span>USB reports per second</span><span class="capr2"></span></div><div class="c2"></div>
+    <div class="stats"></div><div class="slot"></div>`;
+  $("#lanes").prepend(el);
+  $("#empty").style.display = "none";
+  const L = { id, info, el, pts: [], marks: [], alert: null };
+  lanes.set(id, L);
+  return L;
+}
+function axis(L) {
+  const last = L.pts.at(-1)?.t ?? 0, hi = Math.max(WIN, last + 1);
+  return [hi - WIN, hi];
+}
+function chart1(L) {
+  const W = L.w, H = 150, pl = 54, pr = 10, pt = 10, pb = 20, iw = W - pl - pr, ih = H - pt - pb, YM = 5;
+  const [a, b] = axis(L), X = t => pl + ((t - a) / (b - a)) * iw, Y = v => pt + ih - (Math.min(v, YM) / YM) * ih;
+  let s = `<svg class="ch" viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="Stage 2 suspicion over time">`;
+  for (let v = 0; v <= YM; v++) {
+    s += `<line class="g" x1="${pl}" x2="${W - pr}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${pl - 6}" y="${Y(v) + 3}" text-anchor="end">${v === 0 ? "0" : "0." + "9".repeat(v)}</text>`;
+  }
+  for (let t = Math.ceil(a / 15) * 15; t <= b; t += 15) s += `<text x="${X(t)}" y="${H - 5}" text-anchor="middle">${t}s</text>`;
+  s += `<line class="ax" x1="${pl}" x2="${pl}" y1="${pt}" y2="${pt + ih}"/><line class="ax" x1="${pl}" x2="${W - pr}" y1="${pt + ih}" y2="${pt + ih}"/>`;
+  const ty = Y(NINES(CFG.threshold));
+  s += `<line class="thr" x1="${pl}" x2="${W - pr}" y1="${ty}" y2="${ty}"/><text class="labc" x="${W - pr - 2}" y="${ty - 4}" text-anchor="end">alarm line</text>`;
+  for (const m of L.marks) if (m.t >= a) s += `<line class="on" x1="${X(m.t)}" x2="${X(m.t)}" y1="${pt}" y2="${pt + ih}"/><text class="lab" x="${X(m.t) + 4}" y="${pt + 10}">${esc(m.what)}</text>`;
+  if (L.alert && L.alert.t + 1 >= a) s += `<line class="al" x1="${X(L.alert.t + 1)}" x2="${X(L.alert.t + 1)}" y1="${pt}" y2="${pt + ih}"/><text class="labc" x="${X(L.alert.t + 1) - 4}" y="${pt + ih - 5}" text-anchor="end">alarm</text>`;
+  const pts = L.pts.filter(p => p.t + 1 >= a);
+  if (pts.length) {
+    const xy = pts.map(p => [X(p.t + 1), Y(NINES(p.s2))]);
+    s += `<path class="ar" d="M${xy[0][0]},${pt + ih} L${xy.map(p => p.join(",")).join(" L")} L${xy.at(-1)[0]},${pt + ih}Z"/><path class="ln" d="M${xy.map(p => p.join(",")).join(" L")}"/>`;
+    s += `<circle class="pt ${pts.at(-1).over ? "hot" : ""}" cx="${xy.at(-1)[0]}" cy="${xy.at(-1)[1]}" r="4"/>`;
+  }
+  return s + "</svg>";
+}
+function chart2(L) {
+  const W = L.w, H = 76, pl = 54, pr = 10, pt = 6, pb = 14, iw = W - pl - pr, ih = H - pt - pb, YM = Math.log10(601);
+  const [a, b] = axis(L), X = t => pl + ((t - a) / (b - a)) * iw, Y = v => pt + ih - (Math.log10(1 + v) / YM) * ih;
+  const bw = Math.max(1.5, iw / (b - a) - 1);
+  let s = `<svg class="ch" viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="Reports per second">`;
+  for (const v of [1, 10, 100]) s += `<line class="g" x1="${pl}" x2="${W - pr}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${pl - 6}" y="${Y(v) + 3}" text-anchor="end">${v}</text>`;
+  s += `<line class="ax" x1="${pl}" x2="${W - pr}" y1="${pt + ih}" y2="${pt + ih}"/>`;
+  const kb = isKeyboard(L.info), lim = CFG.human_max_rps;
+  if (kb && lim) s += `<line class="thr" x1="${pl}" x2="${W - pr}" y1="${Y(lim)}" y2="${Y(lim)}"/><text class="labc" x="${W - pr - 2}" y="${Y(lim) - 3}" text-anchor="end">fastest person ${lim}/s</text>`;
+  for (const p of L.pts) if (p.t >= a) s += `<rect class="bar ${kb && lim && p.events >= lim ? "hot" : ""}" x="${X(p.t) + 0.5}" y="${Y(p.events)}" width="${bw}" height="${pt + ih - Y(p.events)}"/>`;
+  return s + "</svg>";
+}
+function draw(L) {
+  const el = L.el, last = L.pts.at(-1);
+  L.w = Math.max(320, Math.round($(".c1", el).clientWidth || 520));
+  $(".c1", el).innerHTML = chart1(L);
+  $(".c2", el).innerHTML = chart2(L);
+  if (last) {
+    const st = last.state, pill = $(".pill", el);
+    pill.className = "pill " + st;
+    pill.textContent = ({ observe: "● Observing", throttled: "▲ Throttled", revoked: "■ Revoked", unmodelled: "○ Not modelled" })[st] || st;
+    $(".capr", el).textContent = `t = ${(last.t + 1).toFixed(0)} s`;
+    $(".stats", el).innerHTML = `
+      <div class="stat"><div class="k">Reports/s</div><div class="v mono">${last.events}</div></div>
+      <div class="stat"><div class="k">Stage 1</div><div class="v mono">${last.s1.toFixed(2)}</div></div>
+      <div class="stat"><div class="k">Stage 2</div><div class="v mono">${last.s2 >= 0.99999 ? "&gt;0.9999" : last.s2.toFixed(4)}</div></div>
+      <div class="stat"><div class="k">Gate ${last.hits} of ${last.n}</div><div class="pips">${Array.from({ length: last.n }, (_, i) => `<i class="${i < last.hits ? "on" : ""}"></i>`).join("")}</div></div>`;
+    const top = last.evidence.map(e => e[0]).join(", ");
+    $(".capr2", el).textContent = top ? `top signals: ${top}` : "";
+  }
+  el.classList.toggle("alarm", !!L.alert);
+  $(".slot", el).innerHTML = L.alert ? (() => {
+    const a = L.alert.action, by = a.fired_by || "model";
+    return `<div class="alert"><b>${a.name}</b> at ${(L.alert.t + 1).toFixed(0)} s, severity ${esc(a.severity)}
+      <div class="by">Raised by the ${by === "capability rule" ? "human speed rule: this keyboard exceeded what any measured person types" : "learned model: the score stayed over the line"}. Dry run, nothing was blocked.</div>
+      <details><summary>Generated rule</summary><pre>${esc(JSON.stringify(a.rule, null, 2))}</pre></details></div>`;
+  })() : "";
+}
+function addWindow(w) {
+  const L = lanes.get(w.device);
+  if (!L) return;
+  L.pts.push(w);
+  if (L.pts.length > 400) L.pts.shift();
+  if (w.action && !L.alert) L.alert = w;
+}
+function addMark(m) {
+  const L = m.device && lanes.get(m.device);
+  if (L) L.marks.push(m); else pendingMarks.push(m);
+}
+const pendingMarks = [];
+function flushMarks() {
+  for (let i = pendingMarks.length - 1; i >= 0; i--) {
+    const L = lanes.get(pendingMarks[i].device);
+    if (L) L.marks.push(pendingMarks.splice(i, 1)[0]);
+  }
+}
+
+function connect() {
+  const es = new EventSource("/lab/stream");
+  es.addEventListener("state", e => {
+    const s = JSON.parse(e.data);
+    CFG = { threshold: s.threshold ?? CFG.threshold, human_max_rps: s.human_max_rps ?? CFG.human_max_rps, k: s.k, n: s.n };
+    setStatus(s.status);
+    $("#feed").innerHTML = "";
+    s.log.forEach(logLine);
+    lanes.forEach(L => L.el.remove()); lanes.clear();
+    for (const [id, info] of Object.entries(s.devices)) {
+      const L = lane(id, info);
+      (s.history[id] || []).forEach(addWindow);
+      s.marks.filter(m => m.device === id).forEach(m => L.marks.push(m));
+      draw(L);
+    }
+  });
+  es.addEventListener("status", e => setStatus(JSON.parse(e.data)));
+  es.addEventListener("log", e => logLine(JSON.parse(e.data)));
+  es.addEventListener("device", e => { const i = JSON.parse(e.data); lane(i.id, i); flushMarks(); });
+  es.addEventListener("mark", e => { addMark(JSON.parse(e.data)); flushMarks(); });
+  es.addEventListener("window", e => { const w = JSON.parse(e.data); addWindow(w); const L = lanes.get(w.device); if (L) draw(L); });
+  es.onerror = () => { $("#stat").textContent = "Connection lost. Retrying"; $("#dot").className = "dot"; };
+}
+document.querySelectorAll(".act").forEach(b => b.onclick = async () => {
+  b.disabled = true;
+  try {
+    const r = await fetch("/lab/action", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: b.dataset.a }) });
+    if (!r.ok) logLine({ t: Date.now() / 1000, msg: (await r.json()).detail || "Action refused", level: "warn" });
+  } finally { setTimeout(() => { b.disabled = false; }, 1500); }
+});
+$("#stop").onclick = () => fetch("/lab/stop", { method: "POST" });
+window.addEventListener("resize", () => lanes.forEach(draw));
+connect();
+</script>
+</body>
+</html>
