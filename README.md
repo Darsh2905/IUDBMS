@@ -77,6 +77,19 @@ streams the deployed models through the same `StreamingDetector` the monitor run
 (`tests/test_demo_api.py` checks the streamed scores equal the detector's own). Enforcement
 is dry-run and the page says so. Rehearsal shortcut: `/demo?run=kbd,mouse,inject&speed=4`.
 
+## Live lab (real kernel, live usbmon)
+
+```bash
+make lab                   # then open http://localhost:8001  (the demo page on :8000 can keep running)
+```
+
+Boots a Debian 13 guest under QEMU, streams its `usbmon` over SSH into the deployed monitor
+loop, and scores the guest's USB bus once a second. Buttons on the page type as a person
+(replayed timing of real typists), hot-plug a keystroke injector, move the mouse, read the
+drive, and trigger the two cases that are not caught. The kernel, drivers and usbmon traffic
+are real; the devices are QEMU's emulation. Needs QEMU and `testbed/images/debian-13.qcow2`
+(`sh testbed/fetch_images.sh`). Stops the VM when you stop the server.
+
 ## Reproduce
 
 ```bash

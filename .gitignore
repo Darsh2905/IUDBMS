@@ -57,3 +57,4 @@ out/testbed/raw/
 out/testbed/scores/
 out/testbed/*.log
 out/analysis_*.log
+out/lab/
