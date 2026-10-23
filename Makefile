@@ -1,5 +1,5 @@
 # IUDBMS — development entry points.
-.PHONY: help install test test-fast lint eval zoo report monitor monitor-replay demo-dashboard lab demo demo-hard dashboard baseline clean
+.PHONY: help install test test-fast lint eval zoo report monitor monitor-replay demo-dashboard lab db-dashboard demo demo-hard dashboard baseline clean
 
 help:
 	@grep -E '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -86,6 +86,9 @@ demo-dashboard:  ## the live demo page on http://localhost:8000/demo (deployed m
 
 lab:  ## live lab on http://localhost:8001: boots a Linux VM, scores its real usbmon live (~1 min to boot)
 	python3 -m iudbms.api.lab --port 8001
+
+db-dashboard:  ## database explorer on http://localhost:8002 over out/iudbms.db (the simulated corpus; needs `make eval`)
+	python3 -m iudbms.api.dbview --port 8002
 
 demo:  ## live replay: watch the loop close in real time (needs `make eval` first)
 	python3 scripts/live_replay.py --profile staged_delay --speed 6

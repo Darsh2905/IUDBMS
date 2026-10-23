@@ -90,6 +90,16 @@ drive, and trigger the two cases that are not caught. The kernel, drivers and us
 are real; the devices are QEMU's emulation. Needs QEMU and `testbed/images/debian-13.qcow2`
 (`sh testbed/fetch_images.sh`). Stops the VM when you stop the server.
 
+## Database explorer
+
+```bash
+make db-dashboard          # then open http://localhost:8002
+```
+
+Browse `out/iudbms.db`, the store `make eval` writes: 1,000 simulated sessions, their scored
+windows, alerts and dry-run actions. Overview, a filterable session list with a score chart per
+session and each window's features, and a raw table browser. Read-only. Deep link: `/#sessions/A0001`.
+
 ## Reproduce
 
 ```bash
