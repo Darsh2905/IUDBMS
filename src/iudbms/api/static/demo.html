@@ -333,7 +333,8 @@ function add(id) {
 }
 
 function isKeyboard(init) {
-  return init.interfaces.some(i => i.cls === 3 && (i.pages == null || i.pages.includes(7) || i.pages.includes(12)));
+  // mirrors policy.support.is_keyboard: Keyboard page declared, or (descriptor unknown) the boot-keyboard protocol
+  return init.interfaces.some(i => i.cls === 3 && (i.pages != null ? i.pages.includes(7) : i.proto === 1));
 }
 const CLS = { 1: "audio", 2: "comms", 3: "HID", 8: "storage", 9: "hub", 10: "CDC data", 11: "smart card", 14: "video", 255: "vendor" };
 
