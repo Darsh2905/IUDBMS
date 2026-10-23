@@ -289,7 +289,8 @@ function logLine(m) {
   while (f.children.length > 60) f.lastChild.remove();
 }
 function isKeyboard(info) {
-  return info.interfaces.some(i => i.cls === 3 && (i.pages == null || i.pages.includes(7) || i.pages.includes(12)));
+  // mirrors policy.support.is_keyboard: Keyboard page declared, or (descriptor unknown) the boot-keyboard protocol
+  return info.interfaces.some(i => i.cls === 3 && (i.pages != null ? i.pages.includes(7) : i.proto === 1));
 }
 function lane(id, info) {
   if (lanes.has(id)) return lanes.get(id);
